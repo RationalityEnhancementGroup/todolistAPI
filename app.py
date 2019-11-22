@@ -1,6 +1,7 @@
 import re
 import cherrypy
 import json
+import os
 
 goalCodeRegex = r"#CG(\d|&|_)"
 totalValueRegex = r"(?:^| |>)\(?==(\d+)\)?(?:\b|$)"
