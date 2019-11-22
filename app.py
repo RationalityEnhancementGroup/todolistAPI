@@ -1,9 +1,8 @@
-import re
 import cherrypy
 import json
 import os
-from datetime import datetime
 from utils import *
+from apis import *
 
 class RESTResource(object):
    """
@@ -59,17 +58,19 @@ class PostResource(RESTResource):
         #new calculation
         #save updated, user id, and skeleton
         projects = flatten_intentions(jsonData["projects"])
-        tree_structure = parse_tree(projects)
+        projects, missing_deadlines, missing_durations = parse_tree(projects)
 
         if current_id not in cherrypy.session:
             cherrypy.session[current_id] = {}
 
         cherrypy.session[current_id]["updated"] = jsonData["updated"]
-        cherrypy.session[current_id]["tree"] = tree_structure
-        algorithm_output = json.dumps(tree_structure) 
+        cherrypy.session[current_id]["tree"] = projects
+
+        projects = assign_random_points(projects)
+        algorithm_output = json.dumps(projects) 
 
         print(jsonData)
-        print(tree_structure)
+        print(projects)
         if api_method == "updateTree":
             cherrypy.response.status = 204
             return None
