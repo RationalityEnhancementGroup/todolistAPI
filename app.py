@@ -8,6 +8,7 @@ goalCodeRegex = r"#CG(\d|&|_)"
 totalValueRegex = r"(?:^| |>)\(?==(\d+)\)?(?:\b|$)"
 timeEstimateRegex = r"(?:^| |>)\(?~~(\d+|\.\d+|\d+.\d+)(?:(h(?:ou)?(?:r)?)?(m(?:in)?)?)?s?\)?([^\da-z.]|$)"
 deadlineRegex = r"DUE:(\d\d\d\d-\d+-\d+)(?:\b|$)"
+todayRegex = r"#today(?:\b|$)"
 
 def flatten_intentions(projects):
     for goal in projects:
@@ -50,6 +51,12 @@ def parse_tree(projects):
             else:
                 duration = int(time_est[1])
             child["duration"] = duration
+
+            today_code = re.search(todayRegex, child["nm"], re.IGNORECASE)
+            if today_code:
+                child["today"] = 1
+            else:
+                child["today"] = 0
     return projects, missing_deadlines, missing_durations
 
 
