@@ -9,7 +9,6 @@ todayRegex = r"#today(?:\b|$)"
 
 def flatten_intentions(projects):
     for goal in projects:
-        curr_id = goal["id"]
         for child in goal["ch"]:
             if "ch" in child:
                 goal["ch"].extend(child["ch"])
