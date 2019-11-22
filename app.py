@@ -132,9 +132,9 @@ if __name__ == '__main__':
         '/tree': {
             'tools.sessions.on': True,
             'tools.response_headers.on': True,
-            'tools.response_headers.headers': [('Content-Type', 'text/plain')],
-            'server.socket_host': '0.0.0.0',
-            'server.socket_port': int(os.environ.get('PORT', '5000'))
+            'tools.response_headers.headers': [('Content-Type', 'text/plain')]
         }
     }
+    cherrypy.config.update({'server.socket_host': '0.0.0.0'})
+    cherrypy.config.update({'server.socket_port': int(os.environ.get('PORT', '5000'))})
     cherrypy.quickstart(Root(), '/', conf)
