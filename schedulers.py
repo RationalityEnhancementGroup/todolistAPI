@@ -1,13 +1,9 @@
-def basic_scheduler(projects, today_duration=8*60, with_today = True):
+def basic_scheduler(task_list, today_duration=8*60, with_today = True):
 	'''
 	Takes in flattened project tree with "reward" from some API
 	Outputs list of tasks for today
 	'''
 	duration_remaining = today_duration
-
-	task_list = []
-	for goal in projects:
-		task_list.extend(goal["ch"])
 
 	if with_today == False:
 		final_tasks = []
@@ -23,5 +19,11 @@ def basic_scheduler(projects, today_duration=8*60, with_today = True):
 
 	return final_tasks
 
-def deadline_scheduler(projects, today_duration=8*60, with_today = True):
-	raise NotImplementedError
+def deadline_scheduler(projects, deadline_window=1, today_duration=8*60, with_today = True):
+	#tasks within deadline window are tagged with today
+	for task in task_list:
+		if task["deadline"]<=deadline_window:
+			task["today"] = 1
+
+	final_tasks = basic_scheduler(task_list, today_duration=today_duration, with_today=with_today)
+	return final_tasks

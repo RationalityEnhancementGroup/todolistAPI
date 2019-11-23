@@ -56,6 +56,7 @@ def parse_tree(projects):
             else:
                 child["today"] = 0
 
+            child["deadline"] = goalDeadline
             child["parentId"] = goal_id
             child["pcp"] = False #TODO not sure what this field is
 
@@ -84,4 +85,10 @@ def clean_output(task_list):
             if missing_key not in task:
                 task[missing_key] = None
 
+    return task_list
+
+def task_list_from_projects(projects):
+    task_list = []
+    for goal in projects:
+        task_list.extend(goal["ch"])
     return task_list

@@ -72,7 +72,7 @@ class PostResource(RESTResource):
         cherrypy.session[current_id]["tree"] = projects
 
         if method == "constant":
-            projects = assign_constant_points(projects)
+            projects = assign_constant_points(projects, *parameters)
         elif method == "random":
             projects = assign_random_points(projects, fxn_args = parameters)
         elif method == "hierarchical":
@@ -84,10 +84,11 @@ class PostResource(RESTResource):
         else:
             raise cherrypy.HTTPError(403, "API method does not exist")
 
+        task_list = task_list_from_projects(projects)
         if scheduler == "basic":
-            final_tasks = basic_scheduler(projects)
+            final_tasks = basic_scheduler(task_list)
         elif scheduler == "deadline":
-            final_tasks = deadline_scheduler(projects)
+            final_tasks = deadline_scheduler(task_list)
         else:
             raise cherrypy.HTTPError(403, "Scheduling method does not exist")
 
