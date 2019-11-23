@@ -2,7 +2,9 @@ import numpy as np
 import pandas as pd
 import requests
 import json
-from src.utils import tree_to_old_api_json
+from src.utils import tree_to_old_structure
+from todolistMDP.mdp_solvers import backward_induction
+from todolistMDP.to_do_list import *
 
 def assign_constant_points(projects, default_task=10):
     '''
@@ -33,12 +35,11 @@ def assign_old_api_points(projects, user_num=None):
     output: #TODO
     '''
 
-    #send post request
-    old_json = tree_to_old_api_json(projects)
-    request_string = "https://todo-gamification.herokuapp.com/todo/goals/{}/1".format(user_num) #TODO clearing right now, but maybe not most efficient
-    headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-    r = requests.post(request_string, json = json.dumps(old_json), headers=headers)
-    print(r)
+    old_structure = tree_to_old_structure(projects)
+    mdp = ToDoListMDP(ToDoList(old_structure, start_time=0))
+
+    v_states, optimal_policy = mdp.get_optimal_values_and_policy()
+
     raise NotImplementedError
 
 def assign_length_points(projects):

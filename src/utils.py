@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from todolistMDP.to_do_list import Goal, Task
 
 goalCodeRegex = r"#CG(\d|&|_)"
 totalValueRegex = r"(?:^| |>)\(?==(\d+)\)?(?:\b|$)"
@@ -37,7 +38,7 @@ def parse_tree(projects):
 
         try:
             parsedDeadline = re.search(deadlineRegex, goal["nm"], re.IGNORECASE)[1]
-            goalDeadline = (datetime.strptime(parsedDeadline, "%Y-%m-%d").date()-current_date).days
+            goalDeadline = int((datetime.strptime(parsedDeadline, "%Y-%m-%d").date()-current_date).days)
         except:
             goalDeadline = None
             missing_deadlines += 1
@@ -125,17 +126,16 @@ def are_there_tree_differences(old_tree, new_tree):
     else:
         return True
 
-def tree_to_old_api_json(projects):
+def tree_to_old_structure(projects):
     '''
     input: parsed tree
-    output: json that can be inputted to old api
+    output: structure that can be inputted to old project code
     '''
-    old_json = []
+    old_structure = []
     for goal in projects:
         if goal["code"] in [str(goal_num) for goal_num in range(11)]: #don't include miscellaneous
-            old_json.append({"title":goal["id"], "tasks":[], "tasks_dur":[], "rewards":{goal["deadline"]:goal["value"]}, "penalty": 0})
-            for task in goal["ch"]:
-                old_json[-1]["tasks"].append(task["id"])
-                old_json[-1]["tasks_dur"].append(task["est"])
-
-    return old_json
+            old_structure.append(Goal(goal["id"], \
+                [Task(task["id"], task["est"]) for task in goal["ch"]], \
+                 {goal["deadline"]:goal["value"]}, \
+                 penalty= 0))
+    return old_structure
