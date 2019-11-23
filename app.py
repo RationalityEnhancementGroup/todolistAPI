@@ -1,9 +1,9 @@
 import cherrypy
 import json
 import os
-from utils import *
-from apis import *
-from schedulers import *
+from src.utils import *
+from src.apis import *
+from src.schedulers import *
 
 class RESTResource(object):
    """
