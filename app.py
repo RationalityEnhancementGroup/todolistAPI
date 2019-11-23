@@ -3,6 +3,7 @@ import json
 import os
 from utils import *
 from apis import *
+from schedulers import *
 
 class RESTResource(object):
    """
@@ -40,7 +41,11 @@ class PostResource(RESTResource):
 
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
-        user_key, api_method = vpath
+        method = vpath[0]
+        scheduler = vpath[1]
+        parameters = [int(item) for item in vpath[2:-3]]
+        user_key = vpath[-2]
+        api_method = vpath[-1]
     
         #is there a user key
         try:
@@ -66,32 +71,50 @@ class PostResource(RESTResource):
         cherrypy.session[current_id]["updated"] = jsonData["updated"]
         cherrypy.session[current_id]["tree"] = projects
 
-        projects = assign_random_points(projects)
-        algorithm_output = json.dumps(projects) 
+        if method == "constant":
+            projects = assign_constant_points(projects)
+        elif method == "random":
+            projects = assign_random_points(projects, fxn_args = parameters)
+        elif method == "hierarchical":
+            projects = assign_hierarchical_points(projects)
+        elif method == "length":
+            projects = assign_length_points(projects)
+        elif method == "old-report":
+            projects = assign_old_api_points(projects)
+        else:
+            raise cherrypy.HTTPError(403, "API method does not exist")
 
-        print(jsonData)
-        print(projects)
+        if scheduler == "basic":
+            final_tasks = basic_scheduler(projects)
+        elif scheduler == "deadline":
+            final_tasks = deadline_scheduler(projects)
+        else:
+            raise cherrypy.HTTPError(403, "Scheduling method does not exist")
+
+        
+
         if api_method == "updateTree":
             cherrypy.response.status = 204
             return None
         elif api_method == "getTasksForToday":
-            #return scheduled tasks TODO finish this
-            return algorithm_output
+            #return scheduled tasks
+            final_tasks = clean_output(final_tasks)
+            return json.dumps(final_tasks) 
         else:
             raise cherrypy.HTTPError(405, "Method not implemented.")
 
 
 class Root(object):
-    tree = PostResource()
+    api = PostResource()
 
     @cherrypy.expose
     def index(self):
-        return "REST example."
+        return "REST API for Complice Project w/ Workflowy Points"
 
 
 if __name__ == '__main__':
     conf = {
-        '/tree': {
+        '/': {
             'tools.sessions.on': True,
             'tools.response_headers.on': True,
             'tools.response_headers.headers': [('Content-Type', 'text/plain')]

@@ -1,15 +1,21 @@
 This is the server for our future Complice experiments with Workflowy task lists.
 
-# Possible Routes (WIP)
+# Possible Routes
 
-None of these have been implemented yet, but we are hoping to create  the following routes (parameters TBD):
+The following point assigners will be implemented:
 
-* `/static`
+* `/constant`
 * `/random`
 * `/hierarchical`
 * `/length`
-* `/length-deadline`
 * `/old-report`
+
+The following scheduler APIs will also be implemented:
+
+* `/basic`
+* `/deadline`
+
+A possible route is therefore
 
 # Required Python Packages
 
