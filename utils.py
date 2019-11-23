@@ -85,6 +85,9 @@ def clean_output(task_list):
             if missing_key not in task:
                 task[missing_key] = None
 
+    for task in task_list:
+        task["val"] = round(task["val"])
+
     return task_list
 
 def task_list_from_projects(projects):
