@@ -76,10 +76,12 @@ def clean_output(task_list):
 
     for extra_key in extra_keys:
         for task in task_list:
-            del task[extra_key]
+            if extra_key in task:
+                del task[extra_key]
 
     for missing_key in missing_keys:
         for task in task_list:
-            task[missing_key] = None
+            if missing_key not in task:
+                task[missing_key] = None
 
     return task_list
