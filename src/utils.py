@@ -109,5 +109,17 @@ def are_there_tree_differences(old_tree, new_tree):
     '''
     raise NotImplementedError
 
-def tree_to_old_api_json(tree):
-    raise NotImplementedError
+def tree_to_old_api_json(projects):
+    '''
+    input: parsed tree
+    output: json that can be inputted to old api
+    '''
+    old_json = []
+    for goal in projects:
+        if goal["code"] in [str(goal_num) for goal_num in range(11)]: #don't include miscellaneous
+            old_json.append({"title":goal["id"], "tasks":[], "tasks_dur":[], "rewards":{goal["deadline"]:goal["value"]}, "penalty": 0})
+            for task in goal["ch"]:
+                old_json[-1]["tasks"].append(task["id"])
+                old_json[-1]["tasks_dur"].append(task["est"])
+
+    return old_json
