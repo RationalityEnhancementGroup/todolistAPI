@@ -60,3 +60,26 @@ def parse_tree(projects):
             child["pcp"] = False #TODO not sure what this field is
 
     return projects, missing_deadlines, missing_durations
+
+
+def clean_output(task_list):
+    '''
+    Input is list of tasks
+    Outputs list of tasks for today with fields id, nm, lm, parentId, pcp, est, val (=reward)
+    '''
+    keys_needed = ["id", "nm", "lm", "parentId", "pcp", "est", "val"]
+
+    #for now only look at first dictionary
+    current_keys = set(task_list[0].keys())
+    extra_keys = list(current_keys-set(keys_needed))
+    missing_keys = list(set(keys_needed)-current_keys)
+
+    for extra_key in extra_keys:
+        for task in task_list:
+            del task[extra_key]
+
+    for missing_key in missing_keys:
+        for task in task_list:
+            task[missing_key] = None
+
+    return task_list
