@@ -25,4 +25,17 @@ def assign_hierarchical_points(projects):
     raise NotImplementedError
 
 def assign_old_api_points(projects):
+    '''
+    '''
     raise NotImplementedError
+
+def assign_length_points(projects):
+    '''
+    Takes in parsed and flattened project tree
+    Outputs project tree with points assigned according to length heuristic
+    '''
+    for goal in projects:
+        value_per_minute = goal["value"]/float(sum([child["est"] for child in goal["ch"]]))
+        for child in goal["ch"]:
+            child["val"] = child["est"]/float(value_per_minute)
+    return projects
