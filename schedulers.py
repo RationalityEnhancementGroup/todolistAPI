@@ -22,3 +22,6 @@ def basic_scheduler(projects, today_duration=8*60, with_today = True):
 			duration_remaining -= task["est"]
 
 	return final_tasks
+
+def deadline_scheduler(projects, today_duration=8*60, with_today = True):
+	raise NotImplementedError

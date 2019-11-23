@@ -21,3 +21,8 @@ def assign_random_points(projects, distribution_fxn = np.random.normal, fxn_args
             child["val"] = distribution_fxn(*fxn_args)
     return projects
     
+def assign_hierarchical_points(projects):
+    raise NotImplementedError
+
+def assign_old_api_points(projects):
+    raise NotImplementedError
