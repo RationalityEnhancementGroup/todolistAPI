@@ -71,23 +71,26 @@ class PostResource(RESTResource):
 
         if current_id not in cherrypy.session:
             cherrypy.session[current_id] = {}
+            cherrypy.session[current_id]["num"] = len(cherrypy.session.keys())
+    
+        
 
         cherrypy.session[current_id]["updated"] = jsonData["updated"]
         cherrypy.session[current_id]["tree"] = projects
-        cherrypy.session[current_id]["num"] = len(cherrypy.session.keys())
-
-        if method == "constant":
-            projects = assign_constant_points(projects, *parameters)
-        elif method == "random":
-            projects = assign_random_points(projects, fxn_args = parameters)
-        elif method == "hierarchical":
-            projects = assign_hierarchical_points(projects)
-        elif method == "length":
-            projects = assign_length_points(projects)
-        elif method == "old-report":
-            projects = assign_old_api_points(projects, user_num = cherrypy.session[current_id]["num"])
-        else:
-            raise cherrypy.HTTPError(403, "API method does not exist")
+        
+        if are_there_tree_differences(cherrypy.session[current_id]["tree"], projects):
+            if method == "constant":
+                projects = assign_constant_points(projects, *parameters)
+            elif method == "random":
+                projects = assign_random_points(projects, fxn_args = parameters)
+            elif method == "hierarchical":
+                projects = assign_hierarchical_points(projects)
+            elif method == "length":
+                projects = assign_length_points(projects)
+            elif method == "old-report":
+                projects = assign_old_api_points(projects, user_num = cherrypy.session[current_id]["num"])
+            else:
+                raise cherrypy.HTTPError(403, "API method does not exist")
 
         task_list = task_list_from_projects(projects)
         if scheduler == "basic":

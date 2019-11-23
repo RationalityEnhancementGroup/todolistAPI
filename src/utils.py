@@ -102,12 +102,28 @@ def task_list_from_projects(projects):
         task_list.extend(goal["ch"])
     return task_list
 
+def create_tree_dict(tree):
+    '''
+    input: parsed tree
+    output: a dict with info we may want to use to compare trees
+    #TODO probably a better way to do this in are_there_tree_differences
+    '''
+    final_dict = {}
+    for goal in tree:
+        final_dict[goal["id"]]=(goal["deadline"], goal["value"])
+        for task in goal["ch"]:
+            final_dict[task["id"]] = task["est"]
+    return final_dict
+
 def are_there_tree_differences(old_tree, new_tree):
     '''
     input: two trees
-    output: whether or not we need to rerun the point calculations (e.g. we don't need to if only day durations change or #today has been added)
+    output: boolean of whether or not we need to rerun the point calculations (e.g. we don't need to if only day durations change or #today has been added)
     '''
-    raise NotImplementedError
+    if len(set(create_tree_dict(old_tree).items()) ^ set(create_tree_dict(new_tree).items()))==0:
+        return False
+    else:
+        return True
 
 def tree_to_old_api_json(projects):
     '''
