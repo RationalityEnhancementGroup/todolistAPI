@@ -70,15 +70,16 @@ class PostResource(RESTResource):
         projects, missing_deadlines, missing_durations = parse_tree(projects)
 
         if current_id not in cherrypy.session:
+            run_point_method = True
             cherrypy.session[current_id] = {}
             cherrypy.session[current_id]["num"] = len(cherrypy.session.keys())
-    
-        
+        else:
+            run_point_method = are_there_tree_differences(cherrypy.session[current_id]["tree"], projects)
 
         cherrypy.session[current_id]["updated"] = jsonData["updated"]
         cherrypy.session[current_id]["tree"] = projects
         
-        if are_there_tree_differences(cherrypy.session[current_id]["tree"], projects):
+        if run_point_method:
             if method == "constant":
                 projects = assign_constant_points(projects, *parameters)
             elif method == "random":
