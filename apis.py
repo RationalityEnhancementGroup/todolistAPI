@@ -8,7 +8,7 @@ def assign_constant_points(projects, default_task=10):
     '''
     for goal in projects:
         for child in goal["ch"]:
-            child["reward"] = default_task
+            child["val"] = default_task
     return projects
 
 def assign_random_points(projects, distribution_fxn = np.random.normal, fxn_args = (10,2)):
@@ -18,6 +18,6 @@ def assign_random_points(projects, distribution_fxn = np.random.normal, fxn_args
     '''
     for goal in projects:
         for child in goal["ch"]:
-            child["reward"] = distribution_fxn(*fxn_args)
+            child["val"] = distribution_fxn(*fxn_args)
     return projects
     

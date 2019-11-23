@@ -39,6 +39,8 @@ def parse_tree(projects):
         goal["deadline"] = goalDeadline
         goal["value"] = value 
         goal["code"] = goalCode
+
+        goal_id = goal["id"]
             
         for child_idx, child in enumerate(goal["ch"]):
             time_est = re.search(timeEstimateRegex, child["nm"], re.IGNORECASE)
@@ -46,11 +48,15 @@ def parse_tree(projects):
                 duration = 60*int(time_est[1])
             else:
                 duration = int(time_est[1])
-            child["duration"] = duration
+            child["est"] = duration
 
             today_code = re.search(todayRegex, child["nm"], re.IGNORECASE)
             if today_code:
                 child["today"] = 1
             else:
                 child["today"] = 0
+
+            child["parentId"] = goal_id
+            child["pcp"] = False #TODO not sure what this field is
+
     return projects, missing_deadlines, missing_durations
