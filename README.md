@@ -16,9 +16,9 @@ The following scheduler APIs will also be implemented:
 * `/deadline`
 
 A possible route is therefore:
-/api/length/basic/tree/5834b31a714b17bbe10235da520ea3c3162a037e929449aeb6bba2e971efeb79/getTasksForToday
+`/api/length/basic/tree/5834b31a714b17bbe10235da520ea3c3162a037e929449aeb6bba2e971efeb79/getTasksForToday`
 or 
-/api/random/deadline/100/2/tree/5834b31a714b17bbe10235da520ea3c3162a037e929449aeb6bba2e971efeb79/getTasksForToday
+`/api/random/deadline/100/2/tree/5834b31a714b17bbe10235da520ea3c3162a037e929449aeb6bba2e971efeb79/getTasksForToday`
 
 # Required Python Packages
 
@@ -35,10 +35,19 @@ python app.py
 
 ## To Test Server
 
-POST http://127.0.0.1:5000/tree/5834b31a714b17bbe10235da520ea3c3162a037e929449aeb6bba2e971efeb79/getTasksForToday
+Use JSON body sample_request.json
+
+Locally:
+
+```
+POST http://127.0.0.1:5000/[request]
+```
 
 or 
 
-POST https://safe-retreat-20317.herokuapp.com/tree/5834b31a714b17bbe10235da520ea3c3162a037e929449aeb6bba2e971efeb79/getTasksForToday
+On heroku:
 
-both with the JSON body sample_request.json
+```
+POST https://safe-retreat-20317.herokuapp.com/[request]
+
+```
