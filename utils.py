@@ -7,6 +7,12 @@ timeEstimateRegex = r"(?:^| |>)\(?~~(\d+|\.\d+|\d+.\d+)(?:(h(?:ou)?(?:r)?)?(m(?:
 deadlineRegex = r"DUE:(\d\d\d\d-\d+-\d+)(?:\b|$)"
 todayRegex = r"#today(?:\b|$)"
 
+def parse_hours(time_string, default_hours = 8):
+    try:
+        return int(re.search(totalValueRegex, time_string, re.IGNORECASE)[1])
+    except:
+        return default_hours
+
 def flatten_intentions(projects):
     for goal in projects:
         for child in goal["ch"]:

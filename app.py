@@ -63,6 +63,10 @@ class PostResource(RESTResource):
         #new calculation
         #save updated, user id, and skeleton
         projects = flatten_intentions(jsonData["projects"])
+        typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
+        today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
+
+
         projects, missing_deadlines, missing_durations = parse_tree(projects)
 
         if current_id not in cherrypy.session:
@@ -86,9 +90,9 @@ class PostResource(RESTResource):
 
         task_list = task_list_from_projects(projects)
         if scheduler == "basic":
-            final_tasks = basic_scheduler(task_list)
+            final_tasks = basic_scheduler(task_list, today_duration=today_hours*60)
         elif scheduler == "deadline":
-            final_tasks = deadline_scheduler(task_list)
+            final_tasks = deadline_scheduler(task_list, today_duration=today_hours*60)
         else:
             raise cherrypy.HTTPError(403, "Scheduling method does not exist")
 
