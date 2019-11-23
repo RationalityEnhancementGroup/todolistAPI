@@ -15,7 +15,10 @@ The following scheduler APIs will also be implemented:
 * `/basic`
 * `/deadline`
 
-A possible route is therefore
+A possible route is therefore:
+/api/length/basic/tree/5834b31a714b17bbe10235da520ea3c3162a037e929449aeb6bba2e971efeb79/getTasksForToday
+or 
+/api/random/deadline/100/2/tree/5834b31a714b17bbe10235da520ea3c3162a037e929449aeb6bba2e971efeb79/getTasksForToday
 
 # Required Python Packages
 
@@ -38,4 +41,4 @@ or
 
 POST https://safe-retreat-20317.herokuapp.com/tree/5834b31a714b17bbe10235da520ea3c3162a037e929449aeb6bba2e971efeb79/getTasksForToday
 
-with the JSON body sample_request.json
+both with the JSON body sample_request.json
