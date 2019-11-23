@@ -1,5 +1,8 @@
 import numpy as np
 import pandas as pd
+import requests
+import json
+from src.utils import tree_to_old_api_json
 
 def assign_constant_points(projects, default_task=10):
     '''
@@ -24,10 +27,18 @@ def assign_random_points(projects, distribution_fxn = np.random.normal, fxn_args
 def assign_hierarchical_points(projects):
     raise NotImplementedError
 
-def assign_old_api_points(projects):
+def assign_old_api_points(projects, user_num=None):
     '''
+    input: parsed project tree and user num
+    output: #TODO
     '''
-    json_request = tree_to_old_api_json(tree)
+
+    #send post request
+    old_json = tree_to_old_api_json(projects)
+    request_string = "https://todo-gamification.herokuapp.com/todo/goals/{}/1".format(user_num) #TODO clearing right now, but maybe not most efficient
+    headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+    r = requests.post(request_string, json = json.dumps(old_json), headers=headers)
+    print(r)
     raise NotImplementedError
 
 def assign_length_points(projects):

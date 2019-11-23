@@ -74,6 +74,7 @@ class PostResource(RESTResource):
 
         cherrypy.session[current_id]["updated"] = jsonData["updated"]
         cherrypy.session[current_id]["tree"] = projects
+        cherrypy.session[current_id]["num"] = len(cherrypy.session.keys())
 
         if method == "constant":
             projects = assign_constant_points(projects, *parameters)
@@ -84,7 +85,7 @@ class PostResource(RESTResource):
         elif method == "length":
             projects = assign_length_points(projects)
         elif method == "old-report":
-            projects = assign_old_api_points(projects)
+            projects = assign_old_api_points(projects, user_num = cherrypy.session[current_id]["num"])
         else:
             raise cherrypy.HTTPError(403, "API method does not exist")
 
