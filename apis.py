@@ -27,6 +27,7 @@ def assign_hierarchical_points(projects):
 def assign_old_api_points(projects):
     '''
     '''
+    json_request = tree_to_old_api_json(tree)
     raise NotImplementedError
 
 def assign_length_points(projects):

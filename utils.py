@@ -101,3 +101,13 @@ def task_list_from_projects(projects):
     for goal in projects:
         task_list.extend(goal["ch"])
     return task_list
+
+def are_there_tree_differences(old_tree, new_tree):
+    '''
+    input: two trees
+    output: whether or not we need to rerun the point calculations (e.g. we don't need to if only day durations change or #today has been added)
+    '''
+    raise NotImplementedError
+
+def tree_to_old_api_json(tree):
+    raise NotImplementedError
