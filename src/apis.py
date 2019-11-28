@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import requests
 import json
 from src.utils import tree_to_old_structure
 from todolistMDP.mdp_solvers import backward_induction
@@ -37,8 +36,10 @@ def assign_old_api_points(projects, user_num=None):
 
     old_structure = tree_to_old_structure(projects)
     mdp = ToDoListMDP(ToDoList(old_structure, start_time=0))
-
-    v_states, optimal_policy = mdp.get_optimal_values_and_policy()
+    
+    starting_state = ((0, 0), 0)
+    # starting_state = ((0, 0, 0, 0, 0, 0, 0), 0)
+    
 
     raise NotImplementedError
 
