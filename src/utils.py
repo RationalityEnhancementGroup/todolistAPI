@@ -137,5 +137,5 @@ def tree_to_old_structure(projects):
             old_structure.append(Goal(goal["id"], \
                 [Task(task["id"], task["est"]) for task in goal["ch"]], \
                  {goal["deadline"]:goal["value"]}, \
-                 penalty= -goal["value"]))
+                 penalty= 0))
     return old_structure
