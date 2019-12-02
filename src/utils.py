@@ -63,6 +63,7 @@ def parse_tree(projects):
             else:
                 child["today"] = 0
 
+            child["goal-value"] = goal["value"]
             child["deadline"] = goalDeadline
             child["parentId"] = goal_id
             child["pcp"] = False #TODO not sure what this field is

@@ -28,10 +28,10 @@ def assign_random_points(projects, distribution_fxn = np.random.normal, fxn_args
 def assign_hierarchical_points(projects):
     raise NotImplementedError
 
-def assign_old_api_points(projects, task_list=task_list):
+def assign_old_api_points(projects, duration=8*60):
     '''
     input: parsed project tree and user num
-    output: #TODO
+    output: task list of tasks to be done that day (c.f. shedulers.py)
     '''
 
     old_structure = tree_to_old_structure(projects)
@@ -40,7 +40,6 @@ def assign_old_api_points(projects, task_list=task_list):
     actions_and_rewards = []
 
     state = (tuple(0 for task in mdp.get_tasks_list()),0) #starting state
-    duration = 8*60
     still_scheduling = True
 
     while still_scheduling:
@@ -48,7 +47,7 @@ def assign_old_api_points(projects, task_list=task_list):
         possible_actions = mdp.get_possible_actions(state)
         q_values = [mdp.get_q_value(state, action, mdp.V_states) for action in possible_actions]
         for action_index in np.argsort(q_values)[::-1]: #go through possible actions in order of q values
-            action = possible_actions[action_index]
+            possible_action = possible_actions[action_index]
             next_state_and_prob = mdp.get_trans_states_and_probs(state, possible_action)
             next_state = next_state_and_prob[0]
             
@@ -57,10 +56,11 @@ def assign_old_api_points(projects, task_list=task_list):
                 reward = mdp.get_expected_pseudo_rewards(state, possible_action, transformed = False)
                 state = next_state
                 still_scheduling = True
-                actions_and_rewards.append((action, reward))
+                actions_and_rewards.append((possible_action, reward))
                 break
     
-    #TODO map action, reward to output structure       
+    #TODO map action, reward to output structure , "val" is the key for rewards
+    # task_list = task_list_from_projects(projects)      
 
     raise NotImplementedError
 
