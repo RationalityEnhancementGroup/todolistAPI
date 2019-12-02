@@ -1,5 +1,5 @@
 import itertools
-import mdp
+import todolistMDP.mdp as mdp
 import numpy as np
 import random
 import time
