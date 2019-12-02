@@ -28,7 +28,7 @@ def assign_random_points(projects, distribution_fxn = np.random.normal, fxn_args
 def assign_hierarchical_points(projects):
     raise NotImplementedError
 
-def assign_old_api_points(projects):
+def assign_old_api_points(projects, task_list=task_list):
     '''
     input: parsed project tree and user num
     output: #TODO

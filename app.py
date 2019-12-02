@@ -89,7 +89,8 @@ class PostResource(RESTResource):
             elif method == "length":
                 projects = assign_length_points(projects)
             elif method == "old-report":
-                projects = assign_old_api_points(projects, user_num = cherrypy.session[current_id]["num"])
+                task_list = task_list_from_projects(projects)
+                final_tasks = assign_old_api_points(projects, task_list = task_list)
             else:
                 raise cherrypy.HTTPError(403, "API method does not exist")
 
