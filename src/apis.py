@@ -4,7 +4,7 @@ import json
 from src.utils import tree_to_old_structure
 from todolistMDP.mdp_solvers import backward_induction
 from todolistMDP.to_do_list import *
-from utils import task_list_from_projects
+from src.utils import task_list_from_projects
 
 
 def assign_constant_points(projects, default_task=10):
@@ -42,7 +42,7 @@ def assign_old_api_points(projects, duration=8*60):
     '''
 
     old_structure = tree_to_old_structure(projects)
-    mdp = ToDoListMDP(ToDoList(old_structure, start_time=0))
+    mdp = ToDoListMDP(ToDoList(old_structure,start_time=0, non_goal_tasks=[]))
     mdp.scale_rewards()
 
     actions_and_rewards = []
@@ -60,7 +60,7 @@ def assign_old_api_points(projects, duration=8*60):
             next_state = next_state_and_prob[0][0]
             
             if (duration-next_state[1])>=0: #see if the next best action would fit into that day's duration
-                duration -= =next_state[1]
+                duration -= next_state[1]
                 reward = mdp.get_expected_pseudo_rewards(state, possible_action, transformed = False)
                 state = next_state
                 still_scheduling = True
