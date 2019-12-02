@@ -28,7 +28,7 @@ def assign_random_points(projects, distribution_fxn = np.random.normal, fxn_args
 def assign_hierarchical_points(projects):
     raise NotImplementedError
 
-def assign_old_api_points(projects, user_num=None):
+def assign_old_api_points(projects):
     '''
     input: parsed project tree and user num
     output: #TODO
@@ -37,9 +37,30 @@ def assign_old_api_points(projects, user_num=None):
     old_structure = tree_to_old_structure(projects)
     mdp = ToDoListMDP(ToDoList(old_structure, start_time=0))
     
-    starting_state = ((0, 0), 0)
-    # starting_state = ((0, 0, 0, 0, 0, 0, 0), 0)
+    actions_and_rewards = []
+
+    state = (tuple(0 for task in mdp.get_tasks_list()),0) #starting state
+    duration = 8*60
+    still_scheduling = True
+
+    while still_scheduling:
+        still_scheduling = False
+        possible_actions = mdp.get_possible_actions(state)
+        q_values = [mdp.get_q_value(state, action, mdp.V_states) for action in possible_actions]
+        for action_index in np.argsort(q_values)[::-1]: #go through possible actions in order of q values
+            action = possible_actions[action_index]
+            next_state_and_prob = mdp.get_trans_states_and_probs(state, possible_action)
+            next_state = next_state_and_prob[0]
+            
+            if (duration-next_state[1])>=0: #see if the next best action would fit into that day's duration
+                duration -= state[1]
+                reward = mdp.get_expected_pseudo_rewards(state, possible_action, transformed = False)
+                state = next_state
+                still_scheduling = True
+                actions_and_rewards.append((action, reward))
+                break
     
+    #TODO map action, reward to output structure       
 
     raise NotImplementedError
 
