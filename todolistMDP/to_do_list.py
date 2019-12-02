@@ -428,7 +428,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         self.linearized_states = self.reverse_DAG.linearize()
 
 
-        self.V_states, self.optimal_policy = self.value_and_policy_functions()
+        self.V_states, self.optimal_policy = self.get_optimal_values_and_policy()
 
 
         # Pseudo-rewards
@@ -545,7 +545,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
             return self.optimal_policy[state]
         return self.optimal_policy
 
-    def value_and_policy_functions(self):
+    def get_optimal_values_and_policy(self):
         """
         Given a ToDoListMDP, perform value iteration/backward induction to find
         the optimal value function
