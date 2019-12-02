@@ -89,7 +89,7 @@ class PostResource(RESTResource):
             elif method == "length":
                 projects = assign_length_points(projects)
             elif method == "old-report":
-                projects = assign_old_api_points(projects, duration=today_hours*60)
+                final_tasks = assign_old_api_points(projects, duration=today_hours*60)
             else:
                 raise cherrypy.HTTPError(403, "API method does not exist")
 
@@ -98,6 +98,8 @@ class PostResource(RESTResource):
             final_tasks = basic_scheduler(task_list, today_duration=today_hours*60)
         elif scheduler == "deadline":
             final_tasks = deadline_scheduler(task_list, today_duration=today_hours*60)
+        elif scheduler == "mdp":
+            pass
         else:
             raise cherrypy.HTTPError(403, "Scheduling method does not exist")
 
