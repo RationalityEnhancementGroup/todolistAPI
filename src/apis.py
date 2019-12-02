@@ -4,6 +4,7 @@ import json
 from src.utils import tree_to_old_structure
 from todolistMDP.mdp_solvers import backward_induction
 from todolistMDP.to_do_list import *
+from utils import task_list_from_projects
 
 
 def assign_constant_points(projects, default_task=10):
@@ -32,15 +33,16 @@ def assign_hierarchical_points(projects):
     raise NotImplementedError
 
 
-def assign_old_api_points(projects, duration=8*60, planning_fxn = backward_induction):
+def assign_old_api_points(projects, duration=8*60):
     '''
     input: parsed project tree, duration of current day, and planning function
     output: task list of tasks to be done that day (c.f. shedulers.py)
+
+    uses backwards indution, as is the default in the old code
     '''
 
     old_structure = tree_to_old_structure(projects)
     mdp = ToDoListMDP(ToDoList(old_structure, start_time=0))
-    planning_fxn(mdp)
 
     actions_and_rewards = []
 
@@ -65,10 +67,15 @@ def assign_old_api_points(projects, duration=8*60, planning_fxn = backward_induc
                 break
     
     
-    #TODO map action, reward to output structure , "val" is the key for rewards
-    # task_list = task_list_from_projects(projects)      
+    task_list = task_list_from_projects(projects)
 
-    raise NotImplementedError
+    final_tasks = []
+    tasks = mdp.to_do_list.get_tasks()
+    for action, reward in actions_and_rewards:
+        final_tasks.append((next(item for item in task_list if item["id"] == tasks[action].description)))
+        final_tasks[-1]["val"] = reward
+
+    return final_tasks
 
 
 def assign_length_points(projects):
