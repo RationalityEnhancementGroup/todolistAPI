@@ -362,14 +362,7 @@ class ToDoList:
         return self.get_non_goal_task().get_reward()
 
     def get_non_goal_task(self):
-        '''
-        better way to do this would combine a list of tasks into one instead of hard coding first task 
-        #TODO
-        '''
-        if len(self.non_goal_tasks) > 1:
-            return self.non_goal_tasks[0]
-        else:
-            return self.non_goal_tasks
+        return self.non_goal_tasks[0]
 
     def get_goals(self):
         return self.goals
@@ -421,15 +414,11 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
 
         # Non-goal
         self.non_goal_task = to_do_list.get_non_goal_task()
-        if len(self.non_goal_task) > 0:
-            self.non_goal_val = self.non_goal_task.get_reward()
-        else:
-            self.non_goal_val = None
+        self.non_goal_val = self.non_goal_task.get_reward()
 
         # Create mapping of indices to tasks represented as list
         self.index_to_task = to_do_list.get_tasks()
-        if len(self.non_goal_task) > 0:
-            self.index_to_task.append(self.non_goal_task)  # Add non-goal task
+        self.index_to_task.append(self.non_goal_task)  # Add non-goal task
         
         # Create mapping of tasks to indices represented as dict
         self.task_to_index = {}
@@ -517,9 +506,9 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
                 (alpha + self.pseudo_rewards[trans]) * beta
             
         if print_values:
-            print('1st highest: {}'.format(highest))
-            print('2nd highest: {}'.format(sec_highest))
-            print('Alpha: {}'.format(alpha))
+            print(f'1st highest: {highest}')
+            print(f'2nd highest: {sec_highest}')
+            print(f'Alpha: {alpha}')
 
     # ===== Getters =====
     def get_expected_pseudo_rewards(self, state, action, transformed=False):
@@ -602,10 +591,6 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         
         if not self.is_terminal(state):
             return [i for i, task in enumerate(tasks) if task == 0] + [-1]
-            if len(self.non_goal_task) > 0:
-                return actions + [-1]
-            else:
-                return actions
         
         return []  # Terminal state --> No actions
 
@@ -841,7 +826,7 @@ class MDPGraph:
     
     """
     def __init__(self, mdp):
-        print('Building reverse graph...')
+        print('Building reverse graph...', end=' ')
         
         start = time.time()
         
@@ -869,7 +854,7 @@ class MDPGraph:
         print('Done!')
         
         end = time.time()
-        print('Time elapsed: {} seconds.\n'.format(end - start))
+        print(f'Time elapsed: {end - start} seconds.\n')
         
     def dfs(self):
         visited_states = {}
