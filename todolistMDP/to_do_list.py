@@ -221,14 +221,16 @@ class ToDoList:
         self.end_time = end_time
 
         # Add non-goal tasks
-        # self.non_goal_tasks = non_goal_tasks
-        # if self.non_goal_tasks is None:
-        #     self.non_goal_tasks = [
-        #         Task("Non-goal Task", time_est=1, prob=1.0, reward=0)
-        #     ]
-        # self.non_goal = Goal(description="Non-goal", tasks=self.non_goal_tasks,
-        #                      reward={float('inf'): 0}, non_goal=True)
-        # self.goals += [self.non_goal]
+        self.non_goal_tasks = non_goal_tasks
+        if self.non_goal_tasks is None:
+            self.non_goal_tasks = [
+                Task("Non-goal Task", time_est=1, prob=1.0, reward=0)
+            ]
+
+        if len(self.non_goal_tasks) > 0:
+            self.non_goal = Goal(description="Non-goal", tasks=self.non_goal_tasks,
+                                 reward={float('inf'): 0}, non_goal=True)
+            self.goals += [self.non_goal]
         
     def action(self, task=None):
         """
