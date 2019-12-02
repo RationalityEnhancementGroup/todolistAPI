@@ -492,6 +492,16 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
             print('2nd highest: {}'.format(sec_highest))
             print('Alpha: {}'.format(alpha))
 
+    def scale_rewards(self, min_value = 1, max_value = 100, print_values = False):
+        '''
+        Linear transform we might want to use with Complice
+        '''
+        dict_values = np.asarray([*self.pseudo_rewards.values()])
+        minimum = np.min(dict_values)
+        ptp = np.ptp(dict_values)
+        for trans in self.pseudo_rewards:
+            self.transformed_pseudo_rewards[trans] = max_value * (self.pseudo_rewards[trans] - minimum)/(ptp)
+
     # ===== Getters =====
     def get_expected_pseudo_rewards(self, state, action, transformed=False):
         """
