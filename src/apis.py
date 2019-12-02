@@ -5,6 +5,7 @@ from src.utils import tree_to_old_structure
 from todolistMDP.mdp_solvers import backward_induction
 from todolistMDP.to_do_list import *
 
+
 def assign_constant_points(projects, default_task=10):
     '''
     Takes in parsed project tree, with one level of tasks
@@ -14,6 +15,7 @@ def assign_constant_points(projects, default_task=10):
         for child in goal["ch"]:
             child["val"] = default_task
     return projects
+
 
 def assign_random_points(projects, distribution_fxn = np.random.normal, fxn_args = (10,2)):
     '''
@@ -25,8 +27,10 @@ def assign_random_points(projects, distribution_fxn = np.random.normal, fxn_args
             child["val"] = distribution_fxn(*fxn_args)
     return projects
     
+    
 def assign_hierarchical_points(projects):
     raise NotImplementedError
+
 
 def assign_old_api_points(projects, duration=8*60, planning_fxn = backward_induction):
     '''
@@ -60,10 +64,12 @@ def assign_old_api_points(projects, duration=8*60, planning_fxn = backward_induc
                 actions_and_rewards.append((possible_action, reward))
                 break
     
+    
     #TODO map action, reward to output structure , "val" is the key for rewards
     # task_list = task_list_from_projects(projects)      
 
     raise NotImplementedError
+
 
 def assign_length_points(projects):
     '''
@@ -75,3 +81,36 @@ def assign_length_points(projects):
         for child in goal["ch"]:
             child["val"] = child["est"]/float(value_per_minute)
     return projects
+
+
+def get_actions_and_rewards(mdp, verbose=False):
+    policy = mdp.get_optimal_policy()
+    values = mdp.get_value_function()
+    
+    state = sorted(list(policy.keys()))[0]
+    vec, tm = state
+    
+    value, action = values[state]
+    
+    if verbose:
+        print(state, action, value)
+    actions_and_rewards = [(action, value)]
+    
+    while policy[state] is not None:
+        # Get task
+        idx = policy[state]
+        task = mdp.index_to_task[idx]
+        
+        # Get next state
+        next_vec = list(vec)
+        next_vec[idx] = 1
+        
+        tm += task.get_time_est()
+        state = (tuple(next_vec), tm)
+        vec, tm = state
+    
+        if verbose:
+            print(state, action, value)
+        actions_and_rewards += [(action, value)]
+    
+    return actions_and_rewards
