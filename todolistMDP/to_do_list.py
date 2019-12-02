@@ -600,7 +600,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         tasks = state[0]
         
         if not self.is_terminal(state):
-            return [i for i, task in enumerate(tasks) if task == 0] + [-1]
+            actions = [i for i, task in enumerate(tasks) if task == 0]
             if len(self.non_goal_task) > 0:
                 return actions + [-1]
             else:
