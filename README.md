@@ -14,6 +14,7 @@ The following scheduler APIs will also be implemented:
 
 * `/basic`
 * `/deadline`
+* `/mdp`
 
 A possible route is therefore:
 `/api/length/basic/tree/5834b31a714b17bbe10235da520ea3c3162a037e929449aeb6bba2e971efeb79/getTasksForToday`

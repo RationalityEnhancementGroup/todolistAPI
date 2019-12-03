@@ -1,5 +1,5 @@
 import itertools
-import mdp
+import todolistMDP.mdp as mdp
 import numpy as np
 import random
 import time
@@ -50,8 +50,7 @@ class Goal:
         return f'Description: {self.description}\n' \
                f'Reward: {self.reward}\n' \
                f'Completed: {self.completed}\n' \
-               f'Latest deadline: {self.deadline}\n' \
-               f'Total time est.: {self.time_est}\n'
+               f'Latest deadline: {self.deadline}\n'
 
     def get_deadline_penalty(self):
         return self.penalty
@@ -151,15 +150,7 @@ class Task:
         self.goal = goal
         self.prob = prob
         self.reward = reward
-        
-    def __str__(self):
-        return f'Description: {self.description}\n' \
-               f'Time est.: {self.time_est}\n' \
-               f'Completed: {self.completed}\n' \
-               f'Goal: {self.goal.get_description()}\n' \
-               f'Probability: {self.prob}\n' \
-               f'Reward: {self.reward}\n'
-            
+
     def get_copy(self):
         return Task(self.description, self.time_est,
                     completed=self.completed, goal=self.goal,
@@ -230,14 +221,16 @@ class ToDoList:
         self.end_time = end_time
 
         # Add non-goal tasks
-        # self.non_goal_tasks = non_goal_tasks
-        # if self.non_goal_tasks is None:
-        #     self.non_goal_tasks = [
-        #         Task("Non-goal Task", time_est=1, prob=1.0, reward=0)
-        #     ]
-        # self.non_goal = Goal(description="Non-goal", tasks=self.non_goal_tasks,
-        #                      reward={float('inf'): 0}, non_goal=True)
-        # self.goals += [self.non_goal]
+        self.non_goal_tasks = non_goal_tasks
+        if self.non_goal_tasks is None:
+            self.non_goal_tasks = [
+                Task("Non-goal Task", time_est=1, prob=1.0, reward=0)
+            ]
+
+        if len(self.non_goal_tasks) > 0:
+            self.non_goal = Goal(description="Non-goal", tasks=self.non_goal_tasks,
+                                 reward={float('inf'): 0}, non_goal=True)
+            self.goals += [self.non_goal]
         
     def action(self, task=None):
         """
@@ -254,8 +247,8 @@ class ToDoList:
         
         reward = 0
         prev_time = self.time
-        curr_time = self.time + task.get_time_est()
-        self.increment_time(task.get_time_est())
+        curr_time = self.time + task.getTimeCost()
+        self.increment_time(task.getTimeCost())
         
         reward += self.do_task(task)
         reward += self.check_deadlines(prev_time, curr_time)
@@ -301,7 +294,6 @@ class ToDoList:
                 reward += goal.get_reward(self.time)  # Goal completion reward
                 self.incomplete_goals.discard(goal)
                 self.completed_goals.add(goal)
-                
         return reward
 
     def print_debug(self):
@@ -338,8 +330,15 @@ class ToDoList:
     def get_non_goal_val(self):
         return self.get_non_goal_task().get_reward()
 
-    # def get_non_goal_task(self):
-    #     return self.non_goal_tasks[0]
+    def get_non_goal_task(self):
+        '''
+        better way to do this would combine a list of tasks into one instead of hard coding first task 
+        #TODO
+        '''
+        if len(self.non_goal_tasks) > 1:
+            return self.non_goal_tasks[0]
+        else:
+            return self.non_goal_tasks
 
     def get_goals(self):
         return self.goals
@@ -390,12 +389,16 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         self.start_state = self.get_start_state()
 
         # Non-goal
-        # self.non_goal_task = to_do_list.get_non_goal_task()
-        # self.non_goal_val = self.non_goal_task.get_reward()
+        self.non_goal_task = to_do_list.get_non_goal_task()
+        if len(self.non_goal_task) > 0:
+            self.non_goal_val = self.non_goal_task.get_reward()
+        else:
+            self.non_goal_val = None
 
         # Create mapping of indices to tasks represented as list
         self.index_to_task = to_do_list.get_tasks()
-        # self.index_to_task.append(self.non_goal_task)  # Add non-goal task
+        if len(self.non_goal_task) > 0:
+            self.index_to_task.append(self.non_goal_task)  # Add non-goal task
         
         # Create mapping of tasks to indices represented as dict
         self.task_to_index = {}
@@ -424,17 +427,14 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         self.reverse_DAG = MDPGraph(self)
         self.linearized_states = self.reverse_DAG.linearize()
 
-        self.V_states = {}
-        self.optimal_policy = {}
-        
-        # Perform backward induction
-        # self.V_states, self.optimal_policy = \
-        #     self.get_optimal_values_and_policy()
+
+        self.V_states, self.optimal_policy = self.get_optimal_values_and_policy()
+
 
         # Pseudo-rewards
         self.pseudo_rewards = {}  # {(s, a, s') --> PR(s, a, s')}
         self.transformed_pseudo_rewards = {}  # {(s, a, s') --> PR'(s, a, s')}
-        # self.calculate_pseudo_rewards()  # Calculate PRs for each state
+        self.calculate_pseudo_rewards()  # Calculate PRs for each state
         # self.transform_pseudo_rewards()  # Apply linear transformation to PR'
 
     def calculate_pseudo_rewards(self):
@@ -488,9 +488,19 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
                 (alpha + self.pseudo_rewards[trans]) * beta
             
         if print_values:
-            print(f'1st highest: {highest}')
-            print(f'2nd highest: {sec_highest}')
-            print(f'Alpha: {alpha}')
+            print('1st highest: {}'.format(highest))
+            print('2nd highest: {}'.format(sec_highest))
+            print('Alpha: {}'.format(alpha))
+
+    def scale_rewards(self, min_value = 1, max_value = 100, print_values = False):
+        '''
+        Linear transform we might want to use with Complice
+        '''
+        dict_values = np.asarray([*self.pseudo_rewards.values()])
+        minimum = np.min(dict_values)
+        ptp = np.ptp(dict_values)
+        for trans in self.pseudo_rewards:
+            self.transformed_pseudo_rewards[trans] = max_value * (self.pseudo_rewards[trans] - minimum)/(ptp)
 
     # ===== Getters =====
     def get_expected_pseudo_rewards(self, state, action, transformed=False):
@@ -571,7 +581,11 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         tasks = state[0]
         
         if not self.is_terminal(state):
-            return [i for i, task in enumerate(tasks) if task == 0]  # + [-1]
+            actions = [i for i, task in enumerate(tasks) if task == 0]
+            if len(self.non_goal_task) > 0:
+                return actions + [-1]
+            else:
+                return actions
         
         return []  # Terminal state --> No actions
 
@@ -807,7 +821,7 @@ class MDPGraph:
     
     """
     def __init__(self, mdp):
-        print('Building reverse graph...', end=' ')
+        print('Building reverse graph...')
         
         start = time.time()
         
@@ -835,7 +849,7 @@ class MDPGraph:
         print('Done!')
         
         end = time.time()
-        print(f'Time elapsed: {end - start} seconds.\n')
+        print('Time elapsed: {} seconds.\n'.format(end - start))
         
     def dfs(self):
         visited_states = {}
