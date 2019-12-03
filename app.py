@@ -52,8 +52,8 @@ class PostResource(RESTResource):
             current_id = jsonData["userkey"]
         except:
             raise cherrypy.HTTPError(403, "Problem with user key")
-        if current_id != user_key:
-            raise cherrypy.HTTPError(403, "Problem with user key")
+        # if current_id != user_key:
+        #     raise cherrypy.HTTPError(403, "Problem with user key")
 
         #check for changes if an existing user
         if current_id in cherrypy.session:
