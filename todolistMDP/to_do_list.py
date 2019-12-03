@@ -1,8 +1,9 @@
 import itertools
-import todolistMDP.mdp as mdp
 import numpy as np
 import random
 import time
+
+from todolistMDP import mdp
 
 
 class Goal:
@@ -50,7 +51,8 @@ class Goal:
         return f'Description: {self.description}\n' \
                f'Reward: {self.reward}\n' \
                f'Completed: {self.completed}\n' \
-               f'Latest deadline: {self.deadline}\n'
+               f'Latest deadline: {self.deadline}\n' \
+               f'Total time est.: {self.time_est}\n'
 
     def get_deadline_penalty(self):
         return self.penalty
@@ -150,7 +152,15 @@ class Task:
         self.goal = goal
         self.prob = prob
         self.reward = reward
-
+        
+    def __str__(self):
+        return f'Description: {self.description}\n' \
+               f'Time est.: {self.time_est}\n' \
+               f'Completed: {self.completed}\n' \
+               f'Goal: {self.goal.get_description()}\n' \
+               f'Probability: {self.prob}\n' \
+               f'Reward: {self.reward}\n'
+            
     def get_copy(self):
         return Task(self.description, self.time_est,
                     completed=self.completed, goal=self.goal,
@@ -221,16 +231,14 @@ class ToDoList:
         self.end_time = end_time
 
         # Add non-goal tasks
-        self.non_goal_tasks = non_goal_tasks
-        if self.non_goal_tasks is None:
-            self.non_goal_tasks = [
-                Task("Non-goal Task", time_est=1, prob=1.0, reward=0)
-            ]
-
-        if len(self.non_goal_tasks) > 0:
-            self.non_goal = Goal(description="Non-goal", tasks=self.non_goal_tasks,
-                                 reward={float('inf'): 0}, non_goal=True)
-            self.goals += [self.non_goal]
+        # self.non_goal_tasks = non_goal_tasks
+        # if self.non_goal_tasks is None:
+        #     self.non_goal_tasks = [
+        #         Task("Non-goal Task", time_est=1, prob=1.0, reward=0)
+        #     ]
+        # self.non_goal = Goal(description="Non-goal", tasks=self.non_goal_tasks,
+        #                      reward={float('inf'): 0}, non_goal=True)
+        # self.goals += [self.non_goal]
         
     def action(self, task=None):
         """
@@ -247,8 +255,8 @@ class ToDoList:
         
         reward = 0
         prev_time = self.time
-        curr_time = self.time + task.getTimeCost()
-        self.increment_time(task.getTimeCost())
+        curr_time = self.time + task.get_time_est()
+        self.increment_time(task.get_time_est())
         
         reward += self.do_task(task)
         reward += self.check_deadlines(prev_time, curr_time)
@@ -294,6 +302,7 @@ class ToDoList:
                 reward += goal.get_reward(self.time)  # Goal completion reward
                 self.incomplete_goals.discard(goal)
                 self.completed_goals.add(goal)
+                
         return reward
 
     def print_debug(self):
@@ -427,9 +436,12 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         self.reverse_DAG = MDPGraph(self)
         self.linearized_states = self.reverse_DAG.linearize()
 
-
-        self.V_states, self.optimal_policy = self.get_optimal_values_and_policy()
-
+        self.V_states = {}
+        self.optimal_policy = {}
+        
+        # Perform backward induction
+        # self.V_states, self.optimal_policy = \
+        #     self.get_optimal_values_and_policy()
 
         # Pseudo-rewards
         self.pseudo_rewards = {}  # {(s, a, s') --> PR(s, a, s')}
@@ -488,9 +500,9 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
                 (alpha + self.pseudo_rewards[trans]) * beta
             
         if print_values:
-            print('1st highest: {}'.format(highest))
-            print('2nd highest: {}'.format(sec_highest))
-            print('Alpha: {}'.format(alpha))
+            print(f'1st highest: {highest}')
+            print(f'2nd highest: {sec_highest}')
+            print(f'Alpha: {alpha}')
 
     def scale_rewards(self, min_value = 1, max_value = 100, print_values = False):
         '''
@@ -849,7 +861,7 @@ class MDPGraph:
         print('Done!')
         
         end = time.time()
-        print('Time elapsed: {} seconds.\n'.format(end - start))
+        print(f'Time elapsed: {end - start} seconds.\n')
         
     def dfs(self):
         visited_states = {}
