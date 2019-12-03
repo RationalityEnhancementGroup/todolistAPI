@@ -50,7 +50,8 @@ class Goal:
         return f'Description: {self.description}\n' \
                f'Reward: {self.reward}\n' \
                f'Completed: {self.completed}\n' \
-               f'Latest deadline: {self.deadline}\n'
+               f'Latest deadline: {self.deadline}\n' \
+               f'Total time est.: {self.time_est}\n'
 
     def get_deadline_penalty(self):
         return self.penalty
@@ -150,7 +151,15 @@ class Task:
         self.goal = goal
         self.prob = prob
         self.reward = reward
-
+        
+    def __str__(self):
+        return f'Description: {self.description}\n' \
+               f'Time est.: {self.time_est}\n' \
+               f'Completed: {self.completed}\n' \
+               f'Goal: {self.goal.get_description()}\n' \
+               f'Probability: {self.prob}\n' \
+               f'Reward: {self.reward}\n'
+            
     def get_copy(self):
         return Task(self.description, self.time_est,
                     completed=self.completed, goal=self.goal,
@@ -245,8 +254,8 @@ class ToDoList:
         
         reward = 0
         prev_time = self.time
-        curr_time = self.time + task.getTimeCost()
-        self.increment_time(task.getTimeCost())
+        curr_time = self.time + task.get_time_est()
+        self.increment_time(task.get_time_est())
         
         reward += self.do_task(task)
         reward += self.check_deadlines(prev_time, curr_time)
@@ -292,6 +301,7 @@ class ToDoList:
                 reward += goal.get_reward(self.time)  # Goal completion reward
                 self.incomplete_goals.discard(goal)
                 self.completed_goals.add(goal)
+                
         return reward
 
     def print_debug(self):
@@ -414,13 +424,17 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         self.reverse_DAG = MDPGraph(self)
         self.linearized_states = self.reverse_DAG.linearize()
 
-        self.V_states, self.optimal_policy = \
-            self.get_optimal_values_and_policy()
+        self.V_states = {}
+        self.optimal_policy = {}
+        
+        # Perform backward induction
+        # self.V_states, self.optimal_policy = \
+        #     self.get_optimal_values_and_policy()
 
         # Pseudo-rewards
         self.pseudo_rewards = {}  # {(s, a, s') --> PR(s, a, s')}
         self.transformed_pseudo_rewards = {}  # {(s, a, s') --> PR'(s, a, s')}
-        self.calculate_pseudo_rewards()  # Calculate PRs for each state
+        # self.calculate_pseudo_rewards()  # Calculate PRs for each state
         # self.transform_pseudo_rewards()  # Apply linear transformation to PR'
 
     def calculate_pseudo_rewards(self):
@@ -522,7 +536,6 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         return self.optimal_policy
 
     def get_optimal_values_and_policy(self):
-        # Old name: value_and_policy_functions
         """
         Given a ToDoListMDP, perform value iteration/backward induction to find
         the optimal value function
@@ -558,7 +571,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         tasks = state[0]
         
         if not self.is_terminal(state):
-            return [i for i, task in enumerate(tasks) if task == 0] + [-1]
+            return [i for i, task in enumerate(tasks) if task == 0]  # + [-1]
         
         return []  # Terminal state --> No actions
 

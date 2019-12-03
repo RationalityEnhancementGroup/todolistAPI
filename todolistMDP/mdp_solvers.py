@@ -1,47 +1,58 @@
 import numpy as np
 
+from to_do_list import ToDoListMDP
 from numpy import linalg as LA
 
 
 # ===== Backward Induction =====
-def backward_induction(mdp):
+def backward_induction(to_do_list):
     """
-    Given a ToDoListMDP, perform value iteration/backward induction to find the
-    optimal policy.
+    Converts a given ToDoList to TodoListMDP and performs backward induction in
+    order to find the optimal policy.
     
     Args:
-        mdp: ToDoListMDP
+        to_do_list: ToDoListMDP
 
     Returns:
-        Optimal policy (and time elapsed if specified)
+        ToDoListMDP
     """
-    linearized_states = mdp.get_linearized_states()
-    v_states = {}  # state --> (value, action)
+    mdp = ToDoListMDP(to_do_list)
     
-    for state in linearized_states:
-        v_states[state] = (0, None)  # state --> (value, action)
+    mdp.linearized_states = mdp.get_linearized_states()
+    mdp.V_states = {}  # state --> (value, action)
+    
+    for state in mdp.linearized_states:
+        mdp.V_states[state] = (0, None)  # state --> (value, action)
     
     # Perform Backward Iteration (Value Iteration 1 Time)
-    for state in linearized_states:
-        v_states[state] = mdp.get_value_and_action(state, v_states)
+    for state in mdp.linearized_states:
+        mdp.V_states[state] = mdp.get_value_and_action(state, mdp.V_states)
     
-    optimal_policy = {}
-    for state in v_states:
-        optimal_policy[state] = v_states[state][1]
+    mdp.optimal_policy = {}
+    for state in mdp.V_states:
+        mdp.optimal_policy[state] = mdp.V_states[state][1]
     
-    # mdp.calculate_pseudo_rewards(v_states)
+    # mdp.calculate_pseudo_rewards()
+    # mdp.transform_pseudo_rewards()
     
-    return optimal_policy
+    return mdp
 
 
 # ===== Policy iteration =====
-def policy_iteration(mdp):
+def policy_iteration(to_do_list):
     """
-    given an MDP
-    performs policy iteration and returns the converged policy
+    Converts a given ToDoList to TodoListMDP and performs policy iteration in
+    order to find the optimal policy.
+
+    Args:
+        to_do_list: ToDoListMDP
+
+    Returns:
+        ToDoListMDP
     """
+    mdp = ToDoListMDP(to_do_list)
+
     new_policy = {}
-    policy = {}
     states = mdp.get_states()
     
     # Create initial policies
@@ -61,30 +72,31 @@ def policy_iteration(mdp):
     
     iterations = 0
     # Repeat until policy converges
-    while policy != new_policy:
+    while mdp.optimal_policy != new_policy:
         iterations += 1
         print('Iteration', iterations)
         
-        policy = new_policy
-        v_states = policy_evaluation(mdp, policy, empty_A, empty_b)
-        new_policy = policy_extraction(mdp, v_states)
+        mdp.optimal_policy = new_policy
+        mdp.V_states = policy_evaluation(mdp, mdp.optimal_policy,
+                                         empty_A, empty_b)
+        new_policy = policy_extraction(mdp, mdp.V_states)
     
     start_state = mdp.get_start_state()
     state = start_state
     optimal_tasks = []
     
     while not mdp.is_terminal(state):
-        optimal_action = policy[state]
+        optimal_action = mdp.optimal_policy[state]
         task = mdp.get_tasks_list()[optimal_action]
         next_state_tasks = list(state[0])[:]
         next_state_tasks[optimal_action] = 1
-        next_state = (tuple(next_state_tasks), state[1] + task.get_time_cost())
+        next_state = (tuple(next_state_tasks), state[1] + task.get_time_est())
         state = next_state
         optimal_tasks.append(task)
     
-    optimal_policy = [task.get_description() for task in optimal_tasks]
-    
-    return optimal_policy
+    # optimal_policy = [task.get_description() for task in optimal_tasks]
+
+    return mdp
 
 
 def policy_evaluation(mdp, policies, empty_A, empty_b):
@@ -127,18 +139,21 @@ def policy_extraction(mdp, v_states):
 
 
 # ===== Value iteration =====
-def value_iteration(mdp, epsilon=0.1):
+def value_iteration(to_do_list, epsilon=0.1):
     """
-    Given a ToDoListMDP, perform value iteration to find the optimal policy
-    
+    Converts a given ToDoList to TodoListMDP and performs backward induction in
+    order to find the optimal policy.
+
     Args:
-        mdp: ToDoListMDP
-        epsilon:
+        to_do_list: ToDoListMDP
+        epsilon: Convergence condition value
 
     Returns:
-        Optimal policy (and time elapsed if specified)
+        ToDoListMDP
     """
-    v_states = {state: (0, None)
+    mdp = ToDoListMDP(to_do_list)
+    
+    mdp.V_states = {state: (0, None)
                 for state in mdp.get_states()}
     
     # Perform value iteration
@@ -152,19 +167,23 @@ def value_iteration(mdp, epsilon=0.1):
         converged = True
         next_v_states = {}
 
-        for state in v_states:
-            next_v_states[state] = mdp.get_value_and_action(state, v_states)
-            old_state_value = v_states[state][0]
+        for state in mdp.V_states:
+            next_v_states[state] = mdp.get_value_and_action(state, mdp.V_states)
+            old_state_value = mdp.V_states[state][0]
             new_state_value = next_v_states[state][0]
             
             # Check convergence
             if abs(old_state_value - new_state_value) > epsilon:
                 converged = False
                 
-        v_states = next_v_states
+        mdp.V_states = next_v_states
 
+    # Extract optimal policy
+    mdp.optimal_policy = policy_extraction(mdp, mdp.V_states)
+
+    # Use pseudo-rewards
     # mdp.calculate_pseudo_rewards(v_states)
-    
-    # Return optimal policy
-    return {state: v_states[state][1]
-            for state in v_states}
+    # mdp.transform_pseudo_rewards()
+
+    # Return MDP
+    return mdp
