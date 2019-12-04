@@ -47,6 +47,27 @@ class Goal:
         for task in self.tasks:
             self.value_est += task.get_prob() * task.get_reward()
 
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        return self.get_deadline_time() == other.get_deadline_time()
+    
+    def __ne__(self, other):
+        return self.get_deadline_time() != other.get_deadline_time()
+
+    def __ge__(self, other):
+        return self.get_deadline_time() >= other.get_deadline_time()
+
+    def __gt__(self, other):
+        return self.get_deadline_time() > other.get_deadline_time()
+
+    def __le__(self, other):
+        return self.get_deadline_time() <= other.get_deadline_time()
+
+    def __lt__(self, other):
+        return self.get_deadline_time() < other.get_deadline_time()
+
     def __str__(self):
         return f'Description: {self.description}\n' \
                f'Reward: {self.reward}\n' \
