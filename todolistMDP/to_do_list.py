@@ -38,10 +38,17 @@ class Goal:
         self.penalty = penalty
         
         # Calculate time estimation
-        self.time_est = 0
+        self.completed_time_est = 0  # Time estimation of completed tasks
+        self.uncompleted_time_est = 0  # Time estimation of uncompleted tasks
+        self.total_time_est = 0  # Time estimation of all tasks
+        
         for task in self.tasks:
-            self.time_est += task.get_time_est()
-            
+            if task.completed:
+                self.completed_time_est += task.get_time_est()
+            else:
+                self.uncompleted_time_est += task.get_time_est()
+        self.update_total_time_est()
+
         # Calculate value_estimation
         self.value_est = 0
         for task in self.tasks:
@@ -73,7 +80,10 @@ class Goal:
                f'Reward: {self.reward}\n' \
                f'Completed: {self.completed}\n' \
                f'Latest deadline: {self.deadline}\n' \
-               f'Total time est.: {self.time_est}\n'
+               f'Total time est.: {self.total_time_est}\n'
+
+    def get_completed_time_est(self):
+        return self.completed_time_est
 
     def get_deadline_penalty(self):
         return self.penalty
@@ -84,11 +94,14 @@ class Goal:
     def get_description(self):
         return self.description
 
-    def get_time_est(self):
-        return self.time_est
+    def get_total_time_est(self):
+        return self.total_time_est
 
     def get_tasks(self):
         return self.tasks
+
+    def get_uncompleted_time_est(self):
+        return self.uncompleted_time_est
 
     def get_reward(self, time):
         """
@@ -130,24 +143,46 @@ class Goal:
     def is_non_goal(self):
         return self.non_goal
 
+    def add_completed_time(self, time_est):
+        self.completed_time_est += time_est
+        self.uncompleted_time_est -= time_est
+        self.update_total_time_est()
+
     def add_task(self, task):
         self.tasks.append(task)
         task.set_goal(self)
-        if self.completed and not task.completed:
+        if not task.completed:
             self.set_completed(False)
-        self.time_est += task.get_time_est()
+            self.uncompleted_time_est += task.get_time_est()
+        else:
+            self.completed_time_est += task.get_time_est()
+        self.update_total_time_est()
         self.value_est += task.get_prob() * task.get_reward()
-
+        
     def set_completed(self, completed):
         self.completed = completed
         if completed:
             for task in self.tasks:
                 task.set_completed(completed)
+                
+            # Change time-estimation values
+            self.completed_time_est = self.total_time_est
+            self.uncompleted_time_est = 0
             
-    def reset_completed(self, reset_tasks=False):
+    def reset_completed(self):
         self.completed = False
+        self.uncompleted_time_est = 0
+        self.completed_time_est = 0
+        
         for task in self.tasks:
             task.set_completed(False)
+            self.uncompleted_time_est += task.get_time_est()
+            
+        self.update_total_time_est()
+            
+    def update_total_time_est(self):
+        self.total_time_est = self.completed_time_est + \
+                              self.uncompleted_time_est
 
 
 class Task:
@@ -212,7 +247,12 @@ class Task:
         self.goal = goal
 
     def set_completed(self, completed):
-        self.completed = completed
+        if self.completed != completed:
+            self.completed = completed
+            if completed:
+                self.goal.add_completed_time(self.time_est)
+            else:
+                self.goal.add_completed_time(-self.time_est)
 
 
 class ToDoList:
@@ -360,15 +400,15 @@ class ToDoList:
     def get_non_goal_val(self):
         return self.get_non_goal_task().get_reward()
 
-    def get_non_goal_task(self):
-        '''
-        better way to do this would combine a list of tasks into one instead of hard coding first task 
-        #TODO
-        '''
-        if len(self.non_goal_tasks) > 1:
-            return self.non_goal_tasks[0]
-        else:
-            return self.non_goal_tasks
+    # def get_non_goal_task(self):
+    #     """
+    #     TODO: better way to do this would combine a list of tasks into one
+    #           instead of hard coding first task
+    #     """
+    #     if len(self.non_goal_tasks) > 1:
+    #         return self.non_goal_tasks[0]
+    #     else:
+    #         return self.non_goal_tasks
 
     def get_goals(self):
         return self.goals
@@ -419,16 +459,16 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         self.start_state = self.get_start_state()
 
         # Non-goal
-        self.non_goal_task = to_do_list.get_non_goal_task()
-        if len(self.non_goal_task) > 0:
-            self.non_goal_val = self.non_goal_task.get_reward()
-        else:
-            self.non_goal_val = None
+        # self.non_goal_task = to_do_list.get_non_goal_task()
+        # if len(self.non_goal_task) > 0:
+        #     self.non_goal_val = self.non_goal_task.get_reward()
+        # else:
+        #     self.non_goal_val = None
 
         # Create mapping of indices to tasks represented as list
         self.index_to_task = to_do_list.get_tasks()
-        if len(self.non_goal_task) > 0:
-            self.index_to_task.append(self.non_goal_task)  # Add non-goal task
+        # if len(self.non_goal_task) > 0:
+        #     self.index_to_task.append(self.non_goal_task)  # Add non-goal task
         
         # Create mapping of tasks to indices represented as dict
         self.task_to_index = {}
@@ -467,7 +507,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         # Pseudo-rewards
         self.pseudo_rewards = {}  # {(s, a, s') --> PR(s, a, s')}
         self.transformed_pseudo_rewards = {}  # {(s, a, s') --> PR'(s, a, s')}
-        self.calculate_pseudo_rewards()  # Calculate PRs for each state
+        # self.calculate_pseudo_rewards()  # Calculate PRs for each state
         # self.transform_pseudo_rewards()  # Apply linear transformation to PR'
 
     def calculate_pseudo_rewards(self):
@@ -525,15 +565,16 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
             print(f'2nd highest: {sec_highest}')
             print(f'Alpha: {alpha}')
 
-    def scale_rewards(self, min_value = 1, max_value = 100, print_values = False):
-        '''
+    def scale_rewards(self, min_value=1, max_value=100, print_values=False):
+        """
         Linear transform we might want to use with Complice
-        '''
+        """
         dict_values = np.asarray([*self.pseudo_rewards.values()])
         minimum = np.min(dict_values)
         ptp = np.ptp(dict_values)
         for trans in self.pseudo_rewards:
-            self.transformed_pseudo_rewards[trans] = max_value * (self.pseudo_rewards[trans] - minimum)/(ptp)
+            self.transformed_pseudo_rewards[trans] = \
+                max_value * (self.pseudo_rewards[trans] - minimum)/(ptp)
 
     # ===== Getters =====
     def get_expected_pseudo_rewards(self, state, action, transformed=False):
@@ -615,10 +656,10 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         
         if not self.is_terminal(state):
             actions = [i for i, task in enumerate(tasks) if task == 0]
-            if len(self.non_goal_task) > 0:
-                return actions + [-1]
-            else:
-                return actions
+            # if len(self.non_goal_task) > 0:
+            #     return actions + [-1]
+            # else:
+            return actions
         
         return []  # Terminal state --> No actions
 
