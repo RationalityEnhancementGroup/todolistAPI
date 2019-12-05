@@ -43,6 +43,8 @@ class PostResource(RESTResource):
 
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
+        start_time = datetime.now()
+        
         method = vpath[0]
         scheduler = vpath[1]
         parameters = [int(item) for item in vpath[2:-3]]
@@ -64,7 +66,7 @@ class PostResource(RESTResource):
 
         #check for changes if an existing user
         if previous_result != 0:
-            if jsonData["updated"] <=  previous_result["timestamp"]:
+            if jsonData["updated"] <=  previous_result["lm"]:
                 raise cherrypy.HTTPError(403, "No update needed")
         
         #new calculation
@@ -118,7 +120,7 @@ class PostResource(RESTResource):
                 for task in project["ch"]:
                     del task["nm"]
 
-            db.trees.insert_one({"user_id": current_id, "timestamp":  jsonData["updated"], "tree": projects})
+            db.trees.insert_one({"user_id": current_id, "timestamp":  datetime.now(), "duration": datetime.now() - start_time, "lm": jsonData["updated"], "tree": projects})
 
         if api_method == "updateTree":
             cherrypy.response.status = 204
