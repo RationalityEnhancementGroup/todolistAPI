@@ -81,7 +81,7 @@ class PostResource(RESTResource):
         else:
             run_point_method = are_there_tree_differences(previous_result["tree"], projects)
         
-        if run_point_method:
+        if run_point_method or (scheduler == "mdp"): #TODO if we can do scheduling with old MDP points, we should do that
             if method == "constant":
                 projects = assign_constant_points(projects, *parameters)
             elif method == "random":
