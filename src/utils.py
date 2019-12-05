@@ -127,7 +127,7 @@ def are_there_tree_differences(old_tree, new_tree):
     else:
         return True
 
-def tree_to_old_structure(projects):
+def tree_to_old_structure(projects, day_duration):
     '''
     input: parsed tree
     output: structure that can be inputted to old project code
@@ -137,6 +137,6 @@ def tree_to_old_structure(projects):
         if goal["code"] in [str(goal_num) for goal_num in range(11)]: #don't include miscellaneous
             old_structure.append(Goal(goal["id"], \
                 [Task(task["id"], task["est"]) for task in goal["ch"]], \
-                 {goal["deadline"]:goal["value"]}, \
+                 {(goal["deadline"]*day_duration):goal["value"]}, \
                  penalty= 0))
     return old_structure

@@ -46,7 +46,7 @@ def assign_old_api_points(projects, solver_fn, duration=8*60):
         - value_iteration
     '''
 
-    old_structure = tree_to_old_structure(projects)
+    old_structure = tree_to_old_structure(projects, duration)
     to_do_list = ToDoList(old_structure,start_time=0, non_goal_tasks=[])
     mdp = solver_fn(to_do_list)
     mdp.scale_rewards()
