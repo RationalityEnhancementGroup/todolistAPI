@@ -51,11 +51,25 @@ def assign_old_api_points(projects, solver_fn, duration=8*60):
     mdp = solver_fn(to_do_list)
     mdp.scale_rewards()
 
+    
     actions_and_rewards = []
+    task_list = task_list_from_projects(projects)
+    tasks = mdp.to_do_list.get_tasks()
+    today_tasks = [task["id"] for task in task_list if task["today"] == 1]
 
     state = (tuple(0 for task in mdp.get_tasks_list()),0) #starting state
-    still_scheduling = True
+    #first schedule today tasks
+    for today_task in today_tasks:
+        action = next(item for item in mdp.get_possible_actions(state) if (today_task == tasks[item].description))
+        next_state_and_prob = mdp.get_trans_states_and_probs(state, action)
+        next_state = next_state_and_prob[0][0]
+        duration -= next_state[1]
+        reward = mdp.get_expected_pseudo_rewards(state, possible_action, transformed = False)
+        state = next_state
+        actions_and_rewards.append((action, reward))
 
+    #then schedule based on mdp
+    still_scheduling = True
     while still_scheduling:
         still_scheduling = False
         possible_actions = mdp.get_possible_actions(state)
@@ -71,16 +85,15 @@ def assign_old_api_points(projects, solver_fn, duration=8*60):
                 state = next_state
                 still_scheduling = True
                 actions_and_rewards.append((possible_action, reward))
-                break
+                break  
     
-    
-    task_list = task_list_from_projects(projects)
 
     final_tasks = []
-    tasks = mdp.to_do_list.get_tasks()
     for action, reward in actions_and_rewards:
-        final_tasks.append((next(item for item in task_list if item["id"] == tasks[action].description)))
+        final_tasks.append((next(item for item in task_list if (item["id"] == tasks[action].description))))
         final_tasks[-1]["val"] = reward
+
+
 
     return final_tasks
 
