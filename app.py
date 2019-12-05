@@ -4,6 +4,9 @@ import os
 from src.utils import *
 from src.apis import *
 from src.schedulers import *
+from pymongo import MongoClient, DESCENDING
+from datetime import datetime
+
 
 class RESTResource(object):
    """
@@ -22,7 +25,6 @@ class RESTResource(object):
    @cherrypy.tools.accept(media='application/json')
    def default(self, *vpath, **params):
     method = getattr(self, "handle_" + cherrypy.request.method, None)
-    print(method)
     if not method:
         methods = [x.replace("handle_", "") for x in dir(self) if x.startswith("handle_")]
         cherrypy.response.headers["Allow"] = ",".join(methods)
@@ -55,9 +57,14 @@ class PostResource(RESTResource):
         # if current_id != user_key:
         #     raise cherrypy.HTTPError(403, "Problem with user key")
 
+        if db.trees.find({'user_id': str(current_id)}).sort('timestamp',DESCENDING).count() == 0:
+            previous_result = 0
+        else:
+            previous_result = db.trees.find({'user_id': str(current_id)}).sort('timestamp',DESCENDING)[0]
+
         #check for changes if an existing user
-        if current_id in cherrypy.session:
-            if jsonData["updated"] <=  cherrypy.session[current_id]["updated"]:
+        if previous_result != 0:
+            if jsonData["updated"] <=  previous_result["timestamp"]:
                 raise cherrypy.HTTPError(403, "No update needed")
         
         #new calculation
@@ -69,15 +76,10 @@ class PostResource(RESTResource):
 
         projects, missing_deadlines, missing_durations = parse_tree(projects)
 
-        if current_id not in cherrypy.session:
+        if previous_result == 0:
             run_point_method = True
-            cherrypy.session[current_id] = {}
-            cherrypy.session[current_id]["num"] = len(cherrypy.session.keys())
         else:
-            run_point_method = are_there_tree_differences(cherrypy.session[current_id]["tree"], projects)
-
-        cherrypy.session[current_id]["updated"] = jsonData["updated"]
-        cherrypy.session[current_id]["tree"] = projects
+            run_point_method = are_there_tree_differences(previous_result["tree"], projects)
         
         if run_point_method:
             if method == "constant":
@@ -92,6 +94,12 @@ class PostResource(RESTResource):
                 final_tasks = assign_old_api_points(projects, duration=today_hours*60)
             else:
                 raise cherrypy.HTTPError(403, "API method does not exist")
+        else:
+            #join old vals to projects
+            for project in projects:
+                corresponding_goal = (next(item for item in previous_result["tree"] if item["id"] == project["id"]))
+                for task in project["ch"]:
+                    task["val"] = (next(item["val"] for item in corresponding_goal["ch"] if item["id"] == task["id"]))
 
         task_list = task_list_from_projects(projects)
         if scheduler == "basic":
@@ -103,7 +111,14 @@ class PostResource(RESTResource):
         else:
             raise cherrypy.HTTPError(403, "Scheduling method does not exist")
 
-        
+        #save the data if there was a change, removing nm fields so that we keep participant data anonymous
+        if run_point_method:
+            for project in projects:
+                del project["nm"]
+                for task in project["ch"]:
+                    del task["nm"]
+
+            db.trees.insert_one({"user_id": current_id, "timestamp":  jsonData["updated"], "tree": projects})
 
         if api_method == "updateTree":
             cherrypy.response.status = 204
@@ -119,15 +134,19 @@ class PostResource(RESTResource):
 class Root(object):
     api = PostResource()
 
+
     @cherrypy.expose
     def index(self):
         return "REST API for Complice Project w/ Workflowy Points"
 
 
 if __name__ == '__main__':
+    conn = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
+    db=conn.heroku_g6l4lr9d
+
     conf = {
         '/': {
-            'tools.sessions.on': True,
+            # 'tools.sessions.on': True,
             'tools.response_headers.on': True,
             'tools.response_headers.headers': [('Content-Type', 'text/plain')]
         }
