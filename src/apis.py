@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import json
 from src.utils import tree_to_old_structure
-from todolistMDP.mdp_solvers import backward_induction
+from todolistMDP.mdp_solvers \
+    import backward_induction, policy_iteration, value_iteration
 from todolistMDP.to_do_list import *
 from src.utils import task_list_from_projects
 
@@ -33,16 +34,21 @@ def assign_hierarchical_points(projects):
     raise NotImplementedError
 
 
-def assign_old_api_points(projects, duration=8*60):
+def assign_old_api_points(projects, solver_fn, duration=8*60):
     '''
     input: parsed project tree, duration of current day, and planning function
     output: task list of tasks to be done that day (c.f. shedulers.py)
 
-    uses backwards indution, as is the default in the old code
+    The provided solver function creates an ToDoListMDP object and solves the
+    MDP. Possible solver functions (so far):
+        - backward_induction
+        - policy_iteration
+        - value_iteration
     '''
 
     old_structure = tree_to_old_structure(projects)
-    mdp = ToDoListMDP(ToDoList(old_structure,start_time=0, non_goal_tasks=[]))
+    to_do_list = ToDoList(old_structure,start_time=0, non_goal_tasks=[])
+    mdp = solver_fn(to_do_list)
     mdp.scale_rewards()
 
     actions_and_rewards = []
