@@ -6,6 +6,7 @@ from src.apis import *
 from src.schedulers import *
 from pymongo import MongoClient, DESCENDING
 from datetime import datetime
+from copy import deepcopy
 
 
 class RESTResource(object):
@@ -44,7 +45,7 @@ class PostResource(RESTResource):
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
         start_time = datetime.now()
-        
+
         method = vpath[0]
         scheduler = vpath[1]
         parameters = [int(item) for item in vpath[2:-3]]
@@ -115,12 +116,13 @@ class PostResource(RESTResource):
 
         #save the data if there was a change, removing nm fields so that we keep participant data anonymous
         if run_point_method:
-            for project in projects:
+            save_projects = deepcopy(projects)
+            for project in save_projects:
                 del project["nm"]
                 for task in project["ch"]:
                     del task["nm"]
 
-            db.trees.insert_one({"user_id": current_id, "timestamp":  datetime.now(), "duration": datetime.now() - start_time, "lm": jsonData["updated"], "tree": projects})
+            db.trees.insert_one({"user_id": current_id, "timestamp":  datetime.now(), "duration": str(datetime.now() - start_time), "lm": jsonData["updated"], "tree": save_projects})
 
         if api_method == "updateTree":
             cherrypy.response.status = 204
@@ -154,5 +156,5 @@ if __name__ == '__main__':
         }
     }
     cherrypy.config.update({'server.socket_host': '0.0.0.0'})
-    cherrypy.config.update({'server.socket_port': int(os.environ.get('PORT', '5000'))})
+    cherrypy.config.update({'server.socket_port': int(os.environ.get('PORT', '6789'))})
     cherrypy.quickstart(Root(), '/', conf)
