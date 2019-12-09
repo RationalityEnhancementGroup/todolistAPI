@@ -74,7 +74,7 @@
     "typical_hours": [
         {
             "id": "0000000000",
-            "nm": "#HOURS_TODAY ==9",
+            "nm": "#HOURS_TYPICAL ==18",
             "lm": 104521833
             
         }
@@ -82,7 +82,7 @@
     "today_hours": [
         {
             "id": "000000000",
-            "nm": "#HOURS_TYPICAL ==18",
+            "nm": "#HOURS_TODAY ==9",
             "lm": 104521833
             
         }]
