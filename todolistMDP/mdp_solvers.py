@@ -19,19 +19,22 @@ def backward_induction(to_do_list):
     mdp = ToDoListMDP(to_do_list)
     
     mdp.linearized_states = mdp.get_linearized_states()
-    mdp.V_states = {}  # state --> (value, action)
+    mdp.v_states = {}  # state --> (value, action)
     
-    for state in mdp.linearized_states:
-        mdp.V_states[state] = (0, None)  # state --> (value, action)
+    mdp.calculate_optimal_values_and_policy()  #
+    
+    # for state in mdp.linearized_states:
+    #     mdp.v_states[state] = (0, None)  # state --> (value, action)
     
     # Perform Backward Iteration (Value Iteration 1 Time)
-    for state in mdp.linearized_states:
-        mdp.V_states[state] = mdp.get_value_and_action(state, mdp.V_states)
+    # for state in mdp.linearized_states:
+    #     mdp.v_states[state] = mdp.get_value_and_action(state)
     
-    mdp.optimal_policy = {}
-    for state in mdp.V_states:
-        mdp.optimal_policy[state] = mdp.V_states[state][1]
-    
+    # mdp.optimal_policy = {}
+    # for state in mdp.v_states:
+    #     mdp.optimal_policy[state] = mdp.v_states[state][1]
+
+    # TODO: Make pseudo-rewards active
     # mdp.calculate_pseudo_rewards()
     # mdp.transform_pseudo_rewards()
     
@@ -60,7 +63,7 @@ def policy_iteration(to_do_list):
         tasks = state[0]
         
         # Set initial policy of each state to the first possible action
-        # (index of first 0)
+        # (index of first 0)  # TODO: Find a better way to do this
         if 0 in tasks:
             new_policy[state] = tasks.index(0)
         else:
@@ -72,14 +75,15 @@ def policy_iteration(to_do_list):
     
     iterations = 0
     # Repeat until policy converges
+    # TODO: The condition would not hold if there are 2+ optimal policies
     while mdp.optimal_policy != new_policy:
         iterations += 1
         print('Iteration', iterations)
         
         mdp.optimal_policy = new_policy
-        mdp.V_states = policy_evaluation(mdp, mdp.optimal_policy,
+        mdp.v_states = policy_evaluation(mdp, mdp.optimal_policy,
                                          empty_A, empty_b)
-        new_policy = policy_extraction(mdp, mdp.V_states)
+        new_policy = policy_extraction(mdp)
     
     start_state = mdp.get_start_state()
     state = start_state
@@ -118,23 +122,24 @@ def policy_evaluation(mdp, policies, empty_A, empty_b):
         
         for next_state, prob in mdp.get_trans_states_and_probs(state, action):
             reward = mdp.get_reward(state, action, next_state)
-            j = states.index(next_state)
+            j = states.index(next_state)  # TODO: Expensive...
             
             A[i][j] = gamma * prob
             b[i] = b[i] - prob * reward
-    
+
+    # TODO: Understand this...
     v = LA.solve(A, b)
     
-    return {state: value for (state, value) in zip(states, v)}
+    return {state: value[0] for (state, value) in zip(states, v)}
 
 
-def policy_extraction(mdp, v_states):
+def policy_extraction(mdp):
     """
     given an MDP and V_states (from policy evaluation)
     returns the optimal policy (policy is dictionary{states: action index})
     """
     # For every state, pick the action corresponding to the highest Q-value
-    return {state: mdp.get_value_and_action(state, v_states)[1]
+    return {state: mdp.get_value_and_action(state)[1]
             for state in mdp.get_states()}
 
 
@@ -153,8 +158,7 @@ def value_iteration(to_do_list, epsilon=0.1):
     """
     mdp = ToDoListMDP(to_do_list)
     
-    mdp.V_states = {state: (0, None)
-                for state in mdp.get_states()}
+    mdp.v_states = {state: 0 for state in mdp.get_states()}
     
     # Perform value iteration
     converged = False
@@ -167,21 +171,22 @@ def value_iteration(to_do_list, epsilon=0.1):
         converged = True
         next_v_states = {}
 
-        for state in mdp.V_states:
-            next_v_states[state] = mdp.get_value_and_action(state, mdp.V_states)
-            old_state_value = mdp.V_states[state][0]
-            new_state_value = next_v_states[state][0]
+        for state in mdp.v_states:
+            next_v_states[state] = mdp.get_value_and_action(state)[0]
+            old_state_value = mdp.v_states[state]
+            new_state_value = next_v_states[state]
             
             # Check convergence
             if abs(old_state_value - new_state_value) > epsilon:
                 converged = False
                 
-        mdp.V_states = next_v_states
+        mdp.v_states = next_v_states
 
     # Extract optimal policy
-    mdp.optimal_policy = policy_extraction(mdp, mdp.V_states)
+    mdp.optimal_policy = policy_extraction(mdp)
 
     # Use pseudo-rewards
+    # TODO: Make pseudo-rewards active
     # mdp.calculate_pseudo_rewards(v_states)
     # mdp.transform_pseudo_rewards()
 

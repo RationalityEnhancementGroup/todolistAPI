@@ -231,96 +231,96 @@ d_7 = [
 
 # ===== New deterministic tests (not included in the original code) =====
 d_8 = [
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=1, prob=1)],
+    Goal("G1", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=1, prob=1)],
          {3: 5},
          penalty=0),
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=2, prob=1)],
+    Goal("G2", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=2, prob=1)],
          {5: 50000},
          penalty=0)
 ]
 
 d_9 = [
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=1, prob=1)],
+    Goal("G1", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=1, prob=1)],
          {3: 5},
          penalty=0),
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=2, prob=1)],
+    Goal("G2", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=2, prob=1)],
          {4: 100},
          penalty=0)
 ]
 
 d_10 = [
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=1, prob=1)],
+    Goal("G1", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=1, prob=1)],
          {11: 1},
          penalty=0),
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=2, prob=1)],
+    Goal("G2", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=2, prob=1)],
          {8: 100},
          penalty=0),
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=2, prob=1)],
+    Goal("G3", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=2, prob=1)],
          {6: 10},
          penalty=0),
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=2, prob=1)],
+    Goal("G4", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=2, prob=1)],
          {3: 1000},
          penalty=0)
 ]
 
 d_11 = [
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=1, prob=1)],
+    Goal("G1", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=1, prob=1)],
          {3: 1000},
          penalty=0),
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=2, prob=1)],
+    Goal("G2", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=2, prob=1)],
          {7: 100},
          penalty=0),
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=2, prob=1)],
+    Goal("G3", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=2, prob=1)],
          {8: 10},
          penalty=0),
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=1, prob=1)],
+    Goal("G4", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=1, prob=1)],
          {11: 1},
          penalty=0),
 ]
 
 d_12 = [
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=1, prob=1)],
+    Goal("G1", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=1, prob=1)],
          {5: 1000},
          penalty=0),
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=2, prob=1)],
+    Goal("G2", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=2, prob=1)],
          {7: 100},
          penalty=0),
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=2, prob=1)],
+    Goal("G3", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=2, prob=1)],
          {8: 10},
          penalty=0),
-    Goal("Goal", [
-        Task("Task", time_est=1, prob=1),
-        Task("Task", time_est=1, prob=1)],
+    Goal("G4", [
+        Task("T1", time_est=1, prob=1),
+        Task("T2", time_est=1, prob=1)],
          {12: 1},
          penalty=0),
 ]

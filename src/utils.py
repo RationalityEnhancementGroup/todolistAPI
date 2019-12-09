@@ -104,6 +104,15 @@ def task_list_from_projects(projects):
         task_list.extend(goal["ch"])
     return task_list
 
+
+def task_dict_from_projects(projects):
+    return {
+        task['id']: task
+        for goal in projects
+        for task in goal['ch']
+    }
+
+
 def create_tree_dict(tree):
     '''
     input: parsed tree

@@ -21,8 +21,11 @@ def follow_policy(mdp):
     # Get initial state
     state = sorted(list(policy.keys()))[0]
     vec, tm = state
-    
-    print(state, policy[state], values[state])
+
+    action = policy[state]
+    value = values[state]
+
+    print(state, action, value)
     
     while policy[state] is not None:
         # Get task
@@ -30,14 +33,17 @@ def follow_policy(mdp):
         task = mdp.index_to_task[idx]
         
         # Get next state
-        next_vec = list(vec)
-        next_vec[idx] = 1
+        vec = list(vec)
+        vec[idx] = 1
         
         tm += task.get_time_est()
-        state = (tuple(next_vec), tm)
-        vec, tm = state
-        print(state, policy[state], values[state])
+        state = (tuple(vec), tm)
         
+        action = policy[state]
+        value = values[state]
+
+        print(state, action, value)
+
     return
 
 
@@ -95,7 +101,7 @@ goals = d_12  # New deterministic cases [d_8:...]
 s_time = time.time()  # Start timer
 to_do_list = ToDoList(goals, start_time=0)
 # mdp = ToDoListMDP(to_do_list)
-print(f'MDP initialization takes {time.time() - s_time:.4f} seconds.')
+# print(f'MDP initialization takes {time.time() - s_time:.4f} seconds.')
 
 
 # ===== Backward induction =====
@@ -104,7 +110,7 @@ print(f'MDP initialization takes {time.time() - s_time:.4f} seconds.')
     (+) Simple deterministic case (2 goals x 2 tasks)
     (+) Probabilistic case (2 goals x 2 tasks)
 """
-mdp = solve(to_do_list, backward_induction)
+# mdp = solve(to_do_list, backward_induction)
 
 # ===== Policy iteration =====
 """
@@ -113,7 +119,7 @@ mdp = solve(to_do_list, backward_induction)
     (+) Simple deterministic case (2 goals x 2 tasks)
     (+) Probabilistic case (2 goals x 2 tasks)
 """
-mdp = solve(to_do_list, policy_iteration)
+# mdp = solve(to_do_list, policy_iteration)
 
 # ===== Value iteration =====
 """
@@ -121,8 +127,10 @@ mdp = solve(to_do_list, policy_iteration)
     (+) Simple deterministic case (2 goals x 2 tasks)
     (+) Probabilistic case (2 goals x 2 tasks)
 """
-mdp = solve(to_do_list, value_iteration)
+# mdp = solve(to_do_list, value_iteration)
 
 # ===== Simple scheduler =====
-attainable_goals, unattainable_goals, mixing_table = \
-    simple_goal_scheduler(to_do_list, verbose=True)
+tasks_list = simple_goal_scheduler(to_do_list, mixing_parameter=0.50,
+                                   verbose=False)
+for task in tasks_list:
+    print(task)
