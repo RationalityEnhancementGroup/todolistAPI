@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8"/>
+  <script src="../jspsych.js"></script>
+  <script src="../plugins/jspsych-image-keyboard-response.js"></script>
+  <link rel="stylesheet" href="../css/jspsych.css"></link>
+  <style>
+    img {
+      width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+</body>
+
+<script>
+	console.log("hi")
+ 	jsPsych.init({
+    timeline: instructions_timeline,
+    on_finish: function() {
+      jsPsych.data.displayData();
+    }
+  });
+</script>
+</html>
