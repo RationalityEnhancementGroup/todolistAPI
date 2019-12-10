@@ -95,7 +95,7 @@ def solve(to_do_list, solver, print_policy=False, print_pseudo_rewards=False,
 # goals = d_bm   # Deterministic case (6 goals x 2 tasks)
 # goals = d_7  # Simple deterministic case (2 goals x 2 tasks)
 # goals = p_bm   # Probabilistic case (2 goals x 2 tasks)
-goals = d_12  # New deterministic cases [d_8:...]
+goals = d_negative_reward_attainable_goals  # New deterministic cases
 
 # Generate to-do list MDP
 s_time = time.time()  # Start timer
@@ -131,6 +131,6 @@ to_do_list = ToDoList(goals, start_time=0)
 
 # ===== Simple scheduler =====
 tasks_list = simple_goal_scheduler(to_do_list, mixing_parameter=0.50,
-                                   verbose=False)
+                                   verbose=True)
 for task in tasks_list:
     print(task)

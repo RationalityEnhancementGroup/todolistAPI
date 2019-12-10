@@ -68,36 +68,6 @@ import numpy as np
 #     return mixing_time, last_0_idx
 
 
-def compute_simple_mixing_time(attainable_goals):
-    """
-    Computes mixing time between two consecutive (by deadline) attainable goals.
-    
-    Args:
-        attainable_goals: List of attainable goals
-
-    Returns:
-        (mixing-time list, index of last 0 value - goal after which misc tasks
-         can be completed)
-    """
-    n = len(attainable_goals)  # Number of attainable goals
-    mixing_time = np.zeros(shape=n, dtype=np.int32)
-    last_0_idx = 0  # The time when 0 was encountered
-    
-    current_time_est = 0
-    for goal_idx in range(n):
-        goal = attainable_goals[goal_idx]
-        
-        latest_deadline = goal.get_deadline_time()
-        current_time_est += goal.get_uncompleted_time_est()
-        
-        mixing_time[goal_idx] = latest_deadline - current_time_est
-        
-        if mixing_time[goal_idx] == 0:
-            last_0_idx = goal_idx
-    
-    return mixing_time, last_0_idx
-
-
 def compute_optimal_values(goals):
     """
     Computes the maximum reward that can be attained by meeting the deadlines
@@ -136,6 +106,37 @@ def compute_optimal_values(goals):
     return dp
 
 
+def compute_simple_mixing_time(attainable_goals):
+    """
+    Computes mixing time between two consecutive (by deadline) attainable goals.
+
+    Args:
+        attainable_goals: List of attainable goals
+
+    Returns:
+        (mixing-time list, index of last 0 value - goal after which misc tasks
+         can be completed)
+    """
+    n = len(attainable_goals)  # Number of attainable goals
+    mixing_time = np.zeros(shape=n, dtype=np.int32)
+    last_0_idx = None  # The time when 0 was encountered
+    
+    if attainable_goals[0] is not None:
+        current_time_est = 0
+        for goal_idx in range(n):
+            goal = attainable_goals[goal_idx]
+            
+            latest_deadline = goal.get_deadline_time()
+            current_time_est += goal.get_uncompleted_time_est()
+            
+            mixing_time[goal_idx] = latest_deadline - current_time_est
+            
+            if mixing_time[goal_idx] == 0:
+                last_0_idx = goal_idx
+        
+    return mixing_time, last_0_idx
+
+
 def get_attainable_goals(goals, dp):
     """
     Splits the set of goals into attainable and unattainable goals.
@@ -159,37 +160,45 @@ def get_attainable_goals(goals, dp):
     # Initialize lists
     attainable_goals = []
     unattainable_goals = []
-    
-    # Get sorted lists of attainable and unattainable goals
-    while i != 0:
-        goal_idx = i - 1
+
+    # If the deadline of the latest goal is not in the future
+    if t <= 0:
+        unattainable_goals = goals
         
-        if dp[i, t] == dp[i - 1, t]:
-            i -= 1
-            unattainable_goals.append(goals[goal_idx])
-            goals[goal_idx].set_not_attainable()
-        else:
-            t_ = min(t, goals[goal_idx].get_deadline_time()) \
-                 - goals[goal_idx].get_total_time_est()
-            i -= 1
-            t = t_
+    else:
+        if dp.shape <= (1, 1):
+            print('aaa')
+        
+        # Get sorted lists of attainable and unattainable goals
+        while i != 0:
+            goal_idx = i - 1
             
-            attainable_goals.append(goals[goal_idx])
-            # goals[goal_idx].set_attainable(t_)
-    
-    attainable_goals.sort()
-    current_time_est = 0
-    for goal in attainable_goals:
-        goal_reward = goal.get_reward(current_time_est)
+            if dp[i, t] == dp[i - 1, t]:
+                i -= 1
+                unattainable_goals.append(goals[goal_idx])
+                goals[goal_idx].set_not_attainable()
+            else:
+                t_ = min(t, goals[goal_idx].get_deadline_time()) \
+                     - goals[goal_idx].get_total_time_est()
+                i -= 1
+                t = t_
+                
+                attainable_goals = [goals[goal_idx]] + attainable_goals
+                # goals[goal_idx].set_attainable(t_)
         
-        for task in goal.get_tasks():
-            task.set_reward(goal_reward)
+        attainable_goals.sort()
+        current_time_est = 0
+        for goal in attainable_goals:
+            goal_reward = goal.get_reward(current_time_est)
             
-        goal.set_attainable(current_time_est)
-        current_time_est += goal.get_total_time_est()
+            for task in goal.get_tasks():
+                task.set_reward(goal_reward)
+                
+            goal.set_attainable(current_time_est)
+            current_time_est += goal.get_total_time_est()
+            
+        unattainable_goals.sort()
         
-    unattainable_goals.sort()
-    
     if len(attainable_goals) == 0:
         attainable_goals = [None]
         
@@ -197,6 +206,46 @@ def get_attainable_goals(goals, dp):
         unattainable_goals = [None]
 
     return attainable_goals, unattainable_goals
+
+
+def get_ordered_task_list(attainable_goals, mixing_time, mixing_parameter):
+    # Generate ordered list of tasks
+    ordered_task_list = []
+    
+    if attainable_goals[0] is not None:
+        next_goal_tasks = list(attainable_goals[0].get_uncompleted_tasks())
+        for goal_idx in range(len(mixing_time) - 1):
+            batch_tasks = next_goal_tasks
+            available_time = mixing_time[goal_idx]
+            
+            next_goal_tasks = \
+                list(attainable_goals[goal_idx + 1].get_uncompleted_tasks())
+            
+            if available_time > 0:
+                
+                # TODO: Another mixing/acceptance parameter can be included here...
+                for task in next_goal_tasks:
+                    task_time = task.get_time_est()
+                    
+                    if task_time <= available_time:
+                        batch_tasks += [task]
+                        next_goal_tasks.remove(task)
+                        available_time -= task_time
+                    
+                    if available_time == 0:
+                        break
+                
+                batch_tasks = shuffle(batch_tasks, mixing_parameter)
+            
+            ordered_task_list += batch_tasks
+        
+        ordered_task_list += next_goal_tasks
+        
+        # print('Last tasks...')
+        # for task in next_goal_tasks:
+        #     print(task)
+    
+    return ordered_task_list
 
 
 def print_optimal_solution(goals, dp):
@@ -228,49 +277,14 @@ def print_optimal_solution(goals, dp):
             print(f'Attainable goal {goal_idx} at time '
                   f'{goals[goal_idx].get_earliest_start_time()}')
     
-    print_opt(len(goals), goals[-1].get_deadline_time())
+    last_deadline = goals[-1].get_deadline_time()
+    
+    if last_deadline >= 0:
+        print_opt(len(goals), last_deadline)
+        
     print()
 
     return
-
-
-def get_ordered_task_list(attainable_goals, mixing_time, mixing_parameter):
-    # Generate ordered list of tasks
-    ordered_task_list = []
-    
-    next_goal_tasks = list(attainable_goals[0].get_uncompleted_tasks())
-    for goal_idx in range(len(mixing_time) - 1):
-        batch_tasks = next_goal_tasks
-        available_time = mixing_time[goal_idx]
-        
-        next_goal_tasks = \
-            list(attainable_goals[goal_idx + 1].get_uncompleted_tasks())
-        
-        if available_time > 0:
-            
-            # TODO: Another mixing/acceptance parameter can be included here...
-            for task in next_goal_tasks:
-                task_time = task.get_time_est()
-                
-                if task_time <= available_time:
-                    batch_tasks += [task]
-                    next_goal_tasks.remove(task)
-                    available_time -= task_time
-                
-                if available_time == 0:
-                    break
-            
-            batch_tasks = shuffle(batch_tasks, mixing_parameter)
-        
-        ordered_task_list += batch_tasks
-    
-    ordered_task_list += next_goal_tasks
-
-    # print('Last tasks...')
-    # for task in next_goal_tasks:
-    #     print(task)
-
-    return ordered_task_list
 
 
 def shuffle(tasks_list, mixing_parameter=0.0):
@@ -339,6 +353,7 @@ def simple_goal_scheduler(to_do_list, mixing_parameter=0.0, verbose=False):
         print('===== Attainable goals =====')
         for goal in attainable_goals:
             print(goal)
+        print()
         
         print('===== Unattainable goals =====')
         for goal in unattainable_goals:

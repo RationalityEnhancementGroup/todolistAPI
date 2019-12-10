@@ -54,8 +54,7 @@ def assign_old_api_points(projects, solver_fn, duration=8*60, **params):
     old_structure = tree_to_old_structure(projects, duration)
     to_do_list = ToDoList(old_structure, start_time=0)
     ordered_tasks = \
-        simple_goal_scheduler(to_do_list,
-                              mixing_parameter=params['mixing_parameter'])
+        solver_fn(to_do_list, mixing_parameter=params['mixing_parameter'])
     
     task_dict = task_dict_from_projects(projects)
     
@@ -66,7 +65,8 @@ def assign_old_api_points(projects, solver_fn, duration=8*60, **params):
         task_from_project = task_dict[task_id]
         task_from_project["val"] = task.get_reward()
         
-        if task_from_project["today"] == 1:
+        if task_from_project["today"] == 1 and \
+                duration >= task_from_project["est"]:
             today_tasks += [task_from_project]
             duration -= task_from_project["est"]
 
@@ -74,11 +74,11 @@ def assign_old_api_points(projects, solver_fn, duration=8*60, **params):
     for task in ordered_tasks:
         task_id = task.get_description()
         task_from_project = task_dict[task_id]
-        task_from_project["val"] = task.get_reward()
         
         # If the task is not marked for today and
         # if there is enough time to complete the task today
-        if task_from_project["today"] != 1 and task.get_time_est() >= duration:
+        if task_from_project["today"] != 1 and \
+                duration >= task_from_project["est"]:
             today_tasks += [task_from_project]
             duration -= task_from_project["est"]
             
