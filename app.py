@@ -135,13 +135,24 @@ class PostResource(RESTResource):
             raise cherrypy.HTTPError(405, "Method not implemented.")
 
 
+class ExperimentPostResource(RESTResource):
+
+
+    @cherrypy.tools.json_out()
+    def handle_POST(self, jsonData, *vpath, **params):
+        db.tiny_experiment.insert_one({"data": jsonData, "timestamp":  datetime.now()})
+        cherrypy.response.status = 204
+        return None
+
+
 class Root(object):
     api = PostResource()
+    experiment_data = ExperimentPostResource()
 
 
     @cherrypy.expose
     def index(self):
-        return "REST API for Complice Project w/ Workflowy Points"
+        return "Server is up!"#"REST API for Complice Project w/ Workflowy Points"
 
 
 if __name__ == '__main__':
@@ -152,9 +163,14 @@ if __name__ == '__main__':
         '/': {
             # 'tools.sessions.on': True,
             'tools.response_headers.on': True,
-            'tools.response_headers.headers': [('Content-Type', 'text/plain')]
+            'tools.response_headers.headers': [('Content-Type', 'text/plain')]},
+        '/static':{
+            'tools.staticdir.on': True,
+            'tools.staticdir.dir': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static'),
+            'tools.staticdir.index': 'instructions/experiment_instructions.html'
+            }
         }
-    }
+
     cherrypy.config.update({'server.socket_host': '0.0.0.0'})
     cherrypy.config.update({'server.socket_port': int(os.environ.get('PORT', '6789'))})
     cherrypy.quickstart(Root(), '/', conf)
