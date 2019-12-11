@@ -6,14 +6,25 @@ jsPsych.data.addProperties({
 
 // adapted from https://www.jspsych.org/overview/data/
 function saveData() {
-  console.log("hi-1")
   var xhr = new XMLHttpRequest();
   xhr.open('POST', '../experiment_data'); // change 'write_data.php' to point to php script.
   xhr.setRequestHeader('Content-Type', 'application/json');
-  console.log("hi")
   xhr.send(jsPsych.data.get().json());
-  console.log("hi1")
 }
+
+//from: https://www.jspsych.org/plugins/jspsych-external-html/
+// sample function that might be used to check if a subject has given
+// consent to participate.
+var check_consent = function(elem) {
+  if (document.getElementById('consent_checkbox').checked) {
+    return true;
+  }
+  else {
+    alert("If you wish to participate, you must check the box next to the statement 'I agree to participate in this study.'");
+    return false;
+  }
+  return false;
+};
 
 
 overview = ["Welcome! In this experiment you will test a to-do list app and engage in goal and task setting.",
@@ -56,6 +67,11 @@ completion_code = ["Your completion code is: " + user_id,
            "You can now close this window."]
 
 var instructions_timeline = [{
+  type:'external-html',
+  url: consent_form_url,
+  cont_btn: "start",
+  check_fn: check_consent
+},{
     type: 'instructions',
     pages: [overview.join("<br><br><br>")],
     show_clickable_nav: true
