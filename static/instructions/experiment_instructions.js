@@ -12,20 +12,6 @@ function saveData() {
   xhr.send(jsPsych.data.get().json());
 }
 
-//from: https://www.jspsych.org/plugins/jspsych-external-html/
-// sample function that might be used to check if a subject has given
-// consent to participate.
-var check_consent = function(elem) {
-  if (document.getElementById('consent_checkbox').checked) {
-    return true;
-  }
-  else {
-    alert("If you wish to participate, you must check the box next to the statement 'I agree to participate in this study.'");
-    return false;
-  }
-  return false;
-};
-
 
 overview = ["Welcome! In this experiment you will test a to-do list app and engage in goal and task setting.",
      "Please keep this window open while working through the HIT, as it will guide you through the process and give you your final completion code. (It is okay to minimize the window when necessary.)",
@@ -54,8 +40,8 @@ third_step = ["<b>Usability tasks "+bonus3+"</b>",
         "Now that you have inputted your goals and tasks, it's time to test out the experiment a little.",
         "Please press next to get your task."]
 
-usability_one = "Pretend you completed a task. Check off the task in the Complice app. Do you have any comments about how this worked?"
-usability_two = "Now you remember you forgot a task you urgently need to complete today. Please enter a task in Workflowy as part of your first goal, with duration 2 hours and tag it #today. Pull from Workflowy to add the task to your current list. Do you have any comments about how this worked?"
+usability_one = "Pretend you completed an intention. Check off the intention in the Complice app. Do you have any comments about how this worked?"
+usability_two = "Now you remember you forgot an intention you urgently need to complete today. Please enter an intention in Workflowy as part of your first goal, with duration 2 hours and tag it #today. Pull from Workflowy to add the task to your current list. Do you have any comments about how this worked?"
 
 fourth_step = ["<b>Survey "+bonus4+"</b>",
         "Now you are almost done! We just need you to complete a survey (approx "+survey_time+".)",
@@ -69,8 +55,7 @@ completion_code = ["Your completion code is: " + user_id,
 var instructions_timeline = [{
   type:'external-html',
   url: consent_form_url,
-  cont_btn: "start",
-  check_fn: check_consent
+  cont_btn:'consent-to-do-submit-button'
 },{
     type: 'instructions',
     pages: [overview.join("<br><br><br>")],
