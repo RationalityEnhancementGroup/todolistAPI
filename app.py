@@ -29,14 +29,16 @@ class RESTResource(object):
     if not method:
         methods = [x.replace("handle_", "") for x in dir(self) if x.startswith("handle_")]
         cherrypy.response.headers["Allow"] = ",".join(methods)
-        raise cherrypy.HTTPError(405, "Method not implemented.")
+        cherrypy.response.status = 405
+        return json.dumps({"status":"Method not implemented."})
 
     #can we load the request body (json)
     try:
         rawData = cherrypy.request.body.read()
         jsonData = json.loads(rawData)
     except:
-        raise cherrypy.HTTPError(403, "No request body")
+        cherrypy.response.status = 403
+        return json.dumps({"status":"No request body"})
     return method(jsonData, *vpath, **params);
 
 class PostResource(RESTResource):
@@ -56,7 +58,8 @@ class PostResource(RESTResource):
         try:
             current_id = jsonData["userkey"]
         except:
-            raise cherrypy.HTTPError(403, "Problem with user key")
+            cherrypy.response.status = 403
+            return json.dumps({"status":"Problem with user key"})
         # if current_id != user_key:
         #     raise cherrypy.HTTPError(403, "Problem with user key")
 
@@ -68,7 +71,8 @@ class PostResource(RESTResource):
         #check for changes if an existing user
         if previous_result != 0:
             if jsonData["updated"] <=  previous_result["lm"]:
-                raise cherrypy.HTTPError(403, "No update needed")
+                cherrypy.response.status = 403
+                return json.dumps({"status":"No update needed"})
         
         #new calculation
         #save updated, user id, and skeleton
@@ -96,7 +100,8 @@ class PostResource(RESTResource):
             elif method == "old-report":
                 final_tasks = assign_old_api_points(projects, duration=today_hours*60)
             else:
-                raise cherrypy.HTTPError(403, "API method does not exist")
+                cherrypy.response.status = 403
+                return json.dumps({"status":"API method does not exist"})
         else:
             #join old vals to projects
             for project in projects:
@@ -112,7 +117,8 @@ class PostResource(RESTResource):
         elif scheduler == "mdp":
             pass
         else:
-            raise cherrypy.HTTPError(403, "Scheduling method does not exist")
+            cherrypy.response.status = 403
+            return json.dumps({"status":"Scheduling method does not exist"})
 
         #save the data if there was a change, removing nm fields so that we keep participant data anonymous
         if run_point_method:
@@ -132,7 +138,8 @@ class PostResource(RESTResource):
             final_tasks = clean_output(final_tasks)
             return json.dumps(final_tasks) 
         else:
-            raise cherrypy.HTTPError(405, "Method not implemented.")
+            cherrypy.response.status = 405
+            return json.dumps({"status":"Method not implemented."})
 
 
 class ExperimentPostResource(RESTResource):
