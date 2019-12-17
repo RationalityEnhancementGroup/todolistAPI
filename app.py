@@ -76,9 +76,18 @@ class PostResource(RESTResource):
         
         #new calculation
         #save updated, user id, and skeleton
-        projects = flatten_intentions(jsonData["projects"])
-        typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
-        today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
+        try:
+            projects = flatten_intentions(jsonData["projects"])
+        except:
+            cherrypy.response.status = 403
+            return json.dumps({"status":"Error with parsing inputted projects"})
+            
+        try:
+            typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
+            today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
+        except:
+            cherrypy.response.status = 403
+            return json.dumps({"status":"Error with parsing inputted hours"})
 
 
         projects, missing_deadlines, missing_durations = parse_tree(projects)
