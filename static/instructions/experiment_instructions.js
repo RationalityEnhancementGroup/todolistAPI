@@ -12,6 +12,19 @@ function saveData() {
   xhr.send(jsPsych.data.get().json());
 }
 
+var check_consent = function(elem) {
+  all_checked = (document.thirdConsent.thirdConsentRadios.value==="yes")&&(document.secondConsent.secondConsentRadios.value==="yes")&&(document.firstConsent.firstConsentRadios.value==="yes");
+  if (all_checked) {
+    return true;
+  }
+  else {
+    alert("If you wish to participate, you must agree with and check the checkboxes above.");
+    return false;
+  }
+  return false;
+};
+
+
 
 overview = ["Welcome! In this experiment you will test a to-do list app and engage in goal and task setting.",
      "Please keep this window open while working through the HIT, as it will guide you through the process and give you your final completion code. (It is okay to minimize the window when necessary.)",
@@ -55,6 +68,7 @@ completion_code = ["Your completion code is: " + user_id,
 var instructions_timeline = [{
   type:'external-html',
   url: consent_form_url,
+  check_fn: check_consent,
   cont_btn:'consent-to-do-submit-button'
 },{
     type: 'instructions',
