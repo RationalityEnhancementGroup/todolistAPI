@@ -43,7 +43,7 @@ def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
     projects = real_goals + misc_goals
     
     # Convert real goals from JSON to Goal class objects
-    real_goals = tree_to_old_structure(real_goals, day_duration=day_duration)
+    real_goals = tree_to_old_structure(real_goals)
 
     # Assign deadlines to the misc goals
     misc_goals = misc_tasks_to_goals(real_goals, misc_goals)
@@ -51,18 +51,15 @@ def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
     # Convert misc goals from JSON to Goal class objects
     # Note: The day duration for the misc tasks are implicitly while making
     #       their transformation to goals in the misc_tasks_to_goals function!
-    misc_goals = tree_to_old_structure(misc_goals, day_duration=1)
+    misc_goals = tree_to_old_structure(misc_goals)
     
     # Add them together into a single list
     # old_structure = tree_to_old_structure(projects, day_duration)
     to_do_list = ToDoList(real_goals + misc_goals, start_time=0)
     ordered_tasks = \
-        solver_fn(to_do_list, mixing_parameter=params['mixing_parameter'],
-                  verbose=True)
+        solver_fn(to_do_list, mixing_parameter=params["mixing_parameter"],
+                  verbose=params["verbose"])
 
-    for task in ordered_tasks:
-        print(task)
-        
     task_dict = task_dict_from_projects(projects)
     
     # Schedule tasks marked for today
@@ -107,7 +104,7 @@ def assign_old_api_points(projects, solver_fn, duration=8*60, **params):
     **params:
         - mixing_parameter [0, 1): Probability of delaying a task in scheduling
     """
-    old_structure = tree_to_old_structure(projects, duration)
+    old_structure = tree_to_old_structure(projects)
     to_do_list = ToDoList(old_structure, start_time=0)
     mdp = solver_fn(to_do_list)
     mdp.scale_rewards()
