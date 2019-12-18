@@ -11,37 +11,38 @@ from copy import deepcopy
 
 
 class RESTResource(object):
-   """
-   Base class for providing a RESTful interface to a resource.
-   From https://stackoverflow.com/a/2831479
+    """
+    Base class for providing a RESTful interface to a resource.
+    From https://stackoverflow.com/a/2831479
+    
+    To use this class, simply derive a class from it and implement the methods
+    you want to support.  The list of possible methods are:
+    handle_GET
+    handle_PUT
+    handle_POST
+    handle_DELETE
+    """
+    
+    @cherrypy.expose
+    @cherrypy.tools.accept(media='application/json')
+    def default(self, *vpath, **params):
+        method = getattr(self, "handle_" + cherrypy.request.method, None)
+        if not method:
+            methods = [x.replace("handle_", "") for x in dir(self)
+                       if x.startswith("handle_")]
+            cherrypy.response.headers["Allow"] = ",".join(methods)
+            cherrypy.response.status = 405
+            return json.dumps({"status":"Method not implemented."})
+    
+        # Can we load the request body (json)
+        try:
+            rawData = cherrypy.request.body.read()
+            jsonData = json.loads(rawData)
+        except:
+            cherrypy.response.status = 403
+            return json.dumps({"status":"No request body"})
+        return method(jsonData, *vpath, **params)
 
-   To use this class, simply derive a class from it and implement the methods
-   you want to support.  The list of possible methods are:
-   handle_GET
-   handle_PUT
-   handle_POST
-   handle_DELETE
-   """
-  
-   @cherrypy.expose
-   @cherrypy.tools.accept(media='application/json')
-   def default(self, *vpath, **params):
-    method = getattr(self, "handle_" + cherrypy.request.method, None)
-    if not method:
-        methods = [x.replace("handle_", "") for x in dir(self)
-                   if x.startswith("handle_")]
-        cherrypy.response.headers["Allow"] = ",".join(methods)
-        cherrypy.response.status = 405
-        return json.dumps({"status":"Method not implemented."})
-
-    #can we load the request body (json)
-    try:
-        rawData = cherrypy.request.body.read()
-        jsonData = json.loads(rawData)
-    except:
-        cherrypy.response.status = 403
-        return json.dumps({"status":"No request body"})
-    return method(jsonData, *vpath, **params);
 
 class PostResource(RESTResource):
     
@@ -60,9 +61,10 @@ class PostResource(RESTResource):
             current_id = jsonData["userkey"]
         except:
             cherrypy.response.status = 403
-            return json.dumps({"status":"Problem with user key"})
-        # if current_id != user_key:
-        #     raise cherrypy.HTTPError(403, "Problem with user key")
+            return json.dumps({"status": "Problem with user key"})
+        if current_id != user_key:
+            cherrypy.response.status = 403
+            return json.dumps({"status": "Problem with user key"})
         
         if db.trees.find({'user_id': str(current_id)}) \
                    .sort('timestamp', DESCENDING).count() == 0:
@@ -72,54 +74,55 @@ class PostResource(RESTResource):
             db.trees.find({'user_id': str(current_id)}) \
                     .sort('timestamp', DESCENDING)[0]
         
-        # check for changes if an existing user
+        # Check for changes if an existing user (..?)
         if previous_result != 0:
             if jsonData["updated"] <=  previous_result["lm"]:
                 cherrypy.response.status = 403
                 return json.dumps({"status":"No update needed"})
         
+        try:
+            typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
+            today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
+        except:
+            cherrypy.response.status = 403
+            return json.dumps({"status": "Error with parsing inputted hours"})
+
+        # TODO: URL input
+        mixing_parameter = jsonData["mixing_parameter"]
+        allowed_task_time = jsonData["allowed_task_time"]
+
+        if not (0 < typical_hours <= 24):
+            cherrypy.response.status = 403
+            return json.dumps({"status": "The typical amount not in the interval (0, 24]!"})
+    
+        # 0 is an allowed value in case users want to skip a day
+        if not (0 <= today_hours <= 24):
+            cherrypy.response.status = 403
+            return json.dumps({"status": "The today hours value not in the interval (0, 24]!"})
+
+        # TODO: Edit after making it URL input
+        # Defined by the experimenter
+        if not (0 <= mixing_parameter < 1):
+            cherrypy.response.status = 403
+            return json.dumps({"status": "The mixing-parameter value not in the interval [0, 1)"})
+        
+        # TODO: Check URL allowed_task_time parameter value
+
         # New calculation
         # Save updated, user id, and skeleton
         try:
             projects = flatten_intentions(jsonData["projects"])
         except:
             cherrypy.response.status = 403
-            return json.dumps({"status":"Error with parsing inputted projects"})
-            
+            return json.dumps({"status":
+                                   "Error with parsing inputted projects"})
+
         try:
-            typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
-            today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
-        except:
+            real_goals, misc_goals = parse_tree(projects, allowed_task_time,
+                                                typical_hours)
+        except Exception as error:  # TODO: Write specific exceptions
             cherrypy.response.status = 403
-            return json.dumps({"status":"Error with parsing inputted hours"})
-
-        # TODO: URL input
-        mixing_parameter = jsonData["mixing_parameter"]
-        allowed_task_time = jsonData["allowed_task_time"]
-
-        # TODO: Convert to JSON errors
-        if not (0 < typical_hours <= 24):
-            raise cherrypy.HTTPError(403,
-                        "The typical amount not in the interval (0, 24]!")
-    
-        # 0 is an allowed value in case users want to skip a day
-        if not (0 <= today_hours <= 24):
-            raise cherrypy.HTTPError(403,
-                        "The today hours value not in the interval (0, 24]!")
-
-        # TODO: Edit after making it URL input
-        # Defined by the experimenter
-        if not (0 <= mixing_parameter < 1):
-            raise cherrypy.HTTPError(403,
-                    "The mixing-parameter value not in the interval [0, 1)")
-        
-        # TODO: Check URL allowed_task_time parameter value
-
-        # TODO: Convert to JSON error
-        try:
-            real_goals, misc_goals = parse_tree(projects, allowed_task_time)
-        except cherrypy.HTTPError as error:
-            raise cherrypy.HTTPError(403, error)
+            return json.dumps({"status": str(error)})
         
         projects = real_goals + misc_goals
 
@@ -139,21 +142,30 @@ class PostResource(RESTResource):
                 projects = assign_hierarchical_points(projects)
             elif method == "length":
                 projects = assign_length_points(projects)
+                
+            # DP method
             elif method == "dp":
-                final_tasks = \
-                    assign_dynamic_programming_points(
-                        real_goals, misc_goals, simple_goal_scheduler,
-                        day_duration=today_hours * 60,
-                        mixing_parameter=mixing_parameter)
+                try:
+                    final_tasks = \
+                        assign_dynamic_programming_points(
+                            real_goals, misc_goals, simple_goal_scheduler,
+                            day_duration=today_hours * 60,
+                            mixing_parameter=mixing_parameter,
+                            verbose=False
+                        )
+                except Exception as error:
+                    cherrypy.response.status = 403
+                    return json.dumps({"status": str(error)})
+                
             elif method == "old-report":
                 final_tasks = \
                     assign_old_api_points(projects, backward_induction,
                                           duration=today_hours * 60)
             else:
                 cherrypy.response.status = 403
-                return json.dumps({"status":"API method does not exist"})
+                return json.dumps({"status": "API method does not exist"})
         else:
-            # Join old vals to projects
+            # Join old values to projects
             for project in projects:
                 corresponding_goal = (next(
                     item for item in previous_result["tree"] if
@@ -174,10 +186,10 @@ class PostResource(RESTResource):
             pass
         else:
             cherrypy.response.status = 403
-            return json.dumps({"status":"Scheduling method does not exist"})
+            return json.dumps({"status": "Scheduling method does not exist"})
 
         # TODO: Make this function @ utils.py
-        # save the data if there was a change, removing nm fields so that we
+        # Save the data if there was a change, removing nm fields so that we
         # keep participant data anonymous
         if run_point_method:
             save_projects = deepcopy(projects)
@@ -200,15 +212,15 @@ class PostResource(RESTResource):
             return json.dumps(final_tasks)
         else:
             cherrypy.response.status = 405
-            return json.dumps({"status":"Method not implemented."})
+            return json.dumps({"status": "Method not implemented."})
 
 
 class ExperimentPostResource(RESTResource):
 
-
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
-        db.tiny_experiment.insert_one({"data": jsonData, "timestamp":  datetime.now()})
+        db.tiny_experiment.insert_one({"data": jsonData,
+                                       "timestamp":  datetime.now()})
         cherrypy.response.status = 204
         return None
 
@@ -224,9 +236,8 @@ class Root(object):
 
 
 if __name__ == '__main__':
-    # TODO: Maybe remove this?
-    # os.environ[
-    #     'MONGODB_URI'] = "mongodb://heroku_g6l4lr9d:g9q8u1oon9naso4ncfcokgtlkm@ds341557.mlab.com:41557/heroku_g6l4lr9d"
+    os.environ['MONGODB_URI'] = \
+        "mongodb://heroku_g6l4lr9d:g9q8u1oon9naso4ncfcokgtlkm@ds341557.mlab.com:41557/heroku_g6l4lr9d"
     
     conn = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
     db = conn.heroku_g6l4lr9d
@@ -238,7 +249,8 @@ if __name__ == '__main__':
             'tools.response_headers.headers': [('Content-Type', 'text/plain')]},
         '/static':{
             'tools.staticdir.on': True,
-            'tools.staticdir.dir': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static'),
+            'tools.staticdir.dir': os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), 'static'),
             'tools.staticdir.index': 'instructions/experiment_instructions.html'
             }
         }

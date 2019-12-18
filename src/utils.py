@@ -1,5 +1,5 @@
-import re
 import cherrypy
+import re
 
 from copy import deepcopy
 from datetime import datetime
@@ -8,7 +8,7 @@ from todolistMDP.to_do_list import Goal, Task
 goalCodeRegex = r"#CG(\d+|&|_)"
 totalValueRegex = r"(?:^| |>)\(?==(\d+)\)?(?:\b|$)"
 timeEstimateRegex = r"(?:^| |>)\(?~~(\d+|\.\d+|\d+.\d+)(?:(h(?:ou)?(?:r)?)?(m(?:in)?)?)?s?\)?([^\da-z.]|$)"
-deadlineRegex = r"DUE:(\d\d\d\d-\d+-\d+)(?:\b|$)"
+deadlineRegex = r"DUE:(\d\d\d\d-\d+-\d+)(\s+\d\:\d\d|\s+\d\d\:\d\d|\s*$)"
 todayRegex = r"#today(?:\b|$)"
 
 
@@ -116,23 +116,20 @@ def parse_hours(time_string, default_hours=8):
         return default_hours
     
     
-def parse_tree(projects, allowed_task_time):
+def parse_tree(projects, allowed_task_time, typical_hours):
     """
     This function reads in a flattened project tree and parses fields like goal
     code, total value, duration and deadline
     """
-    # missing_deadlines = 0
-    # missing_durations = 0  # TODO: This is not used at all...
-    
     real_goals = []
     misc_goals = []
     
     for goal in projects:
-        # extract goal information
+        # Extract goal information
         goal["code"] = re.search(goalCodeRegex, goal["nm"], re.IGNORECASE)[1]
         goal_value = re.search(totalValueRegex, goal["nm"], re.IGNORECASE)
         goal_deadline = re.search(deadlineRegex, goal["nm"], re.IGNORECASE)
-
+        
         goal["est"] = 0
         for task in goal["ch"]:
             task["est"] = process_time_est(task, allowed_task_time)
@@ -146,68 +143,79 @@ def parse_tree(projects, allowed_task_time):
             goal["deadline"] = None
             goal["est"] += task["est"]
             goal["value"] = None
-        
+            
         # If no value and deadline has been provided --> Misc goal
         if goal_value is None and goal_deadline is None:
             misc_goals += [goal]
         else:
-            # Process goal value
+            # Process goal value and check whether the value is valid
             try:
                 goal["value"] = process_goal_value(goal_value)
             except:
-                goal["value"] = None  # TODO: Fix this...
-                cherrypy.HTTPError(403, "Invalid goal value!")
+                raise Exception(f"Goal \"{goal['nm']}\" has "
+                                f"invalid goal value!")
                 
-            # Process goal deadline
+            # Process goal deadline and check whether the value is valid
             try:
-                goal["deadline"] = process_goal_deadline(goal_deadline)
-            except:
-                goal["deadline"] = None  # TODO: Fix this...
-                # missing_deadlines += 1
-                cherrypy.HTTPError(403, "Missing goal deadline!")
-            
-                # task["goal-deadline"] = goal["deadline"]
-                # task["goal-value"] = goal["value"]
-                
+                goal["deadline"] = process_goal_deadline(goal_deadline, typical_hours)
+            except Exception:
+                raise Exception(f"Goal \"{goal['nm']}\" has "
+                                f"invalid goal deadline!")
+
             real_goals += [goal]
     
     return real_goals, misc_goals
-    # return projects, missing_deadlines, missing_durations
 
 
-def process_goal_deadline(goal_deadline):
-    current_date = datetime.now().date()
+def process_goal_deadline(goal_deadline, typical_hours):
+    current_date = datetime.now()  # .date()
     goal_deadline = goal_deadline[1].strip()
     
     # If no time is included
-    # TODO: Make this a regex!
     if not (' ' in goal_deadline and ':' in goal_deadline):
         goal_deadline += ' 23:59'  # End of the day
     
-    # TODO: Convert this into number of minutes
-    goal_deadline = int((datetime.strptime(
-        goal_deadline, "%Y-%m-%d %H:%M").date() - current_date).days)
+    goal_deadline = datetime.strptime(goal_deadline, "%Y-%m-%d %H:%M")
+    td = goal_deadline - current_date
     
+    # Convert difference between deadlines into minutes
+    # (ignoring remaining seconds)
+    goal_deadline = (td.days * typical_hours * 60) + (td.seconds // 60)
+
+    try:
+        goal_deadline = int(goal_deadline)
+    except:
+        raise Exception("Invalid goal deadline!")
+    
+    # Check whether it is in the future
+    if goal_deadline <= 0:
+        raise Exception("Goal deadline not in the future!")
+
     return goal_deadline
 
 
 def process_goal_value(goal_value):
-    return int(goal_value[1])
+    goal_value = int(goal_value[1])
+
+    if goal_value <= 0:
+        raise Exception("Goal value not a positive number!")
+
+    return goal_value
 
 
 def process_time_est(task, allowed_task_time):
     time_est = re.search(timeEstimateRegex, task["nm"], re.IGNORECASE)
     
     if time_est is None:
-        cherrypy.HTTPError(403, "Missing task time estimation!")
+        raise Exception("Missing task time estimation!")
     
     duration = int(time_est[1])
     if time_est[2] is not None:  # Hours --> Convert to minutes
         duration *= 60
     
     if duration > allowed_task_time:
-        raise cherrypy.HTTPError(403,
-                                 f"Task \"{task['nm']}\" has duration more than the allowed time duration!")
+        raise Exception(f"Task \"{task['nm']}\" has duration more than the "
+                        f"allowed time duration!")
     
     return duration
 
@@ -235,7 +243,7 @@ def task_list_from_projects(projects):
     return task_list
 
 
-def tree_to_old_structure(projects, day_duration):
+def tree_to_old_structure(projects):
     """
     input: parsed tree
     output: structure that can be inputted to old project code
@@ -250,8 +258,7 @@ def tree_to_old_structure(projects, day_duration):
             # Get time estimation and check whether the value is valid
             # --> Upper limit done in the parse_tree function
             if task['est'] <= 0:
-                raise cherrypy.HTTPError(403,
-                    "Time estimation not a positive number!")
+                raise Exception("Time estimation not a positive number!")
 
             # TODO: Probability of success
 
@@ -260,22 +267,6 @@ def tree_to_old_structure(projects, day_duration):
                               time_est=task['est'],
                               prob=1))
 
-        # Get goal deadline and check whether it is in the future
-        try:
-            goal_deadline = int(goal['deadline'])
-        except:
-            raise cherrypy.HTTPError(403,
-                                     'Invalid goal deadline!')
-        if goal_deadline <= 0:
-            raise cherrypy.HTTPError(403,
-                                     'Goal deadline not in the future!')
-        
-        # Get goal value/reward and check whether it is valid
-        goal_value = goal["value"]
-        if goal_value < 0:
-            raise cherrypy.HTTPError(403,
-                                     'Goal value not a non-negative number!')
-        
         # TODO: Penalties
         
         # Create new goal and add it to the goal list
@@ -283,7 +274,7 @@ def tree_to_old_structure(projects, day_duration):
             Goal(description=goal["nm"],
                  goal_id=goal["id"],
                  tasks=tasks,
-                 reward={(goal_deadline * day_duration): goal_value},
+                 reward={goal["deadline"]: goal["value"]},
                  penalty=0))
         
     return goals
