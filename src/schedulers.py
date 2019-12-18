@@ -1,11 +1,11 @@
-def basic_scheduler(task_list, today_duration=8*60, with_today = True):
+def basic_scheduler(task_list, today_duration=8*60, with_today=True):
 	'''
 	Takes in flattened project tree with "reward" from some API
 	Outputs list of tasks for today
 	'''
 	duration_remaining = today_duration
 
-	if with_today == False:
+	if not with_today:
 		final_tasks = []
 	else:
 		final_tasks = [task for task in task_list if task["today"] == 1]
@@ -19,11 +19,13 @@ def basic_scheduler(task_list, today_duration=8*60, with_today = True):
 
 	return final_tasks
 
-def deadline_scheduler(projects, deadline_window=1, today_duration=8*60, with_today = True):
-	#tasks within deadline window are tagged with today
+
+def deadline_scheduler(task_list, deadline_window=1, today_duration=8*60, with_today=True):
+	# Tasks within deadline window are tagged with today
 	for task in task_list:
-		if task["deadline"]<=deadline_window:
+		if task["deadline"] <= deadline_window:
 			task["today"] = 1
 
-	final_tasks = basic_scheduler(task_list, today_duration=today_duration, with_today=with_today)
+	final_tasks = basic_scheduler(task_list, today_duration=today_duration,
+								  with_today=with_today)
 	return final_tasks

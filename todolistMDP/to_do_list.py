@@ -7,9 +7,13 @@ from todolistMDP import mdp
 
 
 class Goal:
-    def __init__(self, description, tasks, reward,
-                 completed=False, deadline=None, non_goal=False, penalty=0):
+    def __init__(self, description, goal_id, reward, tasks,
+                 completed=False, deadline=None, penalty=0):
         """
+        # TODO: Complete this...
+        
+        Non-goal tasks are related to a Goal object with no deadline
+        (deadline = infinity) and reward 0.
         
         Args:
             description: String description of the goal
@@ -17,42 +21,47 @@ class Goal:
             tasks: [Task]
             
             completed: Whether it has been completed
-            deadline: Latest deadline time
-            non_goal: Whether it is a non-goal
+            deadline: Latest deadline time  # TODO: Maybe a datetime object?!
             penalty: Penalty points for failing to meet the deadline
         """
         # Parameters
         self.description = description
-        self.reward = reward
-        self.tasks = tasks
-        for task in self.tasks:
-            task.set_goal(self)  # Reference from the tasks to the goal
+        self.goal_id = goal_id
+        self.reward = reward  # TODO: Change the name of the parameter
+        
+        self.all_tasks = tasks
+        self.completed_tasks = set()
+        self.uncompleted_tasks = set()
+        
+        self.earliest_start_time = None
 
         # Set up a deadline
-        self.deadline = deadline
+        self.deadline = deadline  # TODO: Change to latest_deadline or remove?
         if self.deadline is None:
             self.deadline = max(reward.keys())
 
         self.completed = completed
-        self.non_goal = non_goal
         self.penalty = penalty
         
-        # Calculate time estimation
+        # Calculate time and value estimation
         self.completed_time_est = 0  # Time estimation of completed tasks
         self.uncompleted_time_est = 0  # Time estimation of uncompleted tasks
         self.total_time_est = 0  # Time estimation of all tasks
+        self.value_est = 0  # Value estimation
         
-        for task in self.tasks:
+        for task in self.all_tasks:
+            task.set_goal(self)  # Set a reference from the tasks to the goal
+
             if task.completed:
+                self.completed_tasks.add(task)
                 self.completed_time_est += task.get_time_est()
             else:
+                self.uncompleted_tasks.add(task)
                 self.uncompleted_time_est += task.get_time_est()
-        self.update_total_time_est()
-
-        # Calculate value_estimation
-        self.value_est = 0
-        for task in self.tasks:
+                
             self.value_est += task.get_prob() * task.get_reward()
+            
+        self.update_total_time_est()
 
     def __hash__(self):
         return id(self)
@@ -79,9 +88,14 @@ class Goal:
         return f'Description: {self.description}\n' \
                f'Reward: {self.reward}\n' \
                f'Completed: {self.completed}\n' \
+               f'Earliest start: {self.earliest_start_time}\n' \
+               f'ID: {self.goal_id}\n' \
                f'Latest deadline: {self.deadline}\n' \
                f'Total time est.: {self.total_time_est}\n'
 
+    def get_completed_tasks(self):
+        return self.completed_tasks
+    
     def get_completed_time_est(self):
         return self.completed_time_est
 
@@ -94,11 +108,26 @@ class Goal:
     def get_description(self):
         return self.description
 
+    def get_earliest_start_time(self):
+        """
+    
+        Returns:
+            If attainable, integer value
+            Otherwise, None
+        """
+        return self.earliest_start_time
+
+    def get_goal_id(self):
+        return self.goal_id
+    
+    def get_tasks(self):
+        return self.all_tasks
+
     def get_total_time_est(self):
         return self.total_time_est
 
-    def get_tasks(self):
-        return self.tasks
+    def get_uncompleted_tasks(self):
+        return self.uncompleted_tasks
 
     def get_uncompleted_time_est(self):
         return self.uncompleted_time_est
@@ -112,10 +141,14 @@ class Goal:
         Returns:
             Return reward based on time
         """
+        # If the latest deadline has not been met, get no reward
         if time > self.get_deadline_time():
             return 0
+
+        # Otherwise, get the reward for the next deadline that has been met
         times = sorted(self.reward.keys())
         t = next(val for x, val in enumerate(times) if val >= time)
+        
         return self.reward[t]
 
     def get_reward_dict(self):
@@ -134,14 +167,11 @@ class Goal:
             Completion status
         """
         if check_tasks:
-            for task in self.tasks:
+            for task in self.all_tasks:
                 if not task.is_complete():
                     return False
             self.set_completed(True)
         return self.completed
-
-    def is_non_goal(self):
-        return self.non_goal
 
     def add_completed_time(self, time_est):
         self.completed_time_est += time_est
@@ -149,49 +179,86 @@ class Goal:
         self.update_total_time_est()
 
     def add_task(self, task):
-        self.tasks.append(task)
-        task.set_goal(self)
-        if not task.completed:
-            self.set_completed(False)
-            self.uncompleted_time_est += task.get_time_est()
-        else:
-            self.completed_time_est += task.get_time_est()
-        self.update_total_time_est()
-        self.value_est += task.get_prob() * task.get_reward()
+        if self.all_tasks is None:
+            self.all_tasks = []
         
-    def set_completed(self, completed):
-        self.completed = completed
-        if completed:
-            for task in self.tasks:
-                task.set_completed(completed)
-                
-            # Change time-estimation values
-            self.completed_time_est = self.total_time_est
-            self.uncompleted_time_est = 0
+        if task.get_goal() is not self:
+            self.all_tasks.append(task)
+            task.set_goal(self)
             
+            task_time_est = task.get_time_est()
+            
+            if not task.completed:
+                self.set_completed(False)
+                self.uncompleted_time_est += task_time_est
+            else:
+                self.completed_time_est += task_time_est
+            
+            self.total_time_est += task_time_est
+            self.value_est += task.get_prob() * task.get_reward()
+
+    def remove_task(self, task):
+        if task in self.all_tasks:
+            self.all_tasks.remove(task)
+            task_time_est = task.get_time_est()
+
+            # Subtract task time estimation
+            if task.is_complete():
+                self.completed_time_est -= task_time_est
+            else:
+                self.uncompleted_time_est -= task_time_est
+        
+            self.total_time_est -= task_time_est
+            
+            # Subtract task value
+            self.value_est -= task.get_prob() * task.get_reward()
+    
     def reset_completed(self):
         self.completed = False
         self.uncompleted_time_est = 0
         self.completed_time_est = 0
         
-        for task in self.tasks:
+        for task in self.all_tasks:
             task.set_completed(False)
             self.uncompleted_time_est += task.get_time_est()
             
         self.update_total_time_est()
+
+    def set_attainable(self, time):
+        # TODO: Is earliest start time a good reference?
+        self.earliest_start_time = time
+        
+    def set_completed(self, completed):
+        self.completed = completed
+        if completed:
+            for task in self.all_tasks:
+                task.set_completed(completed)
+        
+            # Change time-estimation values
+            self.completed_time_est = self.total_time_est
+            self.uncompleted_time_est = 0
+            self.update_total_time_est()
             
+    def set_not_attainable(self):
+        self.earliest_start_time = None
+
     def update_total_time_est(self):
         self.total_time_est = self.completed_time_est + \
                               self.uncompleted_time_est
 
 
 class Task:
-    def __init__(self, description, time_est=1,
-                 completed=False, goal=None, prob=1., reward=0):
+    def __init__(self, description, task_id, completed=False, goal=None,
+                 prob=1., reward=0, time_est=1):
         """
+        # TODO: Complete this...
+        
+        Non-goal tasks are related to a Goal object with no deadline
+        (deadline = infinity) and reward 0.
         
         Args:
             description: Description of the task
+            deadline: # TODO: Implement if necessary...
             time_est: Units of time required to perform a task
             
             completed: Whether the task has been completed
@@ -202,7 +269,8 @@ class Task:
         
         # Set parameters
         self.description = description
-        self.time_est = time_est  # units of time required to perform a task
+        self.task_id = task_id
+        self.time_est = time_est  # Amount of time required to perform a task
         
         self.completed = completed
         self.goal = goal
@@ -213,6 +281,7 @@ class Task:
         return f'Description: {self.description}\n' \
                f'Time est.: {self.time_est}\n' \
                f'Completed: {self.completed}\n' \
+               f'ID: {self.task_id}\n' \
                f'Goal: {self.goal.get_description()}\n' \
                f'Probability: {self.prob}\n' \
                f'Reward: {self.reward}\n'
@@ -227,80 +296,111 @@ class Task:
 
     def get_goal(self):
         return self.goal
-
+    
     def get_prob(self):
         return self.prob
 
     def get_reward(self):
         return self.reward
     
+    def get_task_id(self):
+        return self.task_id
+
     def get_time_est(self):
         return self.time_est
 
     def is_complete(self):
         return self.completed
 
-    def is_non_goal(self):
-        return self.get_goal().is_non_goal()
-
-    def set_goal(self, goal):
-        self.goal = goal
-
     def set_completed(self, completed):
         if self.completed != completed:
             self.completed = completed
             if completed:
                 self.goal.add_completed_time(self.time_est)
+                # TODO: Check whether this is the last completed task
             else:
                 self.goal.add_completed_time(-self.time_est)
+                # TODO: Check whether this makes a completed goal active again
+
+    def set_goal(self, goal):
+        if self.goal is not goal:
+        
+            # Remove task from the old goal
+            if self.goal is not None:
+                self.goal.remove_task(self)
+        
+            # Set new goal
+            self.goal = goal
+        
+            # Add task to the new goal
+            self.goal.add_task(self)
+
+    def set_reward(self, value):
+        self.reward = value
 
 
 class ToDoList:
-    def __init__(self, goals, start_time=0, end_time=None, non_goal_tasks=None):
+    def __init__(self, goals, start_time=0, end_time=None):
         """
         
         Args:
             goals: List of all goals
-            start_time:
-            end_time:
-            non_goal_tasks: List of non-goal tasks
+            start_time:  # TODO: Remove this?!
+            end_time:  # TODO: Remove this?!
         """
         # Goals
-        self.goals = goals
-        self.completed_goals = set([goal for goal in self.goals
-                                    if goal.is_complete()])
-        self.incomplete_goals = set([goal for goal in self.goals
-                                     if not goal.is_complete()])
+        self.goals = goals  # TODO: Change list to dictionary
+        self.completed_goals = set()
+        self.uncompleted_goals = set()
         
-        # Tasks
-        self.tasks = []
-        for goal in self.goals:
-            self.tasks.extend(goal.get_tasks())
-        self.completed_tasks = set([task for task in self.tasks
-                                    if task.is_complete()])
-        self.incomplete_tasks = set([task for task in self.tasks
-                                     if not task.is_complete()])
+        self.tasks = set()  # TODO: Change list to dictionary
+        self.completed_tasks = set()
+        self.uncompleted_tasks = set()
         
-        # Time
-        self.time = start_time  # Current time
-        self.start_time = start_time
-        if end_time is None:
-            max_deadline = float('-inf')
-            for goal in self.goals:
-                max_deadline = max(max_deadline, goal.get_deadline_time())
-            end_time = max_deadline + 1
-        self.end_time = end_time
+        self.time = start_time  # Current time  | TODO: Do we need this?
+        self.start_time = start_time  # TODO: Do we need this?
+        self.end_time = end_time  # TODO: Do we need this?
+        
+        self.max_deadline = float('-inf')
 
-        # Add non-goal tasks
-        # self.non_goal_tasks = non_goal_tasks
-        # if self.non_goal_tasks is None:
-        #     self.non_goal_tasks = [
-        #         Task("Non-goal Task", time_est=1, prob=1.0, reward=0)
-        #     ]
-        # self.non_goal = Goal(description="Non-goal", tasks=self.non_goal_tasks,
-        #                      reward={float('inf'): 0}, non_goal=True)
-        # self.goals += [self.non_goal]
+        # Add goals and tasks to the to-do list
+        for goal in self.goals:
+            if goal.is_complete():
+                self.completed_goals.add(goal)
+            else:
+                self.uncompleted_goals.add(goal)
+
+            # Split tasks into completed and uncompleted
+            for task in goal.get_tasks():
+                self.tasks.add(task)  # TODO: goal.get_tasks
+    
+                if task.is_complete():
+                    # TODO: goal.get_completed_tasks
+                    self.completed_tasks.add(task)
+                else:
+                    # TODO: goal.get_uncompleted_tasks
+                    self.uncompleted_tasks.add(task)
+                    
+            self.max_deadline = max(self.max_deadline, goal.get_deadline_time())
+            
+        if self.end_time is None:
+            self.end_time = self.max_deadline + 1  # TODO: Why + 1?
+            
+        # Tasks | # TODO: Move this to the Goal class
+        # for goal in self.goals:
+        #     self.tasks.extend(goal.get_tasks())
+        # self.completed_tasks = set([task for task in self.tasks
+        #                             if task.is_complete()])
+        # self.uncompleted_tasks = set([task for task in self.tasks
+        #                               if not task.is_complete()])
         
+    def __str__(self):
+        return f'Current Time: {str(self.time)}\n' \
+               f'Goals: {str(self.goals)}\n' \
+               f'Completed Goals: {str(self.completed_goals)}\n' \
+               f'"Tasks: {str(self.tasks)}\n' \
+               f'Completed Tasks: + {str(self.completed_tasks)}\n'
+
     def action(self, task=None):
         """
         Do a specified action
@@ -311,8 +411,9 @@ class ToDoList:
         Returns:
 
         """
+        # TODO: Randomly get an uncompleted task from an uncompleted goal
         if task is None:
-            task = random.choice(self.tasks)
+            task = random.sample(self.uncompleted_tasks, 1)[0]
         
         reward = 0
         prev_time = self.time
@@ -331,11 +432,12 @@ class ToDoList:
         """
         penalty = 0
 
-        for goal in self.incomplete_goals:
+        for goal in self.uncompleted_goals:
             # Check:
             # 1) goal is now passed deadline at curr_time
             # 2) goal was not passed deadline at prev_time
-            
+
+            # TODO: Shouldn't we have an inequality in one of the tests?!
             if curr_time > goal.get_deadline_time() and \
                     not prev_time > goal.get_deadline_time():
                 penalty += goal.get_deadline_penalty()
@@ -343,44 +445,34 @@ class ToDoList:
         return penalty
     
     def do_task(self, task):
+        # TODO: Change this so that it is on a Goal level (!)
         goal = task.get_goal()
         threshold = task.get_prob()
         
         reward = task.get_reward()
         p = random.random()
         
-        # check that task is completed on time
-        # and NOT a non-goal and goal was not already complete before task
-        if p < threshold and self.time <= goal.get_deadline_time() and \
-                not task.is_non_goal() and not goal.is_complete():
+        # Check whether the task is completed on time
+        # TODO: self.time + task.get_time_cost() (!?)
+        if p < threshold and self.time <= goal.get_deadline_time() \
+                and not goal.is_complete():
                 
             task.set_completed(True)
-            self.incomplete_tasks.discard(task)
+            self.uncompleted_tasks.discard(task)
             self.completed_tasks.add(task)
             
             # If completion of the task completes the goal
             if goal.is_complete():
                 reward += goal.get_reward(self.time)  # Goal completion reward
-                self.incomplete_goals.discard(goal)
+                self.uncompleted_goals.discard(goal)
                 self.completed_goals.add(goal)
                 
         return reward
 
-    def print_debug(self):
-        """
-        print ToDoList object
-
-        Returns:
-
-        """
-        print("Current Time: " + str(self.time))
-        print("Goals: " + str(self.goals))
-        print("Completed Goals: " + str(self.completed_goals))
-        print("Tasks: " + str(self.tasks))
-        print("Completed Tasks: " + str(self.completed_tasks))
-
     # ===== Getters =====
+    
     # @staticmethod
+    # TODO: Implemented on a level of a Goal?!
     # def is_goal_complete(goal):
     #     """
     #     Method for checking whether a goal is complete by checking
@@ -397,22 +489,10 @@ class ToDoList:
     def get_end_time(self):
         return self.end_time
 
-    def get_non_goal_val(self):
-        return self.get_non_goal_task().get_reward()
-
-    # def get_non_goal_task(self):
-    #     """
-    #     TODO: better way to do this would combine a list of tasks into one
-    #           instead of hard coding first task
-    #     """
-    #     if len(self.non_goal_tasks) > 1:
-    #         return self.non_goal_tasks[0]
-    #     else:
-    #         return self.non_goal_tasks
-
     def get_goals(self):
         return self.goals
 
+    # TODO: Remove this?!
     def get_tasks(self):
         return self.tasks
 
@@ -428,13 +508,14 @@ class ToDoList:
         Add an entire goal
         """
         self.goals.append(goal)
-        self.tasks.extend(goal.get_tasks())
+        self.tasks.extend(goal.get_tasks())  # TODO: Fix this...
         
         if goal.is_complete():
             self.completed_goals.add(goal)
         else:
-            self.incomplete_goals.add(goal)
+            self.uncompleted_goals.add(goal)
 
+    # TODO: Duplicated @ Goal task?!
     def add_task(self, goal, task):
         """
         Adds task to the specified goal
@@ -458,17 +539,8 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         self.to_do_list = to_do_list
         self.start_state = self.get_start_state()
 
-        # Non-goal
-        # self.non_goal_task = to_do_list.get_non_goal_task()
-        # if len(self.non_goal_task) > 0:
-        #     self.non_goal_val = self.non_goal_task.get_reward()
-        # else:
-        #     self.non_goal_val = None
-
         # Create mapping of indices to tasks represented as list
-        self.index_to_task = to_do_list.get_tasks()
-        # if len(self.non_goal_task) > 0:
-        #     self.index_to_task.append(self.non_goal_task)  # Add non-goal task
+        self.index_to_task = list(to_do_list.get_tasks())  # TODO: Fix this
         
         # Create mapping of tasks to indices represented as dict
         self.task_to_index = {}
@@ -485,30 +557,44 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         # Generate state space
         self.states = []
         num_tasks = len(to_do_list.get_tasks())
-        for t in range(self.to_do_list.get_end_time() + 2):
+        for t in range(self.to_do_list.get_end_time() + 2):  # TODO: Why +2?!
             for bit_vector in itertools.product([0, 1], repeat=num_tasks):
                 state = (bit_vector, t)
                 self.states.append(state)
 
         # Mapping from (binary vector x time) to integer (?!)
-        self.state_to_index = {self.states[i]: i
-                               for i in range(len(self.states))}
+        # TODO: Potentially unnecessary...
+        # self.state_to_index = {self.states[i]: i
+        #                        for i in range(len(self.states))}
 
         self.reverse_DAG = MDPGraph(self)
         self.linearized_states = self.reverse_DAG.linearize()
 
-        self.V_states = {}
+        self.v_states = {}
         self.optimal_policy = {}
         
-        # Perform backward induction
-        # self.V_states, self.optimal_policy = \
-        #     self.get_optimal_values_and_policy()
-
         # Pseudo-rewards
         self.pseudo_rewards = {}  # {(s, a, s') --> PR(s, a, s')}
         self.transformed_pseudo_rewards = {}  # {(s, a, s') --> PR'(s, a, s')}
         # self.calculate_pseudo_rewards()  # Calculate PRs for each state
         # self.transform_pseudo_rewards()  # Apply linear transformation to PR'
+
+    def calculate_optimal_values_and_policy(self):
+        """
+        Given a ToDoListMDP, perform value iteration/backward induction to find
+        the optimal value function
+
+        Input: ToDoListMDP
+        Output: Dictionary of optimal value of each state
+        """
+    
+        self.optimal_policy = {}  # state --> action
+        self.v_states = {}  # state --> (value, action)
+    
+        # Perform Backward Iteration (Value Iteration 1 Time)
+        for state in self.linearized_states:
+            self.v_states[state], self.optimal_policy[state] = \
+                self.get_value_and_action(state)
 
     def calculate_pseudo_rewards(self):
         """
@@ -519,8 +605,8 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
                 for next_state, prob in \
                         self.get_trans_states_and_probs(state, action):
                     reward = self.get_reward(state, action, next_state)
-                    pr = self.V_states[next_state][0] - \
-                        self.V_states[state][0] + reward
+                    pr = self.v_states[next_state] - \
+                         self.v_states[state] + reward
                     self.pseudo_rewards[(state, action, next_state)] = pr
 
     @staticmethod
@@ -533,6 +619,8 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
 
     def transform_pseudo_rewards(self, print_values=False):
         """
+        TODO: Understand what the method REALLY does...
+        
         applies linear transformation to PRs to PR'
 
         linearly transforms PR to PR' such that:
@@ -551,11 +639,13 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
             elif sec_highest < pr < highest:
                 sec_highest = pr
 
+        # TODO: Understand this...
         alpha = (highest + sec_highest) / 2
         beta = 1
         if alpha <= 1.0:
             beta = 10
 
+        # TODO: Why (alpha + pr) * beta?! Shouldn't it be (alpha + pr * beta)!?
         for trans in self.pseudo_rewards:
             self.transformed_pseudo_rewards[trans] = \
                 (alpha + self.pseudo_rewards[trans]) * beta
@@ -619,25 +709,6 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
             return self.optimal_policy[state]
         return self.optimal_policy
 
-    def get_optimal_values_and_policy(self):
-        """
-        Given a ToDoListMDP, perform value iteration/backward induction to find
-        the optimal value function
-
-        Input: ToDoListMDP
-        Output: Dictionary of optimal value of each state
-        """
-        
-        optimal_policy = {}  # state --> action
-        v_states = {}  # state --> (value, action)
-
-        # Perform Backward Iteration (Value Iteration 1 Time)
-        for state in self.get_linearized_states():
-            v_states[state] = self.get_value_and_action(state, v_states)
-            optimal_policy[state] = v_states[state][1]
-    
-        return v_states, optimal_policy
-
     def get_pseudo_rewards(self, transformed=False):
         """ getter method for pseudo-rewards
         pseudo_rewards is stored as a dictionary,
@@ -652,24 +723,22 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         Return list of possible actions from 'state'.
         Returns a list of indices
         """
+        # TODO: Think of a better implementation that does not create a new
+        #        list on every call on this function.
         tasks = state[0]
         
         if not self.is_terminal(state):
             actions = [i for i, task in enumerate(tasks) if task == 0]
-            # if len(self.non_goal_task) > 0:
-            #     return actions + [-1]
-            # else:
             return actions
         
         return []  # Terminal state --> No actions
 
-    def get_q_value(self, state, action, v_states):
+    def get_q_value(self, state, action):
         """
 
         Args:
             state: current state (tasks, time)
             action: index of action in MDP's tasks
-            v_states: dictionary mapping states to current best (value, action)
 
         Returns:
             Q-value of state
@@ -677,18 +746,10 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         q_value = 0
 
         for next_state, prob in self.get_trans_states_and_probs(state, action):
-            # tasks, time = next_state
-
-            # IMPORTANT: Below varies on value iteration or policy iteration
-            v = v_states[next_state]
-
-            if isinstance(v, tuple):
-                next_state_value = v_states[next_state][0]
-            else:
-                next_state_value = v_states[next_state]
+            next_state_value = self.v_states[next_state]
 
             q_value += prob * (self.get_reward(state, action, next_state) +
-                               self.get_gamma() * next_state_value)
+                               self.gamma * next_state_value)
 
         return q_value
 
@@ -710,15 +771,16 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         # Get reward for doing a task
         reward += task.get_reward()
     
-        # Action is NOT a non-goal task
-        if action != -1:
-            # Reward for goal completion
-            if next_tasks[action] == 1:
-                if self.is_goal_completed(goal, next_state) and \
-                        self.is_goal_active(goal, next_time):
-                    reward += goal.get_reward(next_time)
+        # TODO: Simpler computation of rewards & penalties
+        # Reward for goal completion
+        if next_tasks[action] == 1:
+            if self.is_goal_completed(goal, next_state) and \
+                    self.is_goal_active(goal, next_time):
+                reward += goal.get_reward(next_time)
     
         # Penalty for missing a deadline
+        # TODO: You cannot implement "lazy check" because in that way you would
+        #        not know whether you have missed a deadline or not?!
         for goal in self.goals:
             if not self.is_goal_completed(goal, state) and \
                     self.is_goal_active(goal, prev_time) and not \
@@ -732,14 +794,17 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         """
         Return the start state of the MDP.
         """
+        # TODO: I don't think that this is the start state necessarily because
+        #        it returns the current state with time 0...
         start_state = self.tasks_to_binary(self.to_do_list.get_tasks())
-        return start_state, 0  # curr_state, self.get_time()
+        return start_state, 0  # TODO: Maybe curr_state, self.get_time()
 
-    def get_state_index(self, state):
-        return self.state_to_index[state]
+    # def get_state_index(self, state):
+        # TODO: Potentially unnecessary function...
+        # return self.state_to_index[state]
 
     def get_state_value(self, state):
-        return self.V_states[state][0]
+        return self.v_states[state][0]
     
     def get_states(self):
         """
@@ -751,7 +816,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
     def get_tasks_list(self):
         return self.index_to_task
 
-    def get_trans_states_and_probs(self, state, action):
+    def get_trans_states_and_probs(self, state, action=None):
         """
         Returns list of (next_state, prob) pairs
         representing the states reachable
@@ -764,31 +829,28 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         """
         next_states_probs = []
 
-        # Action is non-goal action
+        # If there is no available action
         if action is None:
             return next_states_probs  # Empty list / Terminal state
         
-        if action == -1:
-            binary_tasks, time = state
-            time += 1
-            next_states_probs.append(((tuple(binary_tasks), time), 1))
-            return next_states_probs
-
         # Action is the index that is passed in
         task = self.index_to_task[action]
         binary_tasks = list(state[0])[:]
         new_time = state[1] + task.get_time_est()
 
+        # Extend the end time of the to-do list (latest deadline time)
         if new_time > self.to_do_list.get_end_time():
             new_time = self.to_do_list.get_end_time() + 1
 
-        # State for not completing task
+        # Generate all future states if there is a probability that the action
+        # might not be completed successfully
         tasks_no_completion = binary_tasks[:]
         if 1 - task.get_prob() > 0:  # 1 - P(completion)
             next_states_probs.append(((tuple(tasks_no_completion), new_time),
                                       1 - task.get_prob()))
             
-        # State for completing task
+        # Generate all future states if there is no probability that the action
+        # might not be completed successfully
         tasks_completion = binary_tasks[:]
         tasks_completion[action] = 1
         if task.get_prob() > 0:
@@ -797,7 +859,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
 
         return next_states_probs
 
-    def get_value_and_action(self, state, v_states):
+    def get_value_and_action(self, state):
         """
         Input:
         mdp: ToDoList MDP
@@ -818,7 +880,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
             return best_value, best_action
 
         for action in possible_actions:
-            q_value = self.get_q_value(state, action, v_states)
+            q_value = self.get_q_value(state, action)
             if best_value < q_value:
                 best_value = q_value
                 best_action = action
@@ -832,7 +894,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         Returns:
 
         """
-        return self.V_states
+        return self.v_states
 
     def is_goal_active(self, goal, time):
         """
@@ -871,6 +933,8 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
                     self.is_goal_completed(goal, state):
                 return False
         
+        # TODO: Are there any other conditions to check whether a state is
+        #        terminal or not?
         return True
 
     # ===== Setters =====
@@ -903,7 +967,7 @@ class MDPGraph:
         self.mdp = mdp
         self.pre_order = {}
         self.post_order = {}
-        self.vertices = []
+        self.vertices = set()
 
         # Initialize variables
         self.counter = None
@@ -911,7 +975,7 @@ class MDPGraph:
         
         # Connecting the graph in reverse manner | next_state --> curr_state
         for state in mdp.get_states():
-            self.vertices.append(state)
+            self.vertices.add(state)
             self.edges.setdefault(state, set())
             
             for action in mdp.get_possible_actions(state):
