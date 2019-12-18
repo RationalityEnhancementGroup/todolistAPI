@@ -40,7 +40,7 @@ class RESTResource(object):
         except:
             raise cherrypy.HTTPError(403, "No request body")
         
-        return method(jsonData, *vpath, **params);
+        return method(jsonData, *vpath, **params)
 
 
 class PostResource(RESTResource):
@@ -74,6 +74,7 @@ class PostResource(RESTResource):
         # check for changes if an existing user
         if previous_result != 0:
             if jsonData["updated"] <= previous_result["lm"]:
+                print(jsonData['updated'], previous_result['lm'])
                 raise cherrypy.HTTPError(403, "No update needed")
         
         # New calculation
@@ -84,34 +85,35 @@ class PostResource(RESTResource):
         mixing_parameter = jsonData["mixing_parameter"]
         allowed_task_time = jsonData["allowed_task_time"]
 
-        # TODO: What is the maximum amount of hours per day to work?
         if not (0 < typical_hours <= 24):
             raise cherrypy.HTTPError(403,
-                        "The typical hours value has to be greater than 0!")
+                        "The typical amount not in the interval (0, 24]!")
     
-        # TODO: Maybe 0 <= today_hours (if users want to skip a day)?!
-        # TODO: What is the maximum amount of hours per day to work?
-        if not (0 < today_hours <= 24):
+        # 0 is an allowed value in case users want to skip a day
+        if not (0 <= today_hours <= 24):
             raise cherrypy.HTTPError(403,
-                        "The today hours value has to be greater than 0!")
-        
+                        "The today hours value not in the interval (0, 24]!")
+
+        # Defined by the experimenter
         if not (0 <= mixing_parameter < 1):
             raise cherrypy.HTTPError(403,
-                    "The mixing-parameter value has be in the interval [0, 1)")
-        
+                    "The mixing-parameter value not in the interval [0, 1)")
+
         try:
-            projects, missing_deadlines, missing_durations = \
-                parse_tree(projects, allowed_task_time)
+            real_goals, misc_goals = parse_tree(projects, allowed_task_time)
         except cherrypy.HTTPError as error:
             raise cherrypy.HTTPError(403, error)
         
+        projects = real_goals + misc_goals
+
         if previous_result == 0:
             run_point_method = True
         else:
             run_point_method = are_there_tree_differences(
                 previous_result["tree"], projects)
-        
-        if run_point_method or (scheduler == "mdp"):  # TODO if we can do scheduling with old MDP points, we should do that
+
+        # TODO if we can do scheduling with old MDP points, we should do that
+        if run_point_method or (scheduler == "mdp") or (scheduler == "dp"):
             if method == "constant":
                 projects = assign_constant_points(projects, *parameters)
             elif method == "random":
@@ -120,11 +122,16 @@ class PostResource(RESTResource):
                 projects = assign_hierarchical_points(projects)
             elif method == "length":
                 projects = assign_length_points(projects)
+            elif method == "dp":
+                final_tasks = \
+                    assign_dynamic_programming_points(
+                        real_goals, misc_goals, simple_goal_scheduler,
+                        day_duration=today_hours * 60,
+                        mixing_parameter=mixing_parameter)
             elif method == "old-report":
                 final_tasks = \
-                    assign_old_api_points(projects, simple_goal_scheduler,
-                                          duration=today_hours * 60,
-                                          mixing_parameter=mixing_parameter)
+                    assign_old_api_points(projects, backward_induction,
+                                          duration=today_hours * 60)
             else:
                 raise cherrypy.HTTPError(403, "API method does not exist")
         else:
@@ -150,6 +157,7 @@ class PostResource(RESTResource):
         else:
             raise cherrypy.HTTPError(403, "Scheduling method does not exist")
         
+        # TODO: Make this function @ utils.py
         # save the data if there was a change, removing nm fields so that we
         # keep participant data anonymous
         if run_point_method:

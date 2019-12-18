@@ -7,7 +7,7 @@ from todolistMDP import mdp
 
 
 class Goal:
-    def __init__(self, description, tasks, reward,
+    def __init__(self, description, goal_id, reward, tasks,
                  completed=False, deadline=None, penalty=0):
         """
         # TODO: Complete this...
@@ -26,6 +26,7 @@ class Goal:
         """
         # Parameters
         self.description = description
+        self.goal_id = goal_id
         self.reward = reward  # TODO: Change the name of the parameter
         
         self.all_tasks = tasks
@@ -88,6 +89,7 @@ class Goal:
                f'Reward: {self.reward}\n' \
                f'Completed: {self.completed}\n' \
                f'Earliest start: {self.earliest_start_time}\n' \
+               f'ID: {self.goal_id}\n' \
                f'Latest deadline: {self.deadline}\n' \
                f'Total time est.: {self.total_time_est}\n'
 
@@ -115,6 +117,9 @@ class Goal:
         """
         return self.earliest_start_time
 
+    def get_goal_id(self):
+        return self.goal_id
+    
     def get_tasks(self):
         return self.all_tasks
 
@@ -243,8 +248,8 @@ class Goal:
 
 
 class Task:
-    def __init__(self, description, time_est=1,
-                 completed=False, goal=None, prob=1., reward=0):
+    def __init__(self, description, task_id, completed=False, goal=None,
+                 prob=1., reward=0, time_est=1):
         """
         # TODO: Complete this...
         
@@ -264,6 +269,7 @@ class Task:
         
         # Set parameters
         self.description = description
+        self.task_id = task_id
         self.time_est = time_est  # Amount of time required to perform a task
         
         self.completed = completed
@@ -275,6 +281,7 @@ class Task:
         return f'Description: {self.description}\n' \
                f'Time est.: {self.time_est}\n' \
                f'Completed: {self.completed}\n' \
+               f'ID: {self.task_id}\n' \
                f'Goal: {self.goal.get_description()}\n' \
                f'Probability: {self.prob}\n' \
                f'Reward: {self.reward}\n'
@@ -289,13 +296,16 @@ class Task:
 
     def get_goal(self):
         return self.goal
-
+    
     def get_prob(self):
         return self.prob
 
     def get_reward(self):
         return self.reward
     
+    def get_task_id(self):
+        return self.task_id
+
     def get_time_est(self):
         return self.time_est
 
@@ -339,11 +349,11 @@ class ToDoList:
             end_time:  # TODO: Remove this?!
         """
         # Goals
-        self.goals = goals
+        self.goals = goals  # TODO: Change list to dictionary
         self.completed_goals = set()
         self.uncompleted_goals = set()
         
-        self.tasks = set()  # TODO: Change list to set
+        self.tasks = set()  # TODO: Change list to dictionary
         self.completed_tasks = set()
         self.uncompleted_tasks = set()
         
@@ -595,8 +605,8 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
                 for next_state, prob in \
                         self.get_trans_states_and_probs(state, action):
                     reward = self.get_reward(state, action, next_state)
-                    pr = self.v_states[next_state][0] - \
-                         self.v_states[state][0] + reward
+                    pr = self.v_states[next_state] - \
+                         self.v_states[state] + reward
                     self.pseudo_rewards[(state, action, next_state)] = pr
 
     @staticmethod

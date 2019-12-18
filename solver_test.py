@@ -95,7 +95,7 @@ def solve(to_do_list, solver, print_policy=False, print_pseudo_rewards=False,
 # goals = d_bm   # Deterministic case (6 goals x 2 tasks)
 # goals = d_7  # Simple deterministic case (2 goals x 2 tasks)
 # goals = p_bm   # Probabilistic case (2 goals x 2 tasks)
-goals = d_negative_reward_attainable_goals  # New deterministic cases
+goals = d_different_value_extra_time_deadlines  # New deterministic cases
 
 # Generate to-do list MDP
 s_time = time.time()  # Start timer
@@ -130,7 +130,15 @@ to_do_list = ToDoList(goals, start_time=0)
 # mdp = solve(to_do_list, value_iteration)
 
 # ===== Simple scheduler =====
-tasks_list = simple_goal_scheduler(to_do_list, mixing_parameter=0.50,
+start_time = time.time()
+tasks_list = simple_goal_scheduler(to_do_list, mixing_parameter=0.90,
                                    verbose=True)
+
+current_time = 0
 for task in tasks_list:
+    print(f'Current time: {current_time}')
     print(task)
+    current_time += task.get_time_est()
+    
+print(f'Scheduling goals with DP algorithm took '
+      f'{int(time.time() - start_time)} seconds!')
