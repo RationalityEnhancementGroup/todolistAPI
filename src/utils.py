@@ -18,8 +18,8 @@ def are_there_tree_differences(old_tree, new_tree):
     output: boolean of whether or not we need to rerun the point calculations
     (e.g. we don't need to if only day durations change or #today has been added)
     """
-    if len(set(create_tree_dict(old_tree).items()) ^ set(
-            create_tree_dict(new_tree).items())) == 0:
+    if len(set(create_tree_dict(old_tree).items()) ^
+           set(create_tree_dict(new_tree).items())) == 0:
         return False
     else:
         return True
@@ -77,7 +77,7 @@ def flatten_intentions(projects):
     return projects
 
 
-def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0, small_value=1e-3):
+def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0, small_value=1):
     real_goals.sort()
     latest_deadline = real_goals[-1].get_deadline_time()
     
