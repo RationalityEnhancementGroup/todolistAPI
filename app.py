@@ -53,17 +53,22 @@ class PostResource(RESTResource):
             
             method = vpath[0]
             scheduler = vpath[1]
+            allowed_task_time = np.float("inf")# TODO: Check URL allowed_task_time parameter value
             parameters = [int(item) for item in vpath[2:-3]]
             user_key = vpath[-2]
             api_method = vpath[-1]
 
-            db.request_log.insert_one(
-                    {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now()})
             
             # is there a user key
             try:
                 current_id = jsonData["userkey"]
+                db.request_log.insert_one(
+                    {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now()})
+            
             except:
+                db.request_log.insert_one(
+                    {"user_id": "null", "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now()})
+            
                 cherrypy.response.status = 403
                 return json.dumps({"status": "Problem with user key. Please contact the experimenter."})
 
@@ -96,10 +101,6 @@ class PostResource(RESTResource):
                 cherrypy.response.status = 403
                 return json.dumps({"status": "Error with parsing inputted hours. Please contact the experimenter."})
 
-            # TODO: URL input
-            mixing_parameter = jsonData["mixing_parameter"]
-            allowed_task_time = jsonData["allowed_task_time"]
-
             if not (0 < typical_hours <= 24):
                 cherrypy.response.status = 403
                 return json.dumps({"status": "Please edit the hours you typically work today on Workflowy. The hours you work should be between 0 and 24."})
@@ -109,13 +110,6 @@ class PostResource(RESTResource):
                 cherrypy.response.status = 403
                 return json.dumps({"status": "Please edit the hours you can work today on Workflowy. The hours you work should be between 0 and 24."})
 
-            # TODO: Edit after making it URL input
-            # Defined by the experimenter
-            if not (0 <= mixing_parameter < 1):
-                cherrypy.response.status = 403
-                return json.dumps({"status": "Please contact the experimenter. There was an issue with the mixing-parameter value."})
-            
-            # TODO: Check URL allowed_task_time parameter value
 
             # New calculation
             # Save updated, user id, and skeleton
@@ -131,7 +125,7 @@ class PostResource(RESTResource):
                                                     typical_hours)
             except Exception as error:  # TODO: Write specific exceptions
                 cherrypy.response.status = 403
-                return json.dumps({"status": "Please contact the experimenter and tell them you encountered this error: "+str(error)})
+                return json.dumps({"status": str(error) + " Please contact the experimenter if you feel you are not able to fix this issue."})
             
             projects = real_goals + misc_goals
 
@@ -154,6 +148,15 @@ class PostResource(RESTResource):
                     
                 # DP method
                 elif method == "dp":
+                    # TODO: URL input 
+                    mixing_parameter = parameters[-1]
+
+                    # TODO: Edit after making it URL input
+                    # Defined by the experimenter
+                    if not (0 <= mixing_parameter < 1):
+                        cherrypy.response.status = 403
+                        return json.dumps({"status": "Please contact the experimenter. There was an issue with the mixing-parameter value."})
+
                     try:
                         final_tasks = \
                             assign_dynamic_programming_points(
