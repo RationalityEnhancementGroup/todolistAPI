@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8"/>
+  <script src="../jspsych.js"></script>
+  <script src="../plugins/jspsych-instructions.js"></script>
+  <script src="../plugins/jspsych-survey-text.js"></script>
+  <script src="../plugins/jspsych-survey-multi-select.js"></script>
+  <script src="../plugins/jspsych-survey-likert.js"></script>
+  <script src="../plugins/jspsych-external-html.js"></script>
+  <script src="../plugins/jspsych-call-function.js"></script>
+  <script src="../survey/tiny_survey.js"></script>
+  <link rel="stylesheet" href="../css/jspsych.css"></link>
+  <style>
+    img {
+      width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+</body>
+
+<script>
+  // adapted from https://www.jspsych.org/overview/data/
+  function saveData() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '../../survey_data'); // change 'write_data.php' to point to php script.
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(jsPsych.data.get().json());
+  }
+
+  var urlvar = jsPsych.data.urlVariables()
+
+
+  survey_timeline.push({
+    type: 'call-function',
+    func: saveData
+  },{
+      type: 'instructions',
+      pages: ["Thank you! You can now close this window and return to the HIT itself."],
+      show_clickable_nav: false
+  })
+
+  jsPsych.data.addProperties({
+                  url_variables: urlvar
+              });
+              
+  jsPsych.init({timeline: survey_timeline,
+  show_progress_bar: true
+  });
+</script>
+</html>
