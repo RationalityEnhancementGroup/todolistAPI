@@ -81,7 +81,7 @@ class PostResource(RESTResource):
         except:
             cherrypy.response.status = 403
             return json.dumps({"status":"Error with parsing inputted projects"})
-            
+
         try:
             typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
             today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
@@ -160,10 +160,19 @@ class ExperimentPostResource(RESTResource):
         cherrypy.response.status = 204
         return None
 
+class SurveyPostResource(RESTResource):
+
+
+    @cherrypy.tools.json_out()
+    def handle_POST(self, jsonData, *vpath, **params):
+        db.tiny_survey.insert_one({"data": jsonData, "timestamp":  datetime.now()})
+        cherrypy.response.status = 204
+        return None
 
 class Root(object):
     api = PostResource()
     experiment_data = ExperimentPostResource()
+    survey_data = SurveyPostResource()
 
 
     @cherrypy.expose
