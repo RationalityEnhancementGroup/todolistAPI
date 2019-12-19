@@ -145,7 +145,7 @@ def parse_tree(projects, allowed_task_time, typical_hours):
             goal["value"] = None
             
         # If no value and deadline has been provided --> Misc goal
-        if goal_value is None and goal_deadline is None:
+        if goal_deadline is None:
             misc_goals += [goal]
         else:
             # Process goal value and check whether the value is valid
