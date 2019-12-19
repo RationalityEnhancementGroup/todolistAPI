@@ -144,6 +144,7 @@ def parse_tree(projects, allowed_task_time, typical_hours):
             goal["est"] += task["est"]
             goal["value"] = None
             
+            task["nm"] = goal["code"]+") "+task["nm"]
         # If no value and deadline has been provided --> Misc goal
         if goal_deadline is None:
             misc_goals += [goal]
