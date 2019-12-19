@@ -62,9 +62,7 @@ class PostResource(RESTResource):
         except:
             cherrypy.response.status = 403
             return json.dumps({"status": "Problem with user key"})
-        if current_id != user_key:
-            cherrypy.response.status = 403
-            return json.dumps({"status": "Problem with user key"})
+
         
         if db.trees.find({'user_id': str(current_id)}) \
                    .sort('timestamp', DESCENDING).count() == 0:
