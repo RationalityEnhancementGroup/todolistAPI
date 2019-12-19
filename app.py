@@ -110,16 +110,6 @@ class PostResource(RESTResource):
                 cherrypy.response.status = 403
                 return json.dumps({"status": "Please edit the hours you can work today on Workflowy. The hours you work should be between 0 and 24."})
 
-
-            # New calculation
-            # Save updated, user id, and skeleton
-            try:
-                projects = flatten_intentions(jsonData["projects"])
-            except:
-                cherrypy.response.status = 403
-                return json.dumps({"status":
-                                       "Error with parsing inputted projects. Please contact the experimenter."})
-
             try:
                 real_goals, misc_goals = parse_tree(projects, allowed_task_time,
                                                     typical_hours)
