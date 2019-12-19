@@ -252,9 +252,6 @@ class Root(object):
 
 
 if __name__ == '__main__':
-    os.environ['MONGODB_URI'] = \
-        "mongodb://heroku_g6l4lr9d:g9q8u1oon9naso4ncfcokgtlkm@ds341557.mlab.com:41557/heroku_g6l4lr9d"
-    
     conn = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
     db = conn.heroku_g6l4lr9d
     
