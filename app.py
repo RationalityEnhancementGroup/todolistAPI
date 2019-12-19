@@ -89,11 +89,12 @@ class PostResource(RESTResource):
             
             #new calculation
             #save updated, user id, and skeleton
-            try:
-                projects = flatten_intentions(jsonData["projects"])
-            except:
-                cherrypy.response.status = 403
-                return json.dumps({"status":"Error with parsing inputted projects. Please contact the experimenter."})
+            # try:
+            print(jsonData["projects"])
+            projects = flatten_intentions(jsonData["projects"])
+            # except:
+            #     cherrypy.response.status = 403
+            #     return json.dumps({"status":"Error with parsing inputted projects. Please contact the experimenter."})
             try:
                 typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
                 today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
