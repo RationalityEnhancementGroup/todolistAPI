@@ -28,9 +28,9 @@ var check_consent = function(elem) {
 
 
 
-overview = ["Welcome! In this experiment you will test a to-do list app and engage in goal and task setting.",
+overview = ["Welcome! In this HIT you will test a to-do list app and engage in goal and task setting.",
      "Please keep this window open while working through the HIT, as it will guide you through the process and give you your final completion code. (It is okay to minimize the window when necessary.)",
-     "There will be four parts of the experiment, all with their own bonus:",
+     "There will be four parts of the HIT, all with their own bonus:",
      "(1) First you will sign up for our app (don't worry, your real email address is not needed) "+bonus1+"<br>(2) You will complete the onboarding process by filling in the goals and tasks you have for the next "+ duration+ " "+bonus2+"<br>(3) We will give you some short usability tasks "+bonus3+"<br>(4) You will be asked to answer a survey found on the app's website "+bonus4,
      "This should all take around "+exp_duration+". Please press next when you are ready to begin."]
 
@@ -50,12 +50,12 @@ second_step = ["<b>Onboarding "+bonus2+"</b>,",
         "After that, please press the \"Today\" item from the menu at the top. You will be asked to sign up for a Workflowy account to input your tasks for each goal. Again, you do not need to use your own credentials. You can use the credentials from the last step, or if needed, create new ones:",
         "Email address: <a href='"+email_link+"' target=\"_blank\">"+email_link+"</a><br>Password generator: <a href='"+password_link+"' target=\"_blank\">"+password_link+"</a>",
         "Please input your goals and tasks for the next "+duration+".",
-        "Once you are done, you will see:",
+        "Once you are done, come back to the CompliceX website and you will see:",
         "<img border=\"5\" src=\""+goal_img+"\"",
         "Please press next when you have finished entering your goals and tasks."]
 
 third_step = ["<b>Usability tasks "+bonus3+"</b>",
-        "Now that you have inputted your goals and tasks, it's time to test out the experiment a little.",
+        "Now that you have inputted your goals and tasks, it's time to test out the app.",
         "Please try to complete the tasks we give you, but do not worry if you are not able to complete them -- you will not be penalized. We are just looking for effort. Let us know where you were confused, if you do get stuck.",
         "Please press next to get your tasks."]
 
@@ -78,7 +78,8 @@ questions: [{prompt: "Do you have any comments or suggestions about how this wor
 
 ux_question_two = {timeline:[{
 type: 'survey-likert',
-preamble: "<b>Task 2</b>, Page 1 of 2<br>"+"Now imagine you remember you forgot an intention you urgently need to complete today. Please enter an intention in Workflowy as part of your first goal, with duration 2 hours, marked for today. After that, add the task to your intentions list.",
+preamble: "<b>Task 2</b>, Page 1 of 2<br>"+"Now imagine you remember you forgot an intention you urgently need to complete today. Please enter an intention in Workflowy as part of your first goal, with duration 2 hours, marked for today. After that, add the task to your intentions list."
++"<br>HINT:If you haven't read the instructions above your Workflowy tree, now might be the time to do so!",
 questions:[
 {prompt: "Were you able to complete this task?" , labels: scale_completion, required: false},
 {prompt: "Was this intuitive?", labels: scale_feeling, required: false},
@@ -115,7 +116,7 @@ fourth_step = ["<b>Survey "+bonus4+"</b>",
         "Now you are almost done! We just need you to complete a final survey (approx "+survey_time+".)",
         "Press next to begin"]
 
-completion_code = ["Thank you, you are now finished with the experiment.",
+completion_code = ["Thank you, you are now finished with the HIT.",
           "Your completion code is: " + user_id,
            "Please enter this code on MTurk. We will bonus you within the next 24 hours!",
            "You can now close this window."]
