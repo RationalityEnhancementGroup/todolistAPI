@@ -117,7 +117,7 @@ fourth_step = ["<b>Survey "+bonus4+"</b>",
         "Press next to begin"]
 
 completion_code = ["Thank you, you are now finished with the HIT.",
-          "Your completion code is: " + user_id,
+          "Your completion code is: <b>" + user_id+"</b>",
            "Please enter this code on MTurk. We will bonus you within the next 24 hours!",
            "You can now close this window."]
 
