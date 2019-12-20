@@ -10,6 +10,7 @@
   <script src="../plugins/jspsych-survey-likert.js"></script>
   <script src="../plugins/jspsych-external-html.js"></script>
   <script src="../plugins/jspsych-call-function.js"></script>
+  <script src="../plugins/jspsych-html-keyboard-response.js"></script>
   <link rel="stylesheet" href="../css/jspsych.css"></link>
   <style>
     img {
@@ -44,11 +45,13 @@
   timeline.push({
     type: 'call-function',
     func: saveData
-  },{
+  });
+
+  timeline.push({
     type: 'html-keyboard-response',
     stimulus: "Thank you! Click <a href =\"https://reg.complicex.science/~xc/instructions/tiny-complete\">here</a> to return to the app.",
     choice: jsPsych.NO_KEYS 
-};
+});
    
 
   
