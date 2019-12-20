@@ -157,6 +157,7 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps({"status": str(error)})
                 
+            # TODO: Test and fix potential bugs!
             elif method == "old-report":
                 final_tasks = \
                     assign_old_api_points(projects, backward_induction,

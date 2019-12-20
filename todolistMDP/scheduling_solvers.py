@@ -110,8 +110,6 @@ def get_attainable_goals(goals, dp):
         time and a list of unattainable goals.
         - Example of an attainable-goals list: [(Goal, start_time), ...]
         - Example of an unattainable-goals list: [Goal, Goal, ...]
-        
-        # TODO: Maybe return [Task]?!
     """
     # Initialize parameters
     i = len(goals)  # Number of goals
