@@ -13,13 +13,9 @@ var survey_timeline = [];
 var num_goals = 3;
 var curr_goal = 1;
 
-survey_timeline.push({type: 'survey-text',
-  questions: [
-    {prompt: "What is the survey code you received from the HIT instructions?", rows: 5, columns: 40}]});
-
 survey_timeline.push({type: 'survey-likert',
     preamble: 'Please answer the following questions about your experience with using the to-do list website.',
-    questions: [{prompt: "How many goals did you enter on the CompliceX app?", labels: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],required:true}],
+    questions: [{prompt: "How many goals did you enter on the CompliceX app?", labels: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10+"],required:true}],
     on_finish: function(data) {num_goals = JSON.parse(data.responses)["Q0"]+1}
 });
 

@@ -153,6 +153,8 @@ general_usability,{
     pages: [fourth_step.join("<br><br><br>")],
     show_clickable_nav: true
 },{
+  timeline: survey_timeline
+},{
   type: 'call-function',
   func: saveData
 },{

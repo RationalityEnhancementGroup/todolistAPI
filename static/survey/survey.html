@@ -10,7 +10,6 @@
   <script src="../plugins/jspsych-survey-likert.js"></script>
   <script src="../plugins/jspsych-external-html.js"></script>
   <script src="../plugins/jspsych-call-function.js"></script>
-  <script src="../survey/tiny_survey.js"></script>
   <link rel="stylesheet" href="../css/jspsych.css"></link>
   <style>
     img {
@@ -23,6 +22,7 @@
 </body>
 
 <script>
+  timeline = []
   // adapted from https://www.jspsych.org/overview/data/
   function saveData() {
     var xhr = new XMLHttpRequest();
@@ -33,21 +33,26 @@
 
   var urlvar = jsPsych.data.urlVariables()
 
-
-  survey_timeline.push({
-    type: 'call-function',
-    func: saveData
-  },{
-      type: 'instructions',
-      pages: ["Thank you! You can now close this window and return to the HIT itself."],
-      show_clickable_nav: false
-  })
-
   jsPsych.data.addProperties({
                   url_variables: urlvar
               });
+
+   timeline.push({type: 'survey-text',
+  questions: [
+    {prompt: "What is the survey code you received from the HIT instructions?", rows: 5, columns: 40}]});
               
-  jsPsych.init({timeline: survey_timeline,
+  timeline.push({
+    type: 'call-function',
+    func: saveData
+  },{
+    type: 'html-keyboard-response',
+    stimulus: "Thank you! Click <a href =\"https://reg.complicex.science/~xc/instructions/tiny-complete\">here</a> to return to the app.",
+    choice: jsPsych.NO_KEYS 
+};
+   
+
+  
+  jsPsych.init({timeline: timeline,
   show_progress_bar: true,
   on_close: function(){
     saveData();
