@@ -8,7 +8,5 @@ experiment_link = "https://reg.complicex.science/register?expId=5de975c30f1e3e5e
 email_link ="https://10minutemail.com/10MinuteMail/index.html"
 password_link = "https://www.lastpass.com/password-generator"
 survey_time="10 minutes"
-survey_text = "Take Survey"
-survey_img = "img/Screenshot 2019-12-10 at 09.41.25.png"
-signup_img = "img/Screenshot 2019-12-10 at 09.41.25.png"
+signup_img = "img/signup_finished.png"
 consent_form_url = "instructions/experiment_consent.html"
