@@ -21,7 +21,7 @@ survey_timeline.push({type: 'survey-likert',
 
 
 var cluster_preamble = "Some people have goals that are very separate, while others may have goals that fall into the same category.<br>"+
-"For example, a student may have one school goal while another student may have three different goals corresponding to three different courses.<br>"+
+"For example, you may have different goals for multiple work projects or courses at school. Or perhaps, you may have multiple health goals. <br>"+
 "Please cluster how your goals could be combined into one larger goal below. If your goals cannot be clustered at all, each should have their own larger goal (i.e., their own column)."
 var cluster_questions = ["Goal 1", "Goal 2", "Goal 3", "Goal 4", "Goal 5", "Goal 6", "Goal 7", "Goal 8", "Goal 9", "Goal 10"]
 var cluster_labels = ["Larger Goal 1", "Larger Goal 2", "Larger Goal 3", "Larger Goal 4", "Larger Goal 5", "Larger Goal 6", "Larger Goal 7", "Larger Goal 8", "Larger Goal 9", "Larger Goal 10"]
@@ -64,25 +64,39 @@ var SIMS_Questions = ["Because I think that this activity is interesting",
 "I do this activity, but I am not sure it is a good thing to pursue it"]
 
 
+// survey_timeline.push({
+// 	timeline: [{
+// 		type: 'survey-likert',
+// 		preamble: function(){return "<b>Goal "+curr_goal+"</b><br>Why are you currently engaged in this goal? Please read each item carefully and respond with how much each statement corresponds with your reasons for engaging in this goal."},
+// 		questions: function(){var questions_formatted = [];
+// 							for (i = 0; i < SIMS_Questions.length; i++) {
+// 		  						questions_formatted.push({prompt:SIMS_Questions[i], labels:SIMS_Scale, required:false})}; 
+// 								return questions_formatted;}
+// 	}],
+	// loop_function: function(data){
+	// 	curr_goal = curr_goal+1;
+	// 	console.log(curr_goal)
+	// 	if (curr_goal > num_goals){
+	// 		return false;
+	// 	} else {
+	// 		return true;
+	// 	}}})
+
 survey_timeline.push({
-	timeline: [{
 		type: 'survey-likert',
-		preamble: function(){return "<b>Goal "+curr_goal+"</b><br>Why are you currently engaged in this goal? Please read each item carefully and respond with how much each statement corresponds with your reasons for engaging in this goal."},
+		preamble: function(){return "<b>Goal 1 (Most Valuable Goal in Workflowy)</b><br>Why are you currently engaged in this goal? Please read each item carefully and respond with how much each statement corresponds with your reasons for engaging in this goal."},
 		questions: function(){var questions_formatted = [];
 							for (i = 0; i < SIMS_Questions.length; i++) {
 		  						questions_formatted.push({prompt:SIMS_Questions[i], labels:SIMS_Scale, required:false})}; 
-								return questions_formatted;}
-	}],
-	loop_function: function(data){
-		curr_goal = curr_goal+1;
-		console.log(curr_goal)
-		if (curr_goal > num_goals){
-			return false;
-		} else {
-			return true;
-		}}})
+								return questions_formatted;}})
+survey_timeline.push({
+		type: 'survey-likert',
+		preamble: function(){return "<b>Goal 2 (Second Most Valuable Goal in Workflowy)</b><br>Why are you currently engaged in this goal? Please read each item carefully and respond with how much each statement corresponds with your reasons for engaging in this goal."},
+		questions: function(){var questions_formatted = [];
+							for (i = 0; i < SIMS_Questions.length; i++) {
+		  						questions_formatted.push({prompt:SIMS_Questions[i], labels:SIMS_Scale, required:false})}; 
+								return questions_formatted;}})
 
-            
 scale_R = ['not at all','','','','moderately','','','','very much']
 scale_M = ['not at all','','','','moderately','','','','very much']
 var reward = {
@@ -236,7 +250,7 @@ var NGSE_Questions =["I will be able to achieve most of the goals that I set for
 
 survey_timeline.push(create_questionnaire(NGSE_Questions, NGSE_Scale, NGSE_preamble));
 
-var SWLS_preamble = "Please read the following statements carefully and select the number that describes best how you feel about that statement."
+var SWLS_preamble = "Please read the following statements carefully and select the response that describes best how you feel about that statement."
 
 var SWLS_Scale = [
 "Strongly agree",
@@ -256,7 +270,7 @@ var SWLS_Questions = [
 
 survey_timeline.push(create_questionnaire(SWLS_Questions, SWLS_Scale,SWLS_preamble));
 
-var grit_preamble = "Read each sentence carefully and select the response that best suits how you feel about each item.";
+var grit_preamble = "Please read the following statements carefully and select the response that describes best how you feel about that statement."
 
 var grit_scale = [
 "Very much like me",
