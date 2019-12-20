@@ -2,7 +2,7 @@
 function create_questionnaire(questions, scale, preamble){
 	var questions_formatted = [];
 	for (i = 0; i < questions.length; i++) {
-		  questions_formatted.push({prompt:questions[i], labels:scale, required:true})
+		  questions_formatted.push({prompt:questions[i], labels:scale, required:false})
 		};
 	return {type: 'survey-likert',
     		questions: questions_formatted,
@@ -15,7 +15,7 @@ var curr_goal = 1;
 
 survey_timeline.push({type: 'survey-likert',
     preamble: 'Please answer the following questions about your experience with using the to-do list website.',
-    questions: [{prompt: "How many goals did you enter on the CompliceX app?", labels: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10+"],required:true}],
+    questions: [{prompt: "How many goals did you enter on the CompliceX app?", labels: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10+"],required:false}],
     on_finish: function(data) {num_goals = JSON.parse(data.responses)["Q0"]+1}
 });
 
@@ -31,7 +31,7 @@ var cluster_labels = ["Larger Goal 1", "Larger Goal 2", "Larger Goal 3", "Larger
 survey_timeline.push({type: 'survey-likert',
     		questions: function(){var questions_formatted = [];
 							for (i = 0; i < num_goals; i++) {
-								  questions_formatted.push({prompt:cluster_questions[i], labels:cluster_labels.slice(0, num_goals), required:true})
+								  questions_formatted.push({prompt:cluster_questions[i], labels:cluster_labels.slice(0, num_goals), required:false})
 								}; return questions_formatted;},
     		preamble: cluster_preamble}
     		);
@@ -102,19 +102,19 @@ scale_M = ['not at all','','','','moderately','','','','very much']
 var reward = {
     preamble: 'Below is a list of statements about how you might or might not have experienced the daily intentions on the to-do list website. For each statement please indicate how much you agree with it.',
     type: 'survey-likert',
-    questions: [{prompt: 'It felt rewarding to complete a daily intention.', labels: scale_R, required: true},
-                {prompt: 'It felt good to have finished a daily intention.', labels: scale_R, required: true},
-                {prompt: 'When I submitted a daily intention I felt like I had accomplished something.', labels: scale_R, required: true},
-                {prompt: 'Completing a daily intention felt like progress.', labels: scale_R, required: true},
-                {prompt: 'I experienced submitting each daily intention as a success.', labels: scale_R, required: true}]
+    questions: [{prompt: 'It felt rewarding to complete a daily intention.', labels: scale_R, required: false},
+                {prompt: 'It felt good to have finished a daily intention.', labels: scale_R, required: false},
+                {prompt: 'When I submitted a daily intention I felt like I had accomplished something.', labels: scale_R, required: false},
+                {prompt: 'Completing a daily intention felt like progress.', labels: scale_R, required: false},
+                {prompt: 'I experienced submitting each daily intention as a success.', labels: scale_R, required: false}]
 }
 var motivation = {
     preamble: 'Below is a list of statements about how you might or might not have experienced the daily intentions. For each statement please indicate how much you agree with it.',
     type: 'survey-likert',
-    questions: [{prompt: 'I felt motivated cto omplete the daily intentions.', labels: scale_M, required: true},
-                {prompt: 'It was really hard for me to get myself to work on the tasks on my to-do list.', labels: scale_M, required: true},
-                {prompt: 'I did <u>not</u> feel like working on the tasks on my to-do list.', labels: scale_M, required: true},
-                {prompt: 'Getting started on the tasks on my to-do list was easy for me.', labels: scale_M, required: true}]
+    questions: [{prompt: 'I felt motivated cto omplete the daily intentions.', labels: scale_M, required: false},
+                {prompt: 'It was really hard for me to get myself to work on the tasks on my to-do list.', labels: scale_M, required: false},
+                {prompt: 'I did <u>not</u> feel like working on the tasks on my to-do list.', labels: scale_M, required: false},
+                {prompt: 'Getting started on the tasks on my to-do list was easy for me.', labels: scale_M, required: false}]
 }
 
 
@@ -148,12 +148,12 @@ questions=["To what extent did you <u>feel in control</u> of your choice which d
 var autonomy_scale = {
     type: 'survey-likert',
     preamble: 'Please answer the following questions about your experience with using the to-do list website.',
-    questions: [{prompt: questions[0], labels: scale_1,required:true},
-                {prompt: questions[1], labels: scale_1,required:true},
-                {prompt: questions[2], labels: scale_1,required:true},
-                {prompt: questions[3], labels: scale_1,required:true},
-                {prompt: questions[4], labels: scale_1,required:true},
-                {prompt: questions[5], labels: scale_1,required:true},
+    questions: [{prompt: questions[0], labels: scale_1,required:false},
+                {prompt: questions[1], labels: scale_1,required:false},
+                {prompt: questions[2], labels: scale_1,required:false},
+                {prompt: questions[3], labels: scale_1,required:false},
+                {prompt: questions[4], labels: scale_1,required:false},
+                {prompt: questions[5], labels: scale_1,required:false},
                 ]
 };
 // survey_timeline.push(autonomy_scale)
@@ -168,10 +168,10 @@ intrusion_questions=["The to-do list website <u>threatened my freedom to choose 
           ]            
 var intrusion_scale = {
     type: 'survey-likert',
-    questions: [{prompt: intrusion_questions[0], labels: scale_2,required:true},
-                {prompt: intrusion_questions[1], labels: scale_2,required:true},
-                {prompt: intrusion_questions[2], labels: scale_2,required:true},
-                {prompt: intrusion_questions[3], labels: scale_2,required:true}
+    questions: [{prompt: intrusion_questions[0], labels: scale_2,required:false},
+                {prompt: intrusion_questions[1], labels: scale_2,required:false},
+                {prompt: intrusion_questions[2], labels: scale_2,required:false},
+                {prompt: intrusion_questions[3], labels: scale_2,required:false}
                 ]
 };
 // survey_timeline.push(intrusion_scale)
@@ -297,7 +297,7 @@ var occupation_options = ["Self-employed", "Skilled laborer", "Student", "Resear
 var occupation = {
   type: 'survey-multi-select',
   questions: [
-    {prompt: "Which of the following best describes your occupation? Please check all that apply.", name: 'occupation', options: occupation_options, required:true}, 
+    {prompt: "Which of the following best describes your occupation? Please check all that apply.", name: 'occupation', options: occupation_options, required:false}, 
   ],
 };
 

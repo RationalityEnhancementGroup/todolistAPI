@@ -39,8 +39,9 @@ first_step = ["<b>Signing up for the app "+bonus1+"</b>",
         "Please go to this link and sign up for our app: <a href='"+experiment_link+"' target=\"_blank\">"+experiment_link+"</a>",
         "You do not need to use your own email address (although it is also fine and possibly easier to do so.) For a temporary email address and password we recommend:",
         "Email address: <a href='"+email_link+"' target=\"_blank\">"+email_link+"</a><br>Password generator: <a href='"+password_link+"' target=\"_blank\">"+password_link+"</a>",
-        "When you are done you will see this screen, please return here before proceeding:",
-        "<img src=\""+signup_img+"\"",
+        "You will be asked to enter this code so we can trace back your responses and bonus you correctly: <b>"+survey_id+"</b> (please note: this is <b>not</b> your completion code!)",
+        "When you are done signing up you will see this screen",
+        "<img border=\"5\" src=\""+signup_img+"\"",
         "Please press next when you have finished signing up for the app."
         ]
 
@@ -65,10 +66,10 @@ ux_question_one = {timeline:[{
 type: 'survey-likert',
 preamble: "<b>Task 1</b>, Page 1 of 2<br>"+"Imagine you just completed an intention. Check off the intention in the CompliceX app. If possible, try completing a task with sound on.",
 questions : [
-{prompt: "Were you able to complete this task?" , labels: scale_completion, required: true},
-{prompt: "Was this intuitive?", labels: scale_feeling, required: true},
-{prompt: "Did you find this action rewarding?", labels: scale_feeling, required: true},
-{prompt: "Did you try this with sound on? (Please be truthful, you will not be penalized for your response.)", labels: scale_binary, required: true}]},
+{prompt: "Were you able to complete this task?" , labels: scale_completion, required: false},
+{prompt: "Was this intuitive?", labels: scale_feeling, required: false},
+{prompt: "Did you find this action rewarding?", labels: scale_feeling, required: false},
+{prompt: "Did you try this with sound on? (Please be truthful, you will not be penalized for your response.)", labels: scale_binary, required: false}]},
 {type: 'survey-text',
 preamble: "<b>Task 1</b>, Page 2 of 2<br>"+"Imagine you just completed an intention. Check off the intention in the CompliceX app. If possible, try completing a task with sound on.",
 questions: [{prompt: "Do you have any comments or suggestions about how this worked?", rows: 5, columns: 80}]}]}
@@ -77,9 +78,9 @@ ux_question_two = {timeline:[{
 type: 'survey-likert',
 preamble: "<b>Task 2</b>, Page 1 of 2<br>"+"Now imagine you remember you forgot an intention you urgently need to complete today. Please enter an intention in Workflowy as part of your first goal, with duration 2 hours, marked for today. After that, add the task to your intentions list.",
 questions:[
-{prompt: "Were you able to complete this task?" , labels: scale_completion, required: true},
-{prompt: "Was this intuitive?", labels: scale_feeling, required: true},
-{prompt: "Can you see yourself adding tasks like this if CompliceX was your daily to-do list app?", labels:future_action, required:true}]},
+{prompt: "Were you able to complete this task?" , labels: scale_completion, required: false},
+{prompt: "Was this intuitive?", labels: scale_feeling, required: false},
+{prompt: "Can you see yourself adding tasks like this if CompliceX was your daily to-do list app?", labels:future_action, required:false}]},
 {type: 'survey-text',
 preamble: "<b>Task 2</b>, Page 2 of 2<br>"+ "Now imagine you remember you forgot an intention you urgently need to complete today. Please enter an intention in Workflowy as part of your first goal, with duration 2 hours, marked for today. After that, add the task to your intentions list.",
 questions: [{prompt: "Do you have any comments or suggestions about how this worked?", rows: 5, columns: 80}]}]}
@@ -91,10 +92,10 @@ preamble: "<b>Task 3</b>, Page 1 of 2<br>"+"Currently the app asks for your typi
 +"<br>We have two options we are considering:<br> <b>Option 1</b>: users input typical and today hours, along with whether they work on weekends"
 +"<br><b>Option 2</b>: users input hours for every day of the week, and change them as their availability that week changes",
 questions:[
-{prompt:"Which option would you prefer as a user?", labels: ["Option 1", "Option 2"], required: true},
-{prompt:"Do your working hours (towards your inputted goals, not just work or school) differ between weekdays and weekends?", labels: frequency_likert, required: true},
-{prompt:"Do your goal working hours differ between days?", labels: frequency_likert, required:true},
-{prompt:"Do you typically have a good idea of how many hours you have available for working towards your goal, one week ahead?", labels: frequency_likert, required:true}]},
+{prompt:"Which option would you prefer as a user?", labels: ["Option 1", "Option 2"], required: false},
+{prompt:"Do your working hours (towards your inputted goals, not just work or school) differ between weekdays and weekends?", labels: frequency_likert, required: false},
+{prompt:"Do your goal working hours differ between days?", labels: frequency_likert, required:false},
+{prompt:"Do you typically have a good idea of how many hours you have available for working towards your goal, one week ahead?", labels: frequency_likert, required:false}]},
 {type: 'survey-text',
 preamble: "<b>Task 3</b>, Page 2 of 2<br>"+"Currently the app asks for your typical work hours and work hours today. This is because we are developing an algorithm that helps users to complete goals, and it will need this information to plan."
 +"<br>We have two labels we are considering:<br> <b>Option 1</b>: users input typical and today hours, along with whether they work on weekends"
@@ -112,11 +113,10 @@ questions:[
 
 fourth_step = ["<b>Survey "+bonus4+"</b>",
         "Now you are almost done! We just need you to complete a final survey (approx "+survey_time+".)",
-        "To find the survey please press this button which says " + survey_text +":",
-        "<img src=\""+survey_img+"\"",
-        "On the first page you will be asked to enter this code so we can trace back your response: <b>"+survey_id+"</b>",
-        "This is not your completion code. Once you are done with the survey please press next to receive your completion code!"]
-completion_code = ["Your completion code is: " + user_id,
+        "Press next to begin"]
+
+completion_code = ["Thank you, you are now finished with the experiment.",
+          "Your completion code is: " + user_id,
            "Please enter this code on MTurk. We will bonus you within the next 24 hours!",
            "You can now close this window."]
 
