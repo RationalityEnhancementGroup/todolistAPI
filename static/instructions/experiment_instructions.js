@@ -47,7 +47,7 @@ first_step = ["<b>Signing up for the app "+bonus1+"</b>",
 
 second_step = ["<b>Onboarding "+bonus2+"</b>,",
         "Once you have signed up for the app you will be instructed to enter your current goals.",
-        "After that, you will be asked to sign up for a Workflowy account to input your tasks for each goal. Again, you do not need to use your own credentials. You can use the credentials from the last step, or if needed, create new ones:",
+        "After that, please press the \"Today\" item from the menu at the top. You will be asked to sign up for a Workflowy account to input your tasks for each goal. Again, you do not need to use your own credentials. You can use the credentials from the last step, or if needed, create new ones:",
         "Email address: <a href='"+email_link+"' target=\"_blank\">"+email_link+"</a><br>Password generator: <a href='"+password_link+"' target=\"_blank\">"+password_link+"</a>",
         "Please input your goals and tasks for the next "+duration+".",
         "Once you are done, you will see:",
@@ -73,7 +73,7 @@ questions : [
 {prompt: "Was this intuitive?", labels: scale_feeling, required: false},
 {prompt: "Did you find this action rewarding?", labels: scale_feeling, required: false}]},
 {type: 'survey-text',
-preamble: "<b>Task 1</b>, Page 2 of 2<br>"+"Imagine you just completed an intention. Check off the intention in the CompliceX app.",
+preamble: "<b>Task 1</b>, Page 2 of 2<br>",
 questions: [{prompt: "Do you have any comments or suggestions about how this worked?", rows: 5, columns: 80}]}]}
 
 ux_question_two = {timeline:[{
@@ -84,7 +84,7 @@ questions:[
 {prompt: "Was this intuitive?", labels: scale_feeling, required: false},
 {prompt: "Can you see yourself adding tasks like this if CompliceX was your daily to-do list app?", labels:future_action, required:false}]},
 {type: 'survey-text',
-preamble: "<b>Task 2</b>, Page 2 of 2<br>"+ "Now imagine you remember you forgot an intention you urgently need to complete today. Please enter an intention in Workflowy as part of your first goal, with duration 2 hours, marked for today. After that, add the task to your intentions list.",
+preamble: "<b>Task 2</b>, Page 2 of 2<br>",
 questions: [{prompt: "Do you have any comments or suggestions about how this worked?", rows: 5, columns: 80}]}]}
 
 
@@ -99,9 +99,7 @@ questions:[
 {prompt:"Do your goal working hours differ between days?", labels: frequency_likert, required:false},
 {prompt:"Do you typically have a good idea of how many hours you have available for working towards your goal, one week ahead?", labels: frequency_likert, required:false}]},
 {type: 'survey-text',
-preamble: "<b>Task 3</b>, Page 2 of 2<br>"+"Currently the app asks for your typical working hours and planned working hours today. This is because we are developing an algorithm that helps users complete goals, and it will need this information to plan."
-+"<br>We have two labels we are considering:<br> <b>Option 1</b>: users input typical and today hours, along with whether they work on weekends"
-+"<br><b>Option 2</b>: users input hours for every day of the week, and change them as their availability that week changes",
+preamble: "<b>Task 3</b>, Page 2 of 2<br>",
 questions: [{prompt: "Do you have any additional comments or suggestions for us about asking for working hours?", rows: 5, columns: 80}]}]}
 
 general_usability = {type: 'survey-text',

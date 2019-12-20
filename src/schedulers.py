@@ -14,7 +14,7 @@ def basic_scheduler(task_list, today_duration=8 * 60, with_today=True):
     # From: https://stackoverflow.com/a/73050
     sorted_by_value = sorted(task_list, key=lambda k: k['val'])
     for task in sorted_by_value[::-1]:
-        if task["est"] <= duration_remaining:
+        if (task["est"] <= duration_remaining) and (task["today"] != 1):
             final_tasks.append(task)
             duration_remaining -= task["est"]
     
