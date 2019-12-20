@@ -177,7 +177,7 @@ var intrusion_scale = {
 // survey_timeline.push(intrusion_scale)
 
 
-var IPS_preamble = "Please read the following statements attentively and select the number with the corresponding answer that suits best how feel about each particular item."
+var IPS_preamble = "Please read the following statements carefully and select the response that best describe how you feel about that statement."
 
 var IPS_Scale = [
 "Very Seldom or Not True of Me",

@@ -40,7 +40,7 @@ first_step = ["<b>Signing up for the app "+bonus1+"</b>",
         "You do not need to use your own email address (although it is also fine and possibly easier to do so.) For a temporary email address and password we recommend:",
         "Email address: <a href='"+email_link+"' target=\"_blank\">"+email_link+"</a><br>Password generator: <a href='"+password_link+"' target=\"_blank\">"+password_link+"</a>",
         "You will be asked to enter this code so we can trace back your responses and bonus you correctly: <b>"+survey_id+"</b> (please note: this is <b>not</b> your completion code!)",
-        "When you are done signing up you will see this screen",
+        "When you are done signing up you will see this screen:",
         "<img border=\"5\" src=\""+signup_img+"\"",
         "Please press next when you have finished signing up for the app."
         ]
@@ -49,7 +49,10 @@ second_step = ["<b>Onboarding "+bonus2+"</b>,",
         "Once you have signed up for the app you will be instructed to enter your current goals.",
         "After that, you will be asked to sign up for a Workflowy account to input your tasks for each goal. Again, you do not need to use your own credentials. You can use the credentials from the last step, or if needed, create new ones:",
         "Email address: <a href='"+email_link+"' target=\"_blank\">"+email_link+"</a><br>Password generator: <a href='"+password_link+"' target=\"_blank\">"+password_link+"</a>",
-        "Please input your goals and tasks for the next "+duration+"."]
+        "Please input your goals and tasks for the next "+duration+".",
+        "Once you are done, you will see:",
+        "<img border=\"5\" src=\""+goal_img+"\"",
+        "Please press next when you have finished entering your goals and tasks."]
 
 third_step = ["<b>Usability tasks "+bonus3+"</b>",
         "Now that you have inputted your goals and tasks, it's time to test out the experiment a little.",
@@ -64,14 +67,13 @@ future_action =["Definitely","Probably","Possibly","Probably Not","Definitely No
 
 ux_question_one = {timeline:[{
 type: 'survey-likert',
-preamble: "<b>Task 1</b>, Page 1 of 2<br>"+"Imagine you just completed an intention. Check off the intention in the CompliceX app. If possible, try completing a task with sound on.",
+preamble: "<b>Task 1</b>, Page 1 of 2<br>"+"Imagine you just completed an intention. Check off the intention in the CompliceX app.",
 questions : [
 {prompt: "Were you able to complete this task?" , labels: scale_completion, required: false},
 {prompt: "Was this intuitive?", labels: scale_feeling, required: false},
-{prompt: "Did you find this action rewarding?", labels: scale_feeling, required: false},
-{prompt: "Did you try this with sound on? (Please be truthful, you will not be penalized for your response.)", labels: scale_binary, required: false}]},
+{prompt: "Did you find this action rewarding?", labels: scale_feeling, required: false}]},
 {type: 'survey-text',
-preamble: "<b>Task 1</b>, Page 2 of 2<br>"+"Imagine you just completed an intention. Check off the intention in the CompliceX app. If possible, try completing a task with sound on.",
+preamble: "<b>Task 1</b>, Page 2 of 2<br>"+"Imagine you just completed an intention. Check off the intention in the CompliceX app.",
 questions: [{prompt: "Do you have any comments or suggestions about how this worked?", rows: 5, columns: 80}]}]}
 
 ux_question_two = {timeline:[{
@@ -88,7 +90,7 @@ questions: [{prompt: "Do you have any comments or suggestions about how this wor
 
 ux_question_three = {timeline:[{
 type: 'survey-likert',
-preamble: "<b>Task 3</b>, Page 1 of 2<br>"+"Currently the app asks for your typical work hours and work hours today. This is because we are developing an algorithm that helps users to complete goals, and it will need this information to plan."
+preamble: "<b>Task 3</b>, Page 1 of 2<br>"+"Currently the app asks for your typical working hours and planned working hours today. This is because we are developing an algorithm that helps users to complete goals, and it will need this information to plan."
 +"<br>We have two options we are considering:<br> <b>Option 1</b>: users input typical and today hours, along with whether they work on weekends"
 +"<br><b>Option 2</b>: users input hours for every day of the week, and change them as their availability that week changes",
 questions:[
@@ -97,7 +99,7 @@ questions:[
 {prompt:"Do your goal working hours differ between days?", labels: frequency_likert, required:false},
 {prompt:"Do you typically have a good idea of how many hours you have available for working towards your goal, one week ahead?", labels: frequency_likert, required:false}]},
 {type: 'survey-text',
-preamble: "<b>Task 3</b>, Page 2 of 2<br>"+"Currently the app asks for your typical work hours and work hours today. This is because we are developing an algorithm that helps users to complete goals, and it will need this information to plan."
+preamble: "<b>Task 3</b>, Page 2 of 2<br>"+"Currently the app asks for your typical working hours and planned working hours today. This is because we are developing an algorithm that helps users complete goals, and it will need this information to plan."
 +"<br>We have two labels we are considering:<br> <b>Option 1</b>: users input typical and today hours, along with whether they work on weekends"
 +"<br><b>Option 2</b>: users input hours for every day of the week, and change them as their availability that week changes",
 questions: [{prompt: "Do you have any additional comments or suggestions for us about asking for working hours?", rows: 5, columns: 80}]}]}
