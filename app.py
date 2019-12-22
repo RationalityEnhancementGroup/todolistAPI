@@ -93,20 +93,45 @@ class PostResource(RESTResource):
                 projects = flatten_intentions(jsonData["projects"])
             except:
                 cherrypy.response.status = 403
+                #TODO: clean up saves, errors
+                # Save the data if there was a change, removing nm fields so that we
+                # keep participant data anonymous
+                save_projects = create_projects_to_save(projects)               
+                db.request_log.insert_one(
+                        {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
+                         "duration": str(datetime.now() - start_time),
+                         "lm": jsonData["updated"], "tree": save_projects, "when": "before parsing"})
                 return json.dumps({"status":"Error with parsing inputted projects. Please contact the experimenter."})
             try:
                 typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
                 today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
             except:
+                # Save the data if there was a change, removing nm fields so that we
+                # keep participant data anonymous
+                save_projects = create_projects_to_save(projects)               
+                db.request_log.insert_one(
+                        {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
+                         "duration": str(datetime.now() - start_time),
+                         "lm": jsonData["updated"], "tree": save_projects, "when": "after parsing"})
                 cherrypy.response.status = 403
                 return json.dumps({"status": "Error with parsing inputted hours. Please contact the experimenter."})
 
             if not (0 < typical_hours <= 24):
+                save_projects = create_projects_to_save(projects)               
+                db.request_log.insert_one(
+                        {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
+                         "duration": str(datetime.now() - start_time),
+                         "lm": jsonData["updated"], "tree": save_projects, "when": "after parsing"})
                 cherrypy.response.status = 403
                 return json.dumps({"status": "Please edit the hours you typically work today on Workflowy. The hours you work should be between 0 and 24."})
         
             # 0 is an allowed value in case users want to skip a day
             if not (0 <= today_hours <= 24):
+                save_projects = create_projects_to_save(projects)               
+                db.request_log.insert_one(
+                        {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
+                         "duration": str(datetime.now() - start_time),
+                         "lm": jsonData["updated"], "tree": save_projects, "when": "after parsing"})
                 cherrypy.response.status = 403
                 return json.dumps({"status": "Please edit the hours you can work today on Workflowy. The hours you work should be between 0 and 24."})
 
@@ -114,10 +139,23 @@ class PostResource(RESTResource):
                 real_goals, misc_goals = parse_tree(projects, allowed_task_time,
                                                     typical_hours)
             except Exception as error:  # TODO: Write specific exceptions
+                save_projects = create_projects_to_save(projects)               
+                db.request_log.insert_one(
+                        {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
+                         "duration": str(datetime.now() - start_time),
+                         "lm": jsonData["updated"], "tree": save_projects, "when": "after parsing"})
                 cherrypy.response.status = 403
                 return json.dumps({"status": str(error) + " Please contact the experimenter if you feel you are not able to fix this issue."})
             
             projects = real_goals + misc_goals
+            
+            # Save the data if there was a change, removing nm fields so that we
+            # keep participant data anonymous
+            save_projects = create_projects_to_save(projects)               
+            db.trees.insert_one(
+                    {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
+                     "duration": str(datetime.now() - start_time),
+                     "lm": jsonData["updated"], "tree": save_projects})
 
             if previous_result == 0:
                 run_point_method = True
@@ -189,21 +227,6 @@ class PostResource(RESTResource):
             else:
                 cherrypy.response.status = 403
                 return json.dumps({"status": "Scheduling method does not exist. Please contact the experimenter."})
-
-            # TODO: Make this function @ utils.py
-            # Save the data if there was a change, removing nm fields so that we
-            # keep participant data anonymous
-            if run_point_method:
-                save_projects = deepcopy(projects)
-                for project in save_projects:
-                    del project["nm"]
-                    for task in project["ch"]:
-                        del task["nm"]
-                
-                db.trees.insert_one(
-                    {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
-                     "duration": str(datetime.now() - start_time),
-                     "lm": jsonData["updated"], "tree": save_projects})
             
             if api_method == "updateTree":
                 cherrypy.response.status = 204
