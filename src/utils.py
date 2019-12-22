@@ -11,6 +11,13 @@ timeEstimateRegex = r"(?:^| |>)\(?~~(\d+|\.\d+|\d+.\d+)(?:(h(?:ou)?(?:r)?)?(m(?:
 deadlineRegex = r"DUE:(\d\d\d\d-\d+-\d+)(\s+\d\:\d\d|\s+\d\d\:\d\d|\s*$)"
 todayRegex = r"#today(?:\b|$)"
 
+def create_projects_to_save(projects):
+    projects_to_save = deepcopy(projects)
+    for project in projects_to_save:
+        del project["nm"]
+        for task in project["ch"]:
+            del task["nm"]
+    return projects_to_save
 
 def are_there_tree_differences(old_tree, new_tree):
     """
