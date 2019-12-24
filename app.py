@@ -32,15 +32,17 @@ class RESTResource(object):
                        if x.startswith("handle_")]
             cherrypy.response.headers["Allow"] = ",".join(methods)
             cherrypy.response.status = 405
-            return json.dumps({"status": "Method not implemented."})
-    
+            status = "Method not implemented."
+            return json.dumps({"status": status})
+        
         # Can we load the request body (json)
         try:
             rawData = cherrypy.request.body.read()
             jsonData = json.loads(rawData)
         except:
             cherrypy.response.status = 403
-            return json.dumps({"status": "No request body"})
+            status = "No request body"
+            return json.dumps({"status": status})
         return method(jsonData, *vpath, **params)
 
 
@@ -49,110 +51,146 @@ class PostResource(RESTResource):
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
         try:
+            add_params = vpath[0].split("&")
+            
+            for param in add_params:
+                key, value = param.split("=")
+                params[key] = value
+                
             start_time = datetime.now()
             
-            method = vpath[0]
-            scheduler = vpath[1]
-            allowed_task_time = np.float("inf")  # TODO: Check URL allowed_task_time parameter value
-            parameters = [int(item) for item in vpath[2:-3]]
-            user_key = vpath[-2]
-            api_method = vpath[-1]
+            # Compulsory parameters
+            try:
+                api_method = params["apiMethod"]
+                method = params["method"]
+                scheduler = params["scheduler"]
+                user_key = params["userKey"]
+            except:
+                status = "Error with compulsory parameters. Please contact the experimenter."
+                db.request_log.insert_one(
+                    {"user_id":   "null",
+                     "parameters": params,
+                     "timestamp": datetime.now(),
+                     "status": status
+                     }
+                )
+                cherrypy.response.status = 403
+                return json.dumps({"status": status})
+
+            # Optional parameters
+            # - Allowed task time
+            if "allowedTaskTime" not in params:
+                params["allowedTaskTime"] = "inf"
+            allowed_task_time = float(params["allowedTaskTime"])
             
-            # is there a user key
+            if "mixingParameter" not in params:
+                params["mixingParameter"] = "0.0"
+            mixing_parameter = float(params["mixingParameter"])
+            
+            # Is there a user key
             try:
                 current_id = jsonData["userkey"]
                 db.request_log.insert_one(
-                    {"user_id": current_id, "method": method,
-                     "scheduler": scheduler, "parameters": parameters,
-                     "user_key": user_key, "api_method": api_method,
-                     "timestamp": datetime.now()}
+                    {"user_id":   current_id,
+                     "parameters": params,
+                     "timestamp": datetime.now()
+                     }
                 )
             except:
+                status = "Problem with user key. Please contact the experimenter."
                 db.request_log.insert_one(
-                    {"user_id": "null", "method": method,
-                     "scheduler": scheduler, "parameters": parameters,
-                     "user_key": user_key, "api_method": api_method,
-                     "timestamp": datetime.now()}
+                    {"user_id":    "null",
+                     "parameters": params,
+                     "timestamp":  datetime.now(),
+                     "status": status
+                     }
                 )
-            
                 cherrypy.response.status = 403
-                return json.dumps({"status": "Problem with user key. Please contact the experimenter."})
+                return json.dumps({"status": status})
 
             if db.trees.find({'user_id': str(current_id)}) \
-                       .sort('timestamp', DESCENDING).count() == 0:
+                    .sort('timestamp', DESCENDING).count() == 0:
                 previous_result = 0
             else:
                 previous_result = \
-                db.trees.find({'user_id': str(current_id)}) \
-                        .sort('timestamp', DESCENDING)[0]
+                    db.trees.find({'user_id': str(current_id)}) \
+                            .sort('timestamp', DESCENDING)[0]
             
             # Check for changes if an existing user (..?)
             if previous_result != 0:
-                if jsonData["updated"] <=  previous_result["lm"]:
+                if jsonData["updated"] <= previous_result["lm"]:
+                    status = "No update needed. If you think you are seeing this message in error, please contact the experimenter."
                     cherrypy.response.status = 403
-                    return json.dumps({"status":"No update needed. If you think you are seeing this message in error, please contact the experimenter."})
-
+                    return json.dumps({"status": status})
+            
             # New calculation
             # Save updated, user id, and skeleton
             try:
                 projects = flatten_intentions(jsonData["projects"])
             except:
+                status = "Error with parsing inputted projects. Please contact the experimenter."
                 cherrypy.response.status = 403
-                return json.dumps({"status":"Error with parsing inputted projects. Please contact the experimenter."})
+                return json.dumps({"status": status})
             try:
                 typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
                 today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
             except:
+                status = "Error with parsing inputted hours. Please contact the experimenter."
                 cherrypy.response.status = 403
-                return json.dumps({"status": "Error with parsing inputted hours. Please contact the experimenter."})
-
+                return json.dumps({"status": status})
+            
             if not (0 < typical_hours <= 24):
+                status = "Please edit the hours you typically work today on Workflowy. The hours you work should be between 0 and 24."
                 cherrypy.response.status = 403
-                return json.dumps({"status": "Please edit the hours you typically work today on Workflowy. The hours you work should be between 0 and 24."})
-        
+                return json.dumps({"status": status})
+            
             # 0 is an allowed value in case users want to skip a day
             if not (0 <= today_hours <= 24):
+                status = "Please edit the hours you can work today on Workflowy. The hours you work should be between 0 and 24."
                 cherrypy.response.status = 403
-                return json.dumps({"status": "Please edit the hours you can work today on Workflowy. The hours you work should be between 0 and 24."})
-
+                return json.dumps({"status": status})
+            
             try:
                 real_goals, misc_goals = parse_tree(projects, allowed_task_time,
                                                     typical_hours)
             except Exception as error:  # TODO: Write specific exceptions
+                status = str(error) + " Please contact the experimenter if you feel you are not able to fix this issue."
                 cherrypy.response.status = 403
-                return json.dumps({"status": str(error) + " Please contact the experimenter if you feel you are not able to fix this issue."})
+                return json.dumps({"status": status})
             
             projects = real_goals + misc_goals
-
+            
             if previous_result == 0:
                 run_point_method = True
             else:
                 run_point_method = are_there_tree_differences(
                     previous_result["tree"], projects)
-
+            
             # TODO if we can do scheduling with old MDP points, we should do that
             if run_point_method or (scheduler == "mdp") or (scheduler == "dp"):
                 if method == "constant":
-                    projects = assign_constant_points(projects, *parameters)
+                    projects = assign_constant_points(projects, *params)
                 elif method == "random":
-                    projects = assign_random_points(projects, fxn_args=parameters)
+                    projects = assign_random_points(projects,
+                                                    fxn_args=params)
                 elif method == "hierarchical":
                     projects = assign_hierarchical_points(projects)
                 elif method == "length":
                     projects = assign_length_points(projects)
-                    
+                
                 # DP method
                 elif method == "dp":
                     # TODO: URL input
                     # TODO: Fix invalid access to the mixing parameter
-                    mixing_parameter = parameters[-1]
-
+                    # mixing_parameter = parameters[-1]
+                    
                     # TODO: Edit after making it URL input
                     # Defined by the experimenter
                     if not (0 <= mixing_parameter < 1):
+                        status = "Please contact the experimenter. There was an issue with the mixing-parameter value."
                         cherrypy.response.status = 403
-                        return json.dumps({"status": "Please contact the experimenter. There was an issue with the mixing-parameter value."})
-
+                        return json.dumps({"status": status})
+                    
                     try:
                         final_tasks = \
                             assign_dynamic_programming_points(
@@ -164,15 +202,16 @@ class PostResource(RESTResource):
                     except Exception as error:
                         cherrypy.response.status = 403
                         return json.dumps({"status": str(error)})
-
+                
                 # TODO: Test and fix potential bugs!
                 elif method == "old-report":
                     final_tasks = \
                         assign_old_api_points(projects, backward_induction,
                                               duration=today_hours * 60)
                 else:
+                    status = "API method does not exist. Please contact the experimenter."
                     cherrypy.response.status = 403
-                    return json.dumps({"status": "API method does not exist. Please contact the experimenter."})
+                    return json.dumps({"status": status})
             else:
                 # Join old values to projects
                 for project in projects:
@@ -194,9 +233,10 @@ class PostResource(RESTResource):
             elif scheduler == "mdp":
                 pass
             else:
+                status = "Scheduling method does not exist. Please contact the experimenter."
                 cherrypy.response.status = 403
-                return json.dumps({"status": "Scheduling method does not exist. Please contact the experimenter."})
-
+                return json.dumps({"status": status})
+            
             # TODO: Make this function @ utils.py
             # Save the data if there was a change, removing nm fields so that we
             # keep participant data anonymous
@@ -208,9 +248,12 @@ class PostResource(RESTResource):
                         del task["nm"]
                 
                 db.trees.insert_one(
-                    {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
-                     "duration": str(datetime.now() - start_time),
-                     "lm": jsonData["updated"], "tree": save_projects})
+                    {"user_id":    current_id,
+                     "parameters": params,
+                     "timestamp":  datetime.now(),
+                     "duration":   str(datetime.now() - start_time),
+                     "lm":         jsonData["updated"],
+                     "tree":       save_projects})
             
             if api_method == "updateTree":
                 cherrypy.response.status = 204
@@ -220,37 +263,40 @@ class PostResource(RESTResource):
                 final_tasks = clean_output(final_tasks)
                 return json.dumps(final_tasks)
             else:
+                status = "API Method not implemented. Please contact the experimenter."
                 cherrypy.response.status = 405
-                return json.dumps({"status": "API Method not implemented. Please contact the experimenter."})
+                return json.dumps({"status": status})
         except:
+            status = "Please contact the experimenter. The API has encountered an error."
             cherrypy.response.status = 403
-            return json.dumps({"status": "Please contact the experimenter. The API has encountered an error."})
+            return json.dumps({"status": status})
 
 
 class ExperimentPostResource(RESTResource):
-
+    
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
-        db.tiny_experiment.insert_one({"data": jsonData,
-                                       "timestamp":  datetime.now()})
+        db.tiny_experiment.insert_one({"data":      jsonData,
+                                       "timestamp": datetime.now()})
         cherrypy.response.status = 204
         return None
 
 
 class SurveyPostResource(RESTResource):
 
-
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
-        db.tiny_survey.insert_one({"data": jsonData, "timestamp":  datetime.now()})
+        db.tiny_survey.insert_one(
+            {"data": jsonData, "timestamp": datetime.now()})
         cherrypy.response.status = 204
         return None
+
 
 class Root(object):
     api = PostResource()
     experiment_data = ExperimentPostResource()
     survey_data = SurveyPostResource()
-
+    
     @cherrypy.expose
     def index(self):
         return "Server is up!"
@@ -262,20 +308,20 @@ if __name__ == '__main__':
     client = MongoClient(uri)
     db = client["ai4productivity"]
     collection = db["ai4productivity"]
-
+    
     conf = {
-        '/': {
+        '/':       {
             # 'tools.sessions.on': True,
-            'tools.response_headers.on': True,
+            'tools.response_headers.on':      True,
             'tools.response_headers.headers': [('Content-Type', 'text/plain')]},
-        '/static':{
-            'tools.staticdir.on': True,
-            'tools.staticdir.dir': os.path.join(
+        '/static': {
+            'tools.staticdir.on':    True,
+            'tools.staticdir.dir':   os.path.join(
                 os.path.dirname(os.path.abspath(__file__)), 'static'),
             'tools.staticdir.index': 'instructions/experiment_instructions.html'
-            }
         }
-
+    }
+    
     cherrypy.config.update({'server.socket_host': '0.0.0.0'})
     cherrypy.config.update(
         {'server.socket_port': int(os.environ.get('PORT', '6789'))})
