@@ -140,27 +140,30 @@ def parse_tree(projects, allowed_task_time, typical_hours):
             task["parentId"] = goal["id"]
             task["pcp"] = False  # TODO: Not sure what this field is...
             
-            goal["deadline"] = None
             goal["est"] += task["est"]
-            goal["value"] = None
             
-        # If no value and deadline has been provided --> Misc goal
-        if goal_value is None and goal_deadline is None:
+        goal["deadline"] = None
+        
+        # Process goal value and check whether the value is valid
+        try:
+            goal["value"] = process_goal_value(goal_value)
+        except Exception as error:
+            raise Exception(f"{goal['nm']}: {str(error)}")
+            # raise Exception(f"Goal \"{goal['nm']}\" has "
+            #                 f"invalid goal value!")
+
+        # If no deadline has been provided --> Misc goal
+        if goal_deadline is None:
             misc_goals += [goal]
         else:
-            # Process goal value and check whether the value is valid
-            try:
-                goal["value"] = process_goal_value(goal_value)
-            except:
-                raise Exception(f"Goal \"{goal['nm']}\" has "
-                                f"invalid goal value!")
-                
             # Process goal deadline and check whether the value is valid
             try:
-                goal["deadline"] = process_goal_deadline(goal_deadline, typical_hours)
-            except Exception:
-                raise Exception(f"Goal \"{goal['nm']}\" has "
-                                f"invalid goal deadline!")
+                goal["deadline"] = process_goal_deadline(goal_deadline,
+                                                         typical_hours)
+            except Exception as error:
+                raise Exception(f"{goal['nm']}: {str(error)}")
+                # raise Exception(f"Goal \"{goal['nm']}\" has "
+                #                 f"invalid goal deadline!")
 
             real_goals += [goal]
     
@@ -168,6 +171,7 @@ def parse_tree(projects, allowed_task_time, typical_hours):
 
 
 def process_goal_deadline(goal_deadline, typical_hours):
+    # TODO: Date at the moment... Enter some delay?
     current_date = datetime.now()  # .date()
     goal_deadline = goal_deadline[1].strip()
     
