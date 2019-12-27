@@ -8,13 +8,17 @@ from math import gcd
 def compute_mixing_values(attainable_goals, mixing_parameter):
     mixing_values = np.zeros(len(attainable_goals))
     
+    # Get value of the latest deadline
+    max_deadline = attainable_goals[-1].get_deadline_time()
+    
     # Calculate distance between two consecutive goals
     for idx in range(len(attainable_goals) - 1):
         mixing_values[idx] = attainable_goals[idx + 1].get_deadline_time() \
                              - attainable_goals[idx].get_deadline_time()
         
     # Transform values s.t. the longest distance has value == mixing_parameter
-    mixing_values *= (mixing_parameter / np.max(mixing_values))
+    mixing_values = (max_deadline - mixing_values) / max_deadline \
+                    * mixing_parameter
     
     return mixing_values
 
@@ -106,8 +110,6 @@ def get_attainable_goals(goals, dp):
         time and a list of unattainable goals.
         - Example of an attainable-goals list: [(Goal, start_time), ...]
         - Example of an unattainable-goals list: [Goal, Goal, ...]
-        
-        # TODO: Maybe return [Task]?!
     """
     # Initialize parameters
     i = len(goals)  # Number of goals
@@ -332,7 +334,7 @@ def simple_goal_scheduler(to_do_list, mixing_parameter=0.0, verbose=False):
         print(mixing_time, '\n')
     
         print('===== Goal-mixing values =====')
-        print(mixing_values)
+        print(mixing_values, '\n')
         
         print('===== Ordered task list =====')
         for task in ordered_task_list:
