@@ -3,12 +3,13 @@ import re
 
 from copy import deepcopy
 from datetime import datetime
+from math import ceil
 from string import digits
 from todolistMDP.to_do_list import Goal, Task
 
 deadline_regex = r"DUE:\s*(20[2-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
 goal_code_regex = r"#CG(\d+|&|_)"
-time_est_regex = r"(?:^||>)\(?~~\s*\d+\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
+time_est_regex = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
 today_regex = r"#today(?:\b|)"
 total_value_regex = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
 
@@ -251,13 +252,18 @@ def process_goal_value(goal):
 def process_time_est(task, allowed_task_time):
     try:
         time_est = re.search(time_est_regex, task["nm"], re.IGNORECASE)[0]
-        
-        # Get time units (the number of hours or minutes)
-        duration = re.search(r"\d+", time_est, re.IGNORECASE)[0]
-        duration = int(duration)
     except:
         raise Exception("No time estimation provided!")
-    
+
+    # Get time units (the number of hours or minutes) | Allows time fractions
+    try:
+        duration = re.search(r"\d+[\.\,]*\d*", time_est, re.IGNORECASE)[0]
+        duration = re.split(r"[\.\,]+", duration)
+        duration = ".".join(duration)
+        duration = float(duration)
+    except:
+        raise Exception("Invalid time estimate!")
+
     # Get unit measurement info
     in_hours = re.search(r"h(?:our|r)?s?", time_est, re.IGNORECASE)
     # in_minutes = re.search(r"m(?:in)?s?", time_est, re.IGNORECASE)
@@ -267,7 +273,10 @@ def process_time_est(task, allowed_task_time):
         duration *= 60
     
     if duration > allowed_task_time:
-        raise Exception(f"Time duration is not allowed!")
+        raise Exception(f"Time duration not allowed!")
+    
+    # Convert time to minutes. If fractional, get the higher rounded value!
+    duration = int(ceil(duration))
     
     return duration
 
