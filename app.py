@@ -51,65 +51,37 @@ class PostResource(RESTResource):
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
         try:
-            add_params = vpath[0].split("&")
-            
-            for param in add_params:
-                key, value = param.split("=")
-                params[key] = value
-                
             start_time = datetime.now()
-            
-            # Compulsory parameters
-            try:
-                api_method = params["apiMethod"]
-                method = params["method"]
-                scheduler = params["scheduler"]
-                user_key = params["userKey"]
-            except:
-                status = "Error with compulsory parameters. Please contact the experimenter."
-                db.request_log.insert_one(
-                    {"user_id":   "null",
-                     "parameters": params,
-                     "timestamp": datetime.now(),
-                     "status": status
-                     }
-                )
-                cherrypy.response.status = 403
-                return json.dumps({"status": status})
 
-            # Optional parameters
-            # - Allowed task time
-            if "allowedTaskTime" not in params:
-                params["allowedTaskTime"] = "inf"
-            allowed_task_time = float(params["allowedTaskTime"])
-            
-            if "mixingParameter" not in params:
-                params["mixingParameter"] = "0.0"
-            mixing_parameter = float(params["mixingParameter"])
+            method = vpath[0]
+            scheduler = vpath[1]
+            allowed_task_time = np.float("inf")  # TODO: Check URL allowed_task_time parameter value
+            parameters = [int(item) for item in vpath[2:-3]]
+            user_key = vpath[-2]
+            api_method = vpath[-1]
             
             # Is there a user key
             try:
                 current_id = jsonData["userkey"]
                 db.request_log.insert_one(
-                    {"user_id":   current_id,
-                     "parameters": params,
-                     "timestamp": datetime.now()
-                     }
+                    {"user_id": current_id, "method": method,
+                     "scheduler": scheduler, "parameters": parameters,
+                     "user_key": user_key, "api_method": api_method,
+                     "timestamp": datetime.now()}
                 )
             except:
                 status = "Problem with user key. Please contact the experimenter."
                 db.request_log.insert_one(
-                    {"user_id":    "null",
-                     "parameters": params,
-                     "timestamp":  datetime.now(),
-                     "status": status
-                     }
+                    {"user_id": "null", "method": method,
+                     "scheduler": scheduler, "parameters": parameters,
+                     "user_key": user_key, "api_method": api_method,
+                     "timestamp": datetime.now()}
                 )
                 cherrypy.response.status = 403
                 return json.dumps({"status": status})
 
             if db.trees.find({'user_id': str(current_id)}) \
-                    .sort('timestamp', DESCENDING).count() == 0:
+                       .sort('timestamp', DESCENDING).count() == 0:
                 previous_result = 0
             else:
                 previous_result = \
@@ -182,8 +154,8 @@ class PostResource(RESTResource):
                 elif method == "dp":
                     # TODO: URL input
                     # TODO: Fix invalid access to the mixing parameter
-                    # mixing_parameter = parameters[-1]
-                    
+                    mixing_parameter = 0
+
                     # TODO: Edit after making it URL input
                     # Defined by the experimenter
                     if not (0 <= mixing_parameter < 1):
@@ -248,12 +220,12 @@ class PostResource(RESTResource):
                         del task["nm"]
                 
                 db.trees.insert_one(
-                    {"user_id":    current_id,
-                     "parameters": params,
-                     "timestamp":  datetime.now(),
-                     "duration":   str(datetime.now() - start_time),
-                     "lm":         jsonData["updated"],
-                     "tree":       save_projects})
+                    {"user_id": current_id, "method": method,
+                     "scheduler": scheduler, "parameters": parameters,
+                     "user_key": user_key, "api_method": api_method,
+                     "timestamp": datetime.now(),
+                     "duration": str(datetime.now() - start_time),
+                     "lm": jsonData["updated"], "tree": save_projects})
             
             if api_method == "updateTree":
                 cherrypy.response.status = 204
