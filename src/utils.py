@@ -3,9 +3,10 @@ import re
 
 from copy import deepcopy
 from datetime import datetime
+from string import digits
 from todolistMDP.to_do_list import Goal, Task
 
-deadline_regex = r"DUE:\s*(\d\d\d\d[\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
+deadline_regex = r"DUE:\s*(20[2-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
 goal_code_regex = r"#CG(\d+|&|_)"
 time_est_regex = r"(?:^||>)\(?~~\s*\d+\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
 today_regex = r"#today(?:\b|)"
@@ -109,6 +110,19 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0, small_value=1):
     return misc_tasks
 
 
+def parse_error_info(error):
+    """
+    Removes personal info and returns the exception info.
+
+    Args:
+        error: Error message as string
+
+    Returns:
+        Exception info without personal data.
+    """
+    return error.split(": ")[-1]
+
+
 def parse_hours(time_string, default_hours=8):
     try:
         return int(re.search(total_value_regex, time_string, re.IGNORECASE)[1])
@@ -131,28 +145,29 @@ def parse_tree(projects, allowed_task_time, typical_hours):
         
         goal["est"] = 0
         for task in goal["ch"]:
-            task["est"] = process_time_est(task, allowed_task_time)
-            
+            try:
+                task["est"] = process_time_est(task, allowed_task_time)
+            except Exception as error:
+                raise Exception(f"Task {task['nm']}: {str(error)}")
+
             # Check whether a task has been marked to be completed today
             task["today"] = process_today_code(task)
     
             task["parentId"] = goal["id"]
             task["pcp"] = False  # TODO: Not sure what this field is...
             
+            # Add task time estimation to total goal time estimation
             goal["est"] += task["est"]
             
-        goal["deadline"] = None
-        
         # Process goal value and check whether the value is valid
         try:
             goal["value"] = process_goal_value(goal)
         except Exception as error:
-            raise Exception(f"{goal['nm']}: {str(error)}")
-            # raise Exception(f"Goal \"{goal['nm']}\" has "
-            #                 f"invalid goal value!")
+            raise Exception(f"Goal {goal['nm']}: {str(error)}")
 
         # If no deadline has been provided --> Misc goal
-        if goal_deadline is None:
+        if goal["code"][0] not in digits:
+            goal["deadline"] = None
             misc_goals += [goal]
         else:
             # Process goal deadline and check whether the value is valid
@@ -160,93 +175,89 @@ def parse_tree(projects, allowed_task_time, typical_hours):
                 goal["deadline"] = process_goal_deadline(goal_deadline,
                                                          typical_hours)
             except Exception as error:
-                raise Exception(f"{goal['nm']}: {str(error)}")
-                # raise Exception(f"Goal \"{goal['nm']}\" has "
-                #                 f"invalid goal deadline!")
+                raise Exception(f"Goal {goal['nm']}: {str(error)}")
 
             real_goals += [goal]
     
     return real_goals, misc_goals
 
 
-def process_goal_deadline(goal_deadline, typical_hours):
+def process_goal_deadline(deadline, typical_hours):
     # TODO: Date at the moment... Enter some delay?
     current_date = datetime.now()  # .date()
 
+    if deadline is None:
+        raise Exception("Invalid or no deadline provided!")
+
     # Remove empty spaces at the beginning and the end of the string
-    goal_deadline = goal_deadline[0].strip()
+    deadline = deadline[0].strip()
     
     # Remove "DUE:\s*"
-    goal_deadline = re.sub(r"DUE:\s*", "", goal_deadline, re.IGNORECASE)
-    
-    separators_regex = r"[-\.\\\/\s+]+"
+    deadline = re.sub(r"DUE:\s*", "", deadline, re.IGNORECASE)
     
     # Split date and time
-    deadline_args = re.split(r"\s+", goal_deadline)
+    deadline_args = re.split(r"\s+", deadline)
     
     if len(deadline_args) >= 1:
         # Parse date
         try:
             year, month, day = re.split(r"[\-\.\\\/]+", deadline_args[0])
         except:
-            raise Exception("Invalid date parsing!")
+            raise Exception(f"Invalid deadline date!")
     
         if len(deadline_args) == 2:
-            # Parse day time
+            # Parse time
             try:
                 hours, minutes = re.split(r"[\-\:\;\.\,]+", deadline_args[1])
             except:
-                raise Exception("Invalid day time parsing!")
+                raise Exception(f"Invalid deadline time!")
+            
         else:
             hours, minutes = '23', '59'  # End of the day
     
-        goal_deadline = f"{year}-{month}-{day} {hours}:{minutes}"
-
+        deadline = f"{year}-{month}-{day} {hours}:{minutes}"
+        
     # Convert deadline into datetime object
-    goal_deadline = datetime.strptime(goal_deadline, "%Y-%m-%d %H:%M")
-    td = goal_deadline - current_date
+    deadline_value = datetime.strptime(deadline, "%Y-%m-%d %H:%M")
+    td = deadline_value - current_date
     
     # Convert difference between deadlines into minutes
     # (ignoring remaining seconds)
-    goal_deadline = (td.days * typical_hours * 60) + (td.seconds // 60)
+    deadline_value = (td.days * typical_hours * 60) + (td.seconds // 60)
 
-    try:
-        goal_deadline = int(goal_deadline)
-    except:
-        raise Exception("Invalid goal deadline!")
-    
     # Check whether it is in the future
-    if goal_deadline <= 0:
-        raise Exception("Goal deadline not in the future!")
+    if deadline_value <= 0:
+        raise Exception(f"Deadline not in the future!")
 
-    return goal_deadline
+    return deadline_value
 
 
 def process_goal_value(goal):
     goal_value = re.search(total_value_regex, goal["nm"], re.IGNORECASE)
+    
+    if goal_value is None:
+        raise Exception("No value provided!")
+    
+    # Parse value
     goal_value = int(goal_value[1])
 
+    # Check whether it is a positive number
     if goal_value <= 0:
-        raise Exception("Goal value not a positive number!")
+        raise Exception("Value not a positive number!")
 
     return goal_value
 
 
 def process_time_est(task, allowed_task_time):
-    time_est = re.search(time_est_regex, task["nm"], re.IGNORECASE)
-    
-    time_est = time_est[0]
-    
-    # Remove prefix "~~" | TODO: Probably not needed...
-    time_est = re.sub(r"~~\s*", "", time_est, re.IGNORECASE)
-    
-    # Get time units (the number of hours or minutes)
     try:
+        time_est = re.search(time_est_regex, task["nm"], re.IGNORECASE)[0]
+        
+        # Get time units (the number of hours or minutes)
         duration = re.search(r"\d+", time_est, re.IGNORECASE)[0]
         duration = int(duration)
     except:
-        raise Exception("Missing task time estimation!")  # TODO: Excpetion!
-
+        raise Exception("No time estimation provided!")
+    
     # Get unit measurement info
     in_hours = re.search(r"h(?:our|r)?s?", time_est, re.IGNORECASE)
     # in_minutes = re.search(r"m(?:in)?s?", time_est, re.IGNORECASE)
@@ -256,8 +267,7 @@ def process_time_est(task, allowed_task_time):
         duration *= 60
     
     if duration > allowed_task_time:
-        raise Exception(f"Task \"{task['nm']}\" has duration more than the "
-                        f"allowed time duration!")
+        raise Exception(f"Time duration is not allowed!")
     
     return duration
 
@@ -269,6 +279,12 @@ def process_today_code(task):
         return True
     else:
         return False
+
+
+def store_log(db_collection, log_dict, status=None):
+    log_dict["status"] = status
+    log_dict["timestamp"] = datetime.now()
+    db_collection.insert_one(log_dict)
 
 
 def task_dict_from_projects(projects):
@@ -301,7 +317,8 @@ def tree_to_old_structure(projects):
             # Get time estimation and check whether the value is valid
             # --> Upper limit done in the parse_tree function
             if task['est'] <= 0:
-                raise Exception("Time estimation not a positive number!")
+                raise Exception(f"{task['nm']}: Time estimation is not a "
+                                f"positive number!")
 
             # TODO: Probability of success
 
