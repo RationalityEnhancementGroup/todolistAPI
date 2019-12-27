@@ -337,7 +337,7 @@ class SurveyPostResource(RESTResource):
 
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
-        query = {'data.0.subject' : jsonData[0]["subject"]}
+        query = {'data.0.url_variables.userid' : jsonData[0]["url_variables"]["userid"]}
         if db.tiny_survey.find(query).count() > 0:
             newvalues = { "$set": {"data":      jsonData,
                                        "timestamp": datetime.now()} }
