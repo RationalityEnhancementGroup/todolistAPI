@@ -48,22 +48,22 @@ var SIMS_Scale = ["corresponds not at all",
 
 
 
-var SIMS_Questions = ["Because I think that this activity is interesting",
+var SIMS_Questions = ["Because I think that working on this goal is interesting",
 "Because I am doing it for my own good",
 "Because I am supposed to do it",
-"There may be good reasons to do this activity, but personally I don’t see any",
-"Because I think that this activity is pleasant",
-"Because I think that this activity is good for me",
+"There may be good reasons to work on this goal, but personally I don’t see any",
+"Because I think that working on this goal is pleasant",
+"Because I think that working on this goal is good for me",
 "Because it is something that I have to do",
-"I do this activity but I am not sure if it is worth it",
-"Because this activity is fun",
+"I work on this goal but I am not sure if it is worth it",
+"Because working on this goal is fun",
 "By personal decision",
 "Because I don’t have any choice",
-"I don’t know; I don’t see what this activity brings me",
-"Because I feel good when doing this activity",
-"Because I believe that this activity is important for me",
+"I don’t know; I don’t see what working on this goal brings me",
+"Because I feel good when working on this goal",
+"Because I believe that working on this goal is important for me",
 "Because I feel that I have to do it",
-"I do this activity, but I am not sure it is a good thing to pursue it"]
+"I work on this goal, but I am not sure it is a good thing to pursue it"]
 
 
 // survey_timeline.push({
@@ -201,7 +201,7 @@ var IPS_2010 = [
 
 survey_timeline.push(create_questionnaire(IPS_2010, IPS_Scale, IPS_preamble));
 
-var WE_preamble = "The following 17 statements are about how you feel at work. Please read each statement care-fully and decide if you ever feel this way about your job. If you have never had this feeling, mark “0” (zero) in the space after the statement. If you have had this feeling, indicate how often you felt it by crossing the number (from 1 to 6) that best describes how frequently you feel that way."
+var WE_preamble = "The following 17 statements are about how you feel at work. Please read each statement carefully and decide if you ever feel this way about your job. If you have never had this feeling, mark 'Never'. If you have had this feeling, select the answer that best describes how frequently you feel that way."
 
 var WE_scale = ["Never",
 "Almost Never / A few times a year or less",
