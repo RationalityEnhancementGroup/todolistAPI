@@ -69,7 +69,7 @@ ux_question_one = {timeline:[{
 type: 'survey-likert',
 preamble: "<b>Task 1</b>, Page 1 of 2<br>"+"Imagine you just completed an intention. Check off the intention in the CompliceX app.",
 questions : [
-{prompt: "Were you able to complete this task?" , labels: scale_completion, required: false},
+{prompt: "Were you able to check off the intention?" , labels: scale_completion, required: false},
 {prompt: "Was this intuitive?", labels: scale_feeling, required: false},
 {prompt: "Did you find this action rewarding?", labels: scale_feeling, required: false}]},
 {type: 'survey-text',
@@ -78,8 +78,8 @@ questions: [{prompt: "Do you have any comments or suggestions about how this wor
 
 ux_question_two = {timeline:[{
 type: 'survey-likert',
-preamble: "<b>Task 2</b>, Page 1 of 2<br>"+"Now imagine you remember you forgot an intention you urgently need to complete today. Please enter an intention in Workflowy as part of your first goal, with duration 2 hours, marked for today. After that, add the task to your intentions list."
-+"<br>HINT:If you haven't read the instructions above your Workflowy tree, now might be the time to do so!",
+preamble: "<b>Task 2</b>, Page 1 of 2<br>"+"Now imagine you remember you forgot an intention you urgently need to complete today. Please enter an intention in Workflowy as part of your <b>first</b> goal, with duration <b>2 hours</b>, marked for <b>today</b>. After that, add the task to your intentions list."
++"<br>HINT:If you haven't read the instructions above your Workflowy tree (the node titled <i>CompliceX + WorkFlowy instructions</i>), now might be the time to do so!",
 questions:[
 {prompt: "Were you able to complete this task?" , labels: scale_completion, required: false},
 {prompt: "Was this intuitive?", labels: scale_feeling, required: false},
