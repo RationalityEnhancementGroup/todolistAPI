@@ -13,13 +13,6 @@ time_est_regex = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?))
 today_regex = r"#today(?:\b|)"
 total_value_regex = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
 
-def create_projects_to_save(projects):
-    projects_to_save = deepcopy(projects)
-    for project in projects_to_save:
-        del project["nm"]
-        for task in project["ch"]:
-            del task["nm"]
-    return projects_to_save
 
 def are_there_tree_differences(old_tree, new_tree):
     """
@@ -61,6 +54,15 @@ def clean_output(task_list):
         task["val"] = round(task["val"])
     
     return task_list
+
+
+def create_projects_to_save(projects):
+    projects_to_save = deepcopy(projects)
+    for project in projects_to_save:
+        del project["nm"]
+        for task in project["ch"]:
+            del task["nm"]
+    return projects_to_save
 
 
 def create_tree_dict(tree):
@@ -131,11 +133,8 @@ def parse_error_info(error):
     return error.split(": ")[-1]
 
 
-def parse_hours(time_string, default_hours=8):
-    try:
-        return int(re.search(total_value_regex, time_string, re.IGNORECASE)[1])
-    except:
-        return default_hours
+def parse_hours(time_string):
+    return int(re.search(total_value_regex, time_string, re.IGNORECASE)[1])
     
     
 def parse_tree(projects, allowed_task_time, typical_hours):
@@ -166,8 +165,8 @@ def parse_tree(projects, allowed_task_time, typical_hours):
             
             # Add task time estimation to total goal time estimation
             goal["est"] += task["est"]
-
-            # == START NEW ==
+            
+            # Append goal's name to task's name
             task["nm"] = goal["code"] + ") " + task["nm"]
             
         # Process goal value and check whether the value is valid
@@ -321,7 +320,8 @@ def store_log(db_collection, log_dict, **params):
     # Store additional info in the log dictionary
     for key in params.keys():
         log_dict[key] = params[key]
-        
+
+    log_dict["duration"] = str(datetime.now() - log_dict["start_time"])
     log_dict["timestamp"] = datetime.now()
     
     db_collection.insert_one(log_dict)  # Store info in DB collection
