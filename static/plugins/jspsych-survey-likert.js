@@ -76,6 +76,7 @@ jsPsych.plugins['survey-likert'] = (function() {
   }
 
   plugin.trial = function(display_element, trial) {
+    window.scrollTo(0,0);
 
     if(trial.scale_width !== null){
       var w = trial.scale_width + 'px';
