@@ -321,7 +321,13 @@ class ExperimentPostResource(RESTResource):
     
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
-        db.tiny_experiment.insert_one({"data":      jsonData,
+        query = {'data.0.subject' : jsonData[0]["subject"]}
+        if db.tiny_experiment.find(query).count() > 0:
+            newvalues = { "$set": {"data":      jsonData,
+                                       "timestamp": datetime.now()} }
+            db.tiny_experiment.update_one(query, newvalues)
+        else:
+            db.tiny_experiment.insert_one({"data":      jsonData,
                                        "timestamp": datetime.now()})
         cherrypy.response.status = 204
         return None
@@ -331,9 +337,14 @@ class SurveyPostResource(RESTResource):
 
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
-        db.tiny_survey.insert_one(
-            {"data": jsonData,
-             "timestamp": datetime.now()})
+        query = {'data.0.subject' : jsonData[0]["subject"]}
+        if db.tiny_survey.find(query).count() > 0:
+            newvalues = { "$set": {"data":      jsonData,
+                                       "timestamp": datetime.now()} }
+            db.tiny_survey.update_one(query, newvalues)
+        else:
+            db.tiny_survey.insert_one({"data":      jsonData,
+                                       "timestamp": datetime.now()})
         cherrypy.response.status = 204
         return None
 
