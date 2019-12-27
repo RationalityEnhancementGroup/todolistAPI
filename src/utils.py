@@ -5,11 +5,11 @@ from copy import deepcopy
 from datetime import datetime
 from todolistMDP.to_do_list import Goal, Task
 
-goalCodeRegex = r"#CG(\d+|&|_)"
-totalValueRegex = r"(?:^| |>)\(?==(\d+)\)?(?:\b|$)"
-timeEstimateRegex = r"(?:^| |>)\(?~~(\d+|\.\d+|\d+.\d+)(?:(h(?:ou)?(?:r)?)?(m(?:in)?)?)?s?\)?([^\da-z.]|$)"
-deadlineRegex = r"DUE:(\d\d\d\d-\d+-\d+)(\s+\d\:\d\d|\s+\d\d\:\d\d|\s*$)"
-todayRegex = r"#today(?:\b|$)"
+deadline_regex = r"DUE:\s*(\d\d\d\d[\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
+goal_code_regex = r"#CG(\d+|&|_)"
+time_est_regex = r"(?:^||>)\(?~~\s*\d+\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
+today_regex = r"#today(?:\b|)"
+total_value_regex = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
 
 
 def are_there_tree_differences(old_tree, new_tree):
@@ -111,7 +111,7 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0, small_value=1):
 
 def parse_hours(time_string, default_hours=8):
     try:
-        return int(re.search(totalValueRegex, time_string, re.IGNORECASE)[1])
+        return int(re.search(total_value_regex, time_string, re.IGNORECASE)[1])
     except:
         return default_hours
     
@@ -126,14 +126,13 @@ def parse_tree(projects, allowed_task_time, typical_hours):
     
     for goal in projects:
         # Extract goal information
-        goal["code"] = re.search(goalCodeRegex, goal["nm"], re.IGNORECASE)[1]
-        goal_value = re.search(totalValueRegex, goal["nm"], re.IGNORECASE)
-        goal_deadline = re.search(deadlineRegex, goal["nm"], re.IGNORECASE)
+        goal["code"] = re.search(goal_code_regex, goal["nm"], re.IGNORECASE)[1]
+        goal_deadline = re.search(deadline_regex, goal["nm"], re.IGNORECASE)
         
         goal["est"] = 0
         for task in goal["ch"]:
             task["est"] = process_time_est(task, allowed_task_time)
-    
+            
             # Check whether a task has been marked to be completed today
             task["today"] = process_today_code(task)
     
@@ -146,7 +145,7 @@ def parse_tree(projects, allowed_task_time, typical_hours):
         
         # Process goal value and check whether the value is valid
         try:
-            goal["value"] = process_goal_value(goal_value)
+            goal["value"] = process_goal_value(goal)
         except Exception as error:
             raise Exception(f"{goal['nm']}: {str(error)}")
             # raise Exception(f"Goal \"{goal['nm']}\" has "
@@ -173,12 +172,37 @@ def parse_tree(projects, allowed_task_time, typical_hours):
 def process_goal_deadline(goal_deadline, typical_hours):
     # TODO: Date at the moment... Enter some delay?
     current_date = datetime.now()  # .date()
-    goal_deadline = goal_deadline[1].strip()
+
+    # Remove empty spaces at the beginning and the end of the string
+    goal_deadline = goal_deadline[0].strip()
     
-    # If no time is included
-    if not (' ' in goal_deadline and ':' in goal_deadline):
-        goal_deadline += ' 23:59'  # End of the day
+    # Remove "DUE:\s*"
+    goal_deadline = re.sub(r"DUE:\s*", "", goal_deadline, re.IGNORECASE)
     
+    separators_regex = r"[-\.\\\/\s+]+"
+    
+    # Split date and time
+    deadline_args = re.split(r"\s+", goal_deadline)
+    
+    if len(deadline_args) >= 1:
+        # Parse date
+        try:
+            year, month, day = re.split(r"[\-\.\\\/]+", deadline_args[0])
+        except:
+            raise Exception("Invalid date parsing!")
+    
+        if len(deadline_args) == 2:
+            # Parse day time
+            try:
+                hours, minutes = re.split(r"[\-\:\;\.\,]+", deadline_args[1])
+            except:
+                raise Exception("Invalid day time parsing!")
+        else:
+            hours, minutes = '23', '59'  # End of the day
+    
+        goal_deadline = f"{year}-{month}-{day} {hours}:{minutes}"
+
+    # Convert deadline into datetime object
     goal_deadline = datetime.strptime(goal_deadline, "%Y-%m-%d %H:%M")
     td = goal_deadline - current_date
     
@@ -198,7 +222,8 @@ def process_goal_deadline(goal_deadline, typical_hours):
     return goal_deadline
 
 
-def process_goal_value(goal_value):
+def process_goal_value(goal):
+    goal_value = re.search(total_value_regex, goal["nm"], re.IGNORECASE)
     goal_value = int(goal_value[1])
 
     if goal_value <= 0:
@@ -208,13 +233,26 @@ def process_goal_value(goal_value):
 
 
 def process_time_est(task, allowed_task_time):
-    time_est = re.search(timeEstimateRegex, task["nm"], re.IGNORECASE)
+    time_est = re.search(time_est_regex, task["nm"], re.IGNORECASE)
     
-    if time_est is None:
-        raise Exception("Missing task time estimation!")
+    time_est = time_est[0]
     
-    duration = int(time_est[1])
-    if time_est[2] is not None:  # Hours --> Convert to minutes
+    # Remove prefix "~~" | TODO: Probably not needed...
+    time_est = re.sub(r"~~\s*", "", time_est, re.IGNORECASE)
+    
+    # Get time units (the number of hours or minutes)
+    try:
+        duration = re.search(r"\d+", time_est, re.IGNORECASE)[0]
+        duration = int(duration)
+    except:
+        raise Exception("Missing task time estimation!")  # TODO: Excpetion!
+
+    # Get unit measurement info
+    in_hours = re.search(r"h(?:our|r)?s?", time_est, re.IGNORECASE)
+    # in_minutes = re.search(r"m(?:in)?s?", time_est, re.IGNORECASE)
+    
+    # If in hours --> Convert to minutes
+    if in_hours:
         duration *= 60
     
     if duration > allowed_task_time:
@@ -225,7 +263,8 @@ def process_time_est(task, allowed_task_time):
 
 
 def process_today_code(task):
-    today_code = re.search(todayRegex, task["nm"], re.IGNORECASE)
+    today_code = re.search(today_regex, task["nm"], re.IGNORECASE)
+    
     if today_code:  # ... is not None
         return True
     else:
