@@ -7,7 +7,7 @@ from math import ceil
 from string import digits
 from todolistMDP.to_do_list import Goal, Task
 
-deadline_regex = r"DUE:\s*(20[2-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
+deadline_regex = r"DUE:\s*(20[1-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
 goal_code_regex = r"#CG(\d+|&|_)"
 time_est_regex = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
 today_regex = r"#today(?:\b|)"
@@ -262,7 +262,7 @@ def process_time_est(task, allowed_task_time):
     try:
         time_est = re.search(time_est_regex, task["nm"], re.IGNORECASE)[0]
     except:
-        raise Exception("No time estimation provided!")
+        raise Exception("No time estimation or invalid time estimation provided!")
 
     # Get time units (the number of hours or minutes) | Allows time fractions
     try:
