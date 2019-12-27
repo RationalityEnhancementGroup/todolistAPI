@@ -290,10 +290,33 @@ def process_today_code(task):
         return False
 
 
-def store_log(db_collection, log_dict, status=None):
-    log_dict["status"] = status
+def store_log(db_collection, log_dict, **params):
+    """
+    Stores the provided log dictionary in the DB collection with the additional
+    (provided) parameters.
+    
+    Args:
+        db_collection:
+        log_dict:
+        **params: Parameters to be stored, but NOT saved in the provided dict.
+                  If you want to store the changes, then "catch" the returned
+                  object after calling this function.
+
+    Returns:
+        Log dictionary with the existing + new parameters!
+    """
+    # Avoid overlaps
+    log_dict = dict(log_dict)
+    
+    # Store additional info in the log dictionary
+    for key in params.keys():
+        log_dict[key] = params[key]
+        
     log_dict["timestamp"] = datetime.now()
-    db_collection.insert_one(log_dict)
+    
+    db_collection.insert_one(log_dict)  # Store info in DB collection
+    
+    return log_dict
 
 
 def task_dict_from_projects(projects):
