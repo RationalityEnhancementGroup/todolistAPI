@@ -111,6 +111,17 @@ class PostResource(RESTResource):
             try:
                 projects = flatten_intentions(jsonData["projects"])
             except:
+                # == START NEW ==
+                #TODO: clean up saves, errors
+                # Save the data if there was a change, removing nm fields so that we
+                # keep participant data anonymous
+                save_projects = create_projects_to_save(projects)
+                db.request_log.insert_one(
+                        {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
+                         "duration": str(datetime.now() - start_time),
+                         "lm": jsonData["updated"], "tree": save_projects, "when": "before parsing"})
+                # == END NEW ==
+                
                 status = "Error with parsing inputted projects."
                 store_log(db.request_log, log_dict, status=status)
                 
@@ -121,6 +132,16 @@ class PostResource(RESTResource):
                 typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
                 today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
             except:
+                # == START NEW ==
+                # Save the data if there was a change, removing nm fields so that we
+                # keep participant data anonymous
+                save_projects = create_projects_to_save(projects)
+                db.request_log.insert_one(
+                        {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
+                         "duration": str(datetime.now() - start_time),
+                         "lm": jsonData["updated"], "tree": save_projects, "when": "after parsing"})
+                # == END NEW ==
+                
                 status = "Error with parsing inputted hours."
                 store_log(db.request_log, log_dict, status=status)
 
@@ -128,6 +149,14 @@ class PostResource(RESTResource):
                 return json.dumps({"status": status + " " + CONTACT})
             
             if not (0 < typical_hours <= 24):
+                # == START NEW ==
+                save_projects = create_projects_to_save(projects)
+                db.request_log.insert_one(
+                        {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
+                         "duration": str(datetime.now() - start_time),
+                         "lm": jsonData["updated"], "tree": save_projects, "when": "after parsing"})
+                # == END NEW ==
+                
                 store_log(db.request_log, log_dict, status="Invalid typical hours value.")
                 status = "Please edit the hours you typically work today on Workflowy. " \
                          "The hours you work should be between 0 and 24."
@@ -136,6 +165,14 @@ class PostResource(RESTResource):
             
             # 0 is an allowed value in case users want to skip a day
             if not (0 <= today_hours <= 24):
+                # == START NEW ==
+                save_projects = create_projects_to_save(projects)
+                db.request_log.insert_one(
+                        {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
+                         "duration": str(datetime.now() - start_time),
+                         "lm": jsonData["updated"], "tree": save_projects, "when": "after parsing"})
+                # == END NEW ==
+                
                 store_log(db.request_log, log_dict, status="Invalid today hours value.")
                 status = "Please edit the hours you can work today on Workflowy. " \
                          "The hours you work should be between 0 and 24."
@@ -146,6 +183,14 @@ class PostResource(RESTResource):
                 real_goals, misc_goals = parse_tree(projects, allowed_task_time,
                                                     typical_hours)
             except Exception as error:
+                # == START NEW ==
+                save_projects = create_projects_to_save(projects)
+                db.request_log.insert_one(
+                        {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
+                         "duration": str(datetime.now() - start_time),
+                         "lm": jsonData["updated"], "tree": save_projects, "when": "after parsing"})
+                # == END NEW ==
+                
                 status = str(error)
                 
                 # Remove personal data
@@ -159,7 +204,17 @@ class PostResource(RESTResource):
                 return json.dumps({"status": status})
             
             projects = real_goals + misc_goals
-            
+
+            # == START NEW ==
+            # Save the data if there was a change, removing nm fields so that we
+            # keep participant data anonymous
+            save_projects = create_projects_to_save(projects)
+            db.trees.insert_one(
+                    {"user_id": current_id, "method" : method,"scheduler" : scheduler,"parameters" :parameters,"user_key" :user_key,"api_method" :api_method,"timestamp": datetime.now(),
+                     "duration": str(datetime.now() - start_time),
+                     "lm": jsonData["updated"], "tree": save_projects})
+            # == END NEW ==
+
             if previous_result == 0:
                 run_point_method = True
             else:

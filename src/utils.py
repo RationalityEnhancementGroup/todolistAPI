@@ -13,6 +13,13 @@ time_est_regex = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?))
 today_regex = r"#today(?:\b|)"
 total_value_regex = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
 
+def create_projects_to_save(projects):
+    projects_to_save = deepcopy(projects)
+    for project in projects_to_save:
+        del project["nm"]
+        for task in project["ch"]:
+            del task["nm"]
+    return projects_to_save
 
 def are_there_tree_differences(old_tree, new_tree):
     """
@@ -159,6 +166,9 @@ def parse_tree(projects, allowed_task_time, typical_hours):
             
             # Add task time estimation to total goal time estimation
             goal["est"] += task["est"]
+
+            # == START NEW ==
+            task["nm"] = goal["code"] + ") " + task["nm"]
             
         # Process goal value and check whether the value is valid
         try:
