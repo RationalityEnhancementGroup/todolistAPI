@@ -22,7 +22,7 @@ survey_timeline.push({type: 'survey-likert',
 
 var cluster_preamble = "Some people have goals that are very separate, while others may have goals that fall into the same category.<br>"+
 "For example, you may have multiple goals for making progress at work or furthering your education. Or perhaps, you have multiple goals for how to improve your health. <br>"+
-"Please think about whether there are any larger goals that subsume multiple of the goals you entered in WorkFlowy. For instance, if your first and your third WorkFlowy goal are both part of some larger goal, then please assign both of them to Larger Goal 1."+ 
+"Please think about whether there are any larger goals that subsume multiple goals which you have entered into WorkFlowy. For instance, if your first and your third WorkFlowy goal are both part of some larger goal, then please assign both of them to Larger Goal 1."+ 
 "And if on top of that your second and fourth goal are part of another larger goal, then please assign both of them to Larger Goal 2."
 
 var cluster_questions = ["Goal 1", "Goal 2", "Goal 3", "Goal 4", "Goal 5", "Goal 6", "Goal 7", "Goal 8", "Goal 9", "Goal 10"]
@@ -127,8 +127,8 @@ var text_survey = {
     type: 'survey-text',
     questions: [{prompt: "How old are you?"},
                 {prompt: "Which gender do you identify with?"},
-                {prompt: "Which features of the to-do list website did you find helpful?"},
-                {prompt: "Do you have any further comments?"}
+                {prompt: "Which features of the to-do list website did you find helpful?", rows: 5, columns: 40},
+                {prompt: "Do you have any further comments?", rows: 5, columns: 40}
                 ]
 
 }
