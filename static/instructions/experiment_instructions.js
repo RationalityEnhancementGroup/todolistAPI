@@ -91,7 +91,7 @@ questions: [{prompt: "Do you have any comments or suggestions about how this wor
 
 ux_question_three = {timeline:[{
 type: 'survey-likert',
-preamble: "<b>Task 3</b>, Page 1 of 2<br>"+"Currently the app asks for your typical working hours and planned working hours today. This is because we are developing an algorithm that helps users to complete goals, and it will need this information to plan."
+preamble: "<b>Task 3</b>, Page 1 of 2<br>"+"Currently the app asks for your typical working hours and planned working hours today. This is because we are developing an algorithm that helps users complete their goals, and it will need this information to plan ahead."
 +"<br>We have two options we are considering:<br> <b>Option 1</b>: users input typical and today hours, along with whether they work on weekends"
 +"<br><b>Option 2</b>: users input hours for every day of the week, and change them as their availability that week changes",
 questions:[
@@ -101,7 +101,7 @@ questions:[
 {prompt:"Do you typically have a good idea of how many hours you have available for working towards your goal, one week ahead?", labels: frequency_likert, required:false}]},
 {type: 'survey-text',
 preamble: "<b>Task 3</b>, Page 2 of 2<br>",
-questions: [{prompt: "Do you have any additional comments or suggestions for us about asking for working hours?", rows: 5, columns: 80}]}]}
+questions: [{prompt: "Do you have any additional comments or suggestions for us?", rows: 5, columns: 80}]}]}
 
 general_usability = {type: 'survey-text',
 preamble: "If you were able to complete your tasks quickly, feel free to play around with the app now. (Please note, this is not required.) <br> Feel free to respond to any of the following optional questions for which you have an opinion.",
@@ -128,21 +128,7 @@ var instructions_timeline = [{
   cont_btn:'consent-to-do-submit-button'
 },{
     type: 'instructions',
-    pages: [overview.join("<br><br><br>")],
-    show_clickable_nav: true
-},{
-    type: 'instructions',
-    pages: [first_step.join("<br><br><br>")],
-    allow_backward:true,
-    show_clickable_nav: true
-},{
-    type: 'instructions',
-    pages: [second_step.join("<br><br><br>")],
-    allow_backward:true,
-    show_clickable_nav: true
-},{
-    type: 'instructions',
-    pages: [third_step.join("<br><br><br>")],
+    pages: [overview.join("<br><br><br>"), first_step.join("<br><br><br>"), second_step.join("<br><br><br>"), third_step.join("<br><br><br>")],
     allow_backward:true,
     show_clickable_nav: true
 },
@@ -161,6 +147,6 @@ general_usability,{
 },{
     type: 'instructions',
     pages: [completion_code.join("<br><br><br>")],
-    allow_backward:true,
-    show_clickable_nav: true
+    allow_backward:false,
+    show_clickable_nav: false
 }]
