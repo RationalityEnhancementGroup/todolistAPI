@@ -7,38 +7,32 @@ from todolistMDP import mdp
 
 
 class Goal:
-    def __init__(self, description, goal_id, reward, tasks,
-                 completed=False, deadline=None, penalty=0):
+    def __init__(self, description, goal_id, rewards, tasks,
+                 completed=False, penalty=0):
         """
         # TODO: Complete this...
         
-        Non-goal tasks are related to a Goal object with no deadline
-        (deadline = infinity) and reward 0.
+        Non-goal tasks are goals for themselves with reward proportional to the
+        value of the misc goal node, and infinite deadline. To simulate infinite
+        deadline, we set the deadline of each non-goal task to be an addition to
+        the latest deadline of all "real" goals, i.e.
+            latest_deadline(all_goals) + sum(non_goal_task["time_est"])
         
         Args:
             description: String description of the goal
-            reward: {Time of completion: Reward}
+            rewards: {Time of completion: Reward}
             tasks: [Task]
             
             completed: Whether it has been completed
-            deadline: Latest deadline time  # TODO: Maybe a datetime object?!
             penalty: Penalty points for failing to meet the deadline
         """
         # Parameters
         self.description = description
         self.goal_id = goal_id
-        self.reward = reward  # TODO: Change the name of the parameter
+        self.rewards = rewards
         
-        self.all_tasks = tasks
-        self.completed_tasks = set()
-        self.uncompleted_tasks = set()
-        
-        self.earliest_start_time = None
-
         # Set up a deadline
-        self.deadline = deadline  # TODO: Change to latest_deadline or remove?
-        if self.deadline is None:
-            self.deadline = max(reward.keys())
+        self.latest_deadline = max(rewards.keys())
 
         self.completed = completed
         self.penalty = penalty
@@ -48,7 +42,12 @@ class Goal:
         self.uncompleted_time_est = 0  # Time estimation of uncompleted tasks
         self.total_time_est = 0  # Time estimation of all tasks
         self.value_est = 0  # Value estimation
-        
+
+        # Split tasks into completed and uncompleted
+        self.all_tasks = tasks
+        self.completed_tasks = set()
+        self.uncompleted_tasks = set()
+
         for task in self.all_tasks:
             task.set_goal(self)  # Set a reference from the tasks to the goal
 
@@ -67,30 +66,29 @@ class Goal:
         return id(self)
 
     def __eq__(self, other):
-        return self.get_deadline_time() == other.get_deadline_time()
+        return self.get_latest_deadline_time() == other.get_latest_deadline_time()
     
     def __ne__(self, other):
-        return self.get_deadline_time() != other.get_deadline_time()
+        return self.get_latest_deadline_time() != other.get_latest_deadline_time()
 
     def __ge__(self, other):
-        return self.get_deadline_time() >= other.get_deadline_time()
+        return self.get_latest_deadline_time() >= other.get_latest_deadline_time()
 
     def __gt__(self, other):
-        return self.get_deadline_time() > other.get_deadline_time()
+        return self.get_latest_deadline_time() > other.get_latest_deadline_time()
 
     def __le__(self, other):
-        return self.get_deadline_time() <= other.get_deadline_time()
+        return self.get_latest_deadline_time() <= other.get_latest_deadline_time()
 
     def __lt__(self, other):
-        return self.get_deadline_time() < other.get_deadline_time()
+        return self.get_latest_deadline_time() < other.get_latest_deadline_time()
 
     def __str__(self):
         return f'Description: {self.description}\n' \
-               f'Reward: {self.reward}\n' \
+               f'Rewards: {self.rewards}\n' \
                f'Completed: {self.completed}\n' \
-               f'Earliest start: {self.earliest_start_time}\n' \
                f'ID: {self.goal_id}\n' \
-               f'Latest deadline: {self.deadline}\n' \
+               f'Latest deadline: {self.latest_deadline}\n' \
                f'Total time est.: {self.total_time_est}\n'
 
     def get_completed_tasks(self):
@@ -102,24 +100,15 @@ class Goal:
     def get_deadline_penalty(self):
         return self.penalty
 
-    def get_deadline_time(self):
-        return self.deadline
-
     def get_description(self):
         return self.description
-
-    def get_earliest_start_time(self):
-        """
-    
-        Returns:
-            If attainable, integer value
-            Otherwise, None
-        """
-        return self.earliest_start_time
 
     def get_goal_id(self):
         return self.goal_id
     
+    def get_latest_deadline_time(self):
+        return self.latest_deadline
+
     def get_tasks(self):
         return self.all_tasks
 
@@ -142,17 +131,17 @@ class Goal:
             Return reward based on time
         """
         # If the latest deadline has not been met, get no reward
-        if time > self.get_deadline_time():
+        if time > self.get_latest_deadline_time():
             return 0
 
         # Otherwise, get the reward for the next deadline that has been met
-        times = sorted(self.reward.keys())
+        times = sorted(self.rewards.keys())
         t = next(val for x, val in enumerate(times) if val >= time)
         
-        return self.reward[t]
+        return self.rewards[t]
 
     def get_reward_dict(self):
-        return self.reward
+        return self.rewards
 
     def is_complete(self, check_tasks=False):
         """
@@ -224,10 +213,6 @@ class Goal:
             
         self.update_total_time_est()
 
-    def set_attainable(self, time):
-        # TODO: Is earliest start time a good reference?
-        self.earliest_start_time = time
-        
     def set_completed(self, completed):
         self.completed = completed
         if completed:
@@ -239,9 +224,6 @@ class Goal:
             self.uncompleted_time_est = 0
             self.update_total_time_est()
             
-    def set_not_attainable(self):
-        self.earliest_start_time = None
-
     def update_total_time_est(self):
         self.total_time_est = self.completed_time_est + \
                               self.uncompleted_time_est
@@ -253,12 +235,14 @@ class Task:
         """
         # TODO: Complete this...
         
-        Non-goal tasks are related to a Goal object with no deadline
-        (deadline = infinity) and reward 0.
+        Non-goal tasks are goals for themselves with reward proportional to the
+        value of the misc goal node, and infinite deadline. To simulate infinite
+        deadline, we set the deadline of each non-goal task to be an addition to
+        the latest deadline of all "real" goals, i.e.
+            latest_deadline(all_goals) + sum(non_goal_task["time_est"])
         
         Args:
             description: Description of the task
-            deadline: # TODO: Implement if necessary...
             time_est: Units of time required to perform a task
             
             completed: Whether the task has been completed
@@ -270,22 +254,22 @@ class Task:
         # Set parameters
         self.description = description
         self.task_id = task_id
-        self.time_est = time_est  # Amount of time required to perform a task
         
         self.completed = completed
         self.goal = goal
         self.prob = prob
         self.reward = reward
-        
+        self.time_est = time_est
+
     def __str__(self):
         return f'Description: {self.description}\n' \
-               f'Time est.: {self.time_est}\n' \
                f'Completed: {self.completed}\n' \
                f'ID: {self.task_id}\n' \
                f'Goal: {self.goal.get_description()}\n' \
                f'Probability: {self.prob}\n' \
-               f'Reward: {self.reward}\n'
-            
+               f'Reward: {self.reward}\n' \
+               f'Time est.: {self.time_est}\n'
+
     def get_copy(self):
         return Task(self.description, self.time_est,
                     completed=self.completed, goal=self.goal,
@@ -353,7 +337,7 @@ class ToDoList:
         self.completed_goals = set()
         self.uncompleted_goals = set()
         
-        self.tasks = set()  # TODO: Change list to dictionary
+        self.all_tasks = set()  # TODO: Change list to dictionary
         self.completed_tasks = set()
         self.uncompleted_tasks = set()
         
@@ -372,7 +356,7 @@ class ToDoList:
 
             # Split tasks into completed and uncompleted
             for task in goal.get_tasks():
-                self.tasks.add(task)  # TODO: goal.get_tasks
+                self.all_tasks.add(task)  # TODO: goal.get_tasks
     
                 if task.is_complete():
                     # TODO: goal.get_completed_tasks
@@ -381,7 +365,7 @@ class ToDoList:
                     # TODO: goal.get_uncompleted_tasks
                     self.uncompleted_tasks.add(task)
                     
-            self.max_deadline = max(self.max_deadline, goal.get_deadline_time())
+            self.max_deadline = max(self.max_deadline, goal.get_latest_deadline_time())
             
         if self.end_time is None:
             self.end_time = self.max_deadline + 1  # TODO: Why + 1?
@@ -398,7 +382,7 @@ class ToDoList:
         return f'Current Time: {str(self.time)}\n' \
                f'Goals: {str(self.goals)}\n' \
                f'Completed Goals: {str(self.completed_goals)}\n' \
-               f'"Tasks: {str(self.tasks)}\n' \
+               f'"Tasks: {str(self.all_tasks)}\n' \
                f'Completed Tasks: + {str(self.completed_tasks)}\n'
 
     def action(self, task=None):
@@ -438,8 +422,8 @@ class ToDoList:
             # 2) goal was not passed deadline at prev_time
 
             # TODO: Shouldn't we have an inequality in one of the tests?!
-            if curr_time > goal.get_deadline_time() and \
-                    not prev_time > goal.get_deadline_time():
+            if curr_time > goal.get_latest_deadline_time() and \
+                    not prev_time > goal.get_latest_deadline_time():
                 penalty += goal.get_deadline_penalty()
                 
         return penalty
@@ -454,7 +438,7 @@ class ToDoList:
         
         # Check whether the task is completed on time
         # TODO: self.time + task.get_time_cost() (!?)
-        if p < threshold and self.time <= goal.get_deadline_time() \
+        if p < threshold and self.time <= goal.get_latest_deadline_time() \
                 and not goal.is_complete():
                 
             task.set_completed(True)
@@ -493,8 +477,8 @@ class ToDoList:
         return self.goals
 
     # TODO: Remove this?!
-    def get_tasks(self):
-        return self.tasks
+    def get_all_tasks(self):
+        return self.all_tasks
 
     def get_time(self):
         return self.time
@@ -508,7 +492,7 @@ class ToDoList:
         Add an entire goal
         """
         self.goals.append(goal)
-        self.tasks.extend(goal.get_tasks())  # TODO: Fix this...
+        self.all_tasks.extend(goal.get_tasks())  # TODO: Fix this...
         
         if goal.is_complete():
             self.completed_goals.add(goal)
@@ -520,7 +504,7 @@ class ToDoList:
         """
         Adds task to the specified goal
         """
-        self.tasks.append(task)
+        self.all_tasks.append(task)  # TODO: Fix this...
         goal.add_task(task)
 
 
@@ -903,8 +887,8 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         Note: completed goal is still considered active if time has not passed
               the deadline
         """
-        return time <= goal.get_deadline_time() and \
-            time <= self.to_do_list.get_end_time()
+        return time <= goal.get_latest_deadline_time() and \
+               time <= self.to_do_list.get_end_time()
 
     def is_task_active(self, task, time):
         """

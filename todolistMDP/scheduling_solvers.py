@@ -9,12 +9,12 @@ def compute_mixing_values(attainable_goals, mixing_parameter):
     mixing_values = np.zeros(len(attainable_goals))
     
     # Get value of the latest deadline
-    max_deadline = attainable_goals[-1].get_deadline_time()
+    max_deadline = attainable_goals[-1].get_latest_deadline_time()
     
     # Calculate distance between two consecutive goals
     for idx in range(len(attainable_goals) - 1):
-        mixing_values[idx] = attainable_goals[idx + 1].get_deadline_time() \
-                             - attainable_goals[idx].get_deadline_time()
+        mixing_values[idx] = attainable_goals[idx + 1].get_latest_deadline_time() \
+                             - attainable_goals[idx].get_latest_deadline_time()
         
     # Transform values s.t. the longest distance has value == mixing_parameter
     mixing_values = (max_deadline - mixing_values) / max_deadline \
@@ -42,7 +42,7 @@ def compute_optimal_values(goals):
     # scaled_deadlines = original_deadlines / gcd_scale
     
     # d = scaled_deadlines[-1]  # Latest (scaled) deadline time
-    d = goals[-1].get_deadline_time()
+    d = goals[-1].get_latest_deadline_time()
     n = len(goals)  # Number of goals
 
     # Initialize dynamic programming table
@@ -54,13 +54,13 @@ def compute_optimal_values(goals):
             goal_idx = i - 1
             
             # Get the latest possible time that we can schedule goal i
-            t_ = min(t, goals[goal_idx].get_deadline_time()) \
+            t_ = min(t, goals[goal_idx].get_latest_deadline_time()) \
                 - goals[goal_idx].get_total_time_est()
             
             if t_ < 0:
                 dp[i, t] = dp[i - 1, t]
             else:
-                d_i = goals[goal_idx].get_deadline_time()
+                d_i = goals[goal_idx].get_latest_deadline_time()
                 dp[i, t] = max(dp[i - 1, t],
                                goals[goal_idx].get_reward(d_i) + dp[i - 1, t_])
                 
@@ -86,7 +86,7 @@ def compute_simple_mixing_time(attainable_goals):
     for goal_idx in range(n):
         goal = attainable_goals[goal_idx]
         
-        latest_deadline = goal.get_deadline_time()
+        latest_deadline = goal.get_latest_deadline_time()
         current_time_est += goal.get_uncompleted_time_est()
         
         mixing_time[goal_idx] = latest_deadline - current_time_est
@@ -113,7 +113,7 @@ def get_attainable_goals(goals, dp):
     """
     # Initialize parameters
     i = len(goals)  # Number of goals
-    t = goals[-1].get_deadline_time()  # Latest deadline time
+    t = goals[-1].get_latest_deadline_time()  # Latest deadline time
     
     # Initialize lists
     attainable_goals = []
@@ -133,13 +133,12 @@ def get_attainable_goals(goals, dp):
                 unattainable_goals.append(goals[goal_idx])
                 goals[goal_idx].set_not_attainable()
             else:
-                t_ = min(t, goals[goal_idx].get_deadline_time()) \
+                t_ = min(t, goals[goal_idx].get_latest_deadline_time()) \
                      - goals[goal_idx].get_total_time_est()
                 i -= 1
                 t = t_
                 
                 attainable_goals = [goals[goal_idx]] + attainable_goals
-                # goals[goal_idx].set_attainable(t_)
         
         attainable_goals.sort()
         current_time_est = 0
@@ -149,7 +148,6 @@ def get_attainable_goals(goals, dp):
             for task in goal.get_tasks():
                 task.set_reward(goal_reward)
                 
-            goal.set_attainable(current_time_est)
             current_time_est += goal.get_total_time_est()
             
         unattainable_goals.sort()
@@ -225,16 +223,15 @@ def print_optimal_solution(goals, dp):
             print_opt(i-1, t)
             print(f'Unattainable goal {goal_idx}!')
         else:
-            t_ = min(t, goals[goal_idx].get_deadline_time()) \
+            t_ = min(t, goals[goal_idx].get_latest_deadline_time()) \
                  - goals[goal_idx].get_total_time_est()
             print_opt(i-1, t_)
-            print(f'Attainable goal {goal_idx} at time '
-                  f'{goals[goal_idx].get_earliest_start_time()}')
+            print(f'Attainable goal {goal_idx}!')
     
-    last_deadline = goals[-1].get_deadline_time()
+    latest_deadline = goals[-1].get_latest_deadline_time()
     
-    if last_deadline >= 0:
-        print_opt(len(goals), last_deadline)
+    if latest_deadline >= 0:
+        print_opt(len(goals), latest_deadline)
         
     print()
 
