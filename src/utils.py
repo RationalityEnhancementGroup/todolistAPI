@@ -90,7 +90,7 @@ def flatten_intentions(projects):
 
 def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
     real_goals.sort()
-    latest_deadline = real_goals[-1].get_deadline_time()
+    latest_deadline = real_goals[-1].get_latest_deadline_time()
     
     # Update latest deadline
     total_misc_time_est = 0
@@ -384,7 +384,7 @@ def tree_to_old_structure(projects):
             Goal(description=goal["nm"],
                  goal_id=goal["id"],
                  tasks=tasks,
-                 reward={goal["deadline"]: goal["value"]},
+                 rewards={goal["deadline"]: goal["value"]},
                  penalty=0))
         
     return goals
