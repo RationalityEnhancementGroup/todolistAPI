@@ -88,16 +88,22 @@ def flatten_intentions(projects):
     return projects
 
 
-def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0, small_value=1):
+def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
     real_goals.sort()
     latest_deadline = real_goals[-1].get_deadline_time()
     
     # Update latest deadline
+    total_misc_time_est = 0
+
     for misc_goal in misc_goals:
+        misc_goal["est"] = 0
+        
         for misc_task in misc_goal["ch"]:
-            latest_deadline += misc_task["est"]
+            misc_goal["est"] += misc_task["est"]
+            
+        total_misc_time_est += misc_goal["est"]
     
-    latest_deadline += extra_time
+    latest_deadline += total_misc_time_est + extra_time
     
     # Decompose misc goals into goals for each task of the goals
     misc_tasks = []
@@ -105,13 +111,15 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0, small_value=1):
         
         # Assign deadline and value for misc goal
         misc_goal['deadline'] = latest_deadline
-        misc_goal['value'] = small_value
-        
+
         for child in misc_goal['ch']:
             task_goal = deepcopy(misc_goal)
             
             task_goal['id'] = child['id']
             task_goal['nm'] = child['nm']
+            
+            task_goal["value"] *= child["est"] / misc_goal["est"]
+            task_goal["value"] = ceil(task_goal["value"])
             
             task_goal['ch'] = [child]
 

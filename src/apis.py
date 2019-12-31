@@ -67,7 +67,7 @@ def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
     #     print(task.get_description(), task.get_reward())
     # print()
     
-    utility_scaling(ordered_tasks, scale_min=1, scale_max=10)
+    utility_scaling(ordered_tasks, scale_min=None, scale_max=None)
     
     # print("===== After scaling =====")
     # for task in ordered_tasks:
