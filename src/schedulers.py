@@ -11,13 +11,15 @@ def basic_scheduler(task_list, today_duration=8 * 60, with_today=True):
     if not with_today:
         final_tasks = []
     else:
-        final_tasks = [task for task in task_list if task["today"] == 1]
+        final_tasks = [task for task in task_list
+                       if task["today"] == 1 and not task["completed"]]
         duration_remaining -= sum([task["est"] for task in final_tasks])
 
     # From: https://stackoverflow.com/a/73050
     sorted_by_value = sorted(task_list, key=lambda k: k['val'])
     for task in sorted_by_value[::-1]:
-        if (task["est"] <= duration_remaining) and (task["today"] != 1):
+        if (task["est"] <= duration_remaining) \
+                and (task["today"] != 1 and not task["completed"]):
             final_tasks.append(task)
             duration_remaining -= task["est"]
     

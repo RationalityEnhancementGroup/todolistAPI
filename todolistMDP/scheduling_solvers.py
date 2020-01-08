@@ -55,7 +55,7 @@ def compute_optimal_values(goals):
             
             # Get the latest possible time that we can schedule goal i
             t_ = min(t, goals[goal_idx].get_latest_deadline_time()) \
-                - goals[goal_idx].get_total_time_est()
+                - goals[goal_idx].get_uncompleted_time_est()
             
             if t_ < 0:
                 dp[i, t] = dp[i - 1, t]
@@ -86,10 +86,10 @@ def compute_simple_mixing_time(attainable_goals):
     for goal_idx in range(n):
         goal = attainable_goals[goal_idx]
         
-        latest_deadline = goal.get_latest_deadline_time()
+        goal_latest_deadline = goal.get_latest_deadline_time()
         current_time_est += goal.get_uncompleted_time_est()
         
-        mixing_time[goal_idx] = latest_deadline - current_time_est
+        mixing_time[goal_idx] = goal_latest_deadline - current_time_est
         
         if mixing_time[goal_idx] == 0:
             last_0_idx = goal_idx
@@ -134,7 +134,7 @@ def get_attainable_goals(goals, dp):
                 goals[goal_idx].set_not_attainable()
             else:
                 t_ = min(t, goals[goal_idx].get_latest_deadline_time()) \
-                     - goals[goal_idx].get_total_time_est()
+                     - goals[goal_idx].get_uncompleted_time_est()
                 i -= 1
                 t = t_
                 
@@ -148,7 +148,7 @@ def get_attainable_goals(goals, dp):
             for task in goal.get_tasks():
                 task.set_reward(goal_reward)
                 
-            current_time_est += goal.get_total_time_est()
+            current_time_est += goal.get_uncompleted_time_est()
             
         unattainable_goals.sort()
         
@@ -224,7 +224,7 @@ def print_optimal_solution(goals, dp):
             print(f'Unattainable goal {goal_idx}!')
         else:
             t_ = min(t, goals[goal_idx].get_latest_deadline_time()) \
-                 - goals[goal_idx].get_total_time_est()
+                 - goals[goal_idx].get_uncompleted_time_est()
             print_opt(i-1, t_)
             print(f'Attainable goal {goal_idx}!')
     
