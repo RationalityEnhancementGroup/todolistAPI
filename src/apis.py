@@ -46,7 +46,7 @@ def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
     
     # Convert real goals from JSON to Goal class objects
     real_goals = tree_to_old_structure(real_goals)
-
+    
     # Assign deadlines to the misc goals
     misc_goals = misc_tasks_to_goals(real_goals, misc_goals)
     

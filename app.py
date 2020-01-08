@@ -8,6 +8,7 @@ from src.schedulers import *
 from pymongo import MongoClient, DESCENDING
 from datetime import datetime
 from copy import deepcopy
+from pprint import pprint
 
 
 CONTACT = "Please contact the experimenter."
@@ -104,6 +105,7 @@ class PostResource(RESTResource):
                 cherrypy.response.status = 403
                 return json.dumps({"status": status + " " + CONTACT})
 
+            # TODO: ?
             if db.trees.find({'user_id': str(current_id)}) \
                        .sort('timestamp', DESCENDING).count() == 0:
                 previous_result = 0
@@ -125,16 +127,18 @@ class PostResource(RESTResource):
 
             # Update last modified
             log_dict["lm"] = jsonData["updated"]
-
-            # New calculation
-            # Save updated, user id, and skeleton
+            
+            # Parse current intentions
+            current_intentions = parse_current_intentions_list(
+                jsonData["currentIntentionsList"])
+            
+            # New calculation + Save updated, user id, and skeleton
             try:
                 projects = flatten_intentions(jsonData["projects"])
                 log_dict["tree"] = create_projects_to_save(projects)
             except:
                 status = "Error with parsing inputted projects."
                 
-                # TODO: clean up saves, errors
                 # Save the data if there was a change, removing nm fields so
                 # that we keep participant data anonymous
                 store_log(db.request_log, log_dict, status=status)
@@ -145,6 +149,7 @@ class PostResource(RESTResource):
             # Parse today hours
             try:
                 today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
+                log_dict["today_hours"] = today_hours
             except:
                 status = "Error with parsing today hours."
                 store_log(db.request_log, log_dict, status=status)
@@ -152,10 +157,9 @@ class PostResource(RESTResource):
                 cherrypy.response.status = 403
                 return json.dumps({"status": status + " " + CONTACT})
             
-            log_dict["today_hours"] = today_hours
-
             try:
                 typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
+                log_dict["typical_hours"] = typical_hours
             except:
                 status = "Error with parsing typical hours."
                 store_log(db.request_log, log_dict, status=status)
@@ -163,8 +167,6 @@ class PostResource(RESTResource):
                 cherrypy.response.status = 403
                 return json.dumps({"status": status + " " + CONTACT})
 
-            log_dict["typical_hours"] = typical_hours
-            
             if not (0 < typical_hours <= 24):
                 store_log(db.request_log, log_dict,
                           status="Invalid typical hours value.")
@@ -184,9 +186,20 @@ class PostResource(RESTResource):
                 cherrypy.response.status = 403
                 return json.dumps({"status": status})
             
+            # Convert typical and today hours into minutes
+            typical_minutes = typical_hours * 60
+            today_minutes = today_hours * 60
+            
+            # Subtract time estimation of current intentions from available time
+            for task_id in current_intentions.keys():
+                today_minutes -= current_intentions[task_id]["est"]
+
+            # TODO: If it is necessary, check whether today_minutes > 0
+            
             try:
-                real_goals, misc_goals = parse_tree(projects, allowed_task_time,
-                                                    typical_hours)
+                real_goals, misc_goals = \
+                    parse_tree(projects, current_intentions, allowed_task_time,
+                               today_minutes, typical_minutes)
             except Exception as error:
                 status = str(error)
                 
@@ -207,11 +220,12 @@ class PostResource(RESTResource):
             # keep participant data anonymous
             store_log(db.request_log, log_dict, status="Save parsed tree")
 
-            if previous_result == 0:
-                run_point_method = True
-            else:
-                run_point_method = are_there_tree_differences(
-                    previous_result["tree"], projects)
+            run_point_method = True
+            # if previous_result == 0:
+            #     run_point_method = True
+            # else:
+            #     run_point_method = are_there_tree_differences(
+            #         previous_result["tree"], projects)
             
             # TODO if we can do scheduling with old MDP points, we should do that
             if run_point_method or (scheduler == "mdp") or (scheduler == "dp"):
@@ -249,7 +263,7 @@ class PostResource(RESTResource):
                         final_tasks = \
                             assign_dynamic_programming_points(
                                 real_goals, misc_goals, simple_goal_scheduler,
-                                day_duration=today_hours * 60,
+                                day_duration=today_minutes,
                                 mixing_parameter=mixing_parameter,
                                 verbose=False
                             )
@@ -261,32 +275,32 @@ class PostResource(RESTResource):
                 elif method == "old-report":
                     final_tasks = \
                         assign_old_api_points(projects, backward_induction,
-                                              duration=today_hours * 60)
+                                              duration=today_minutes)
                 else:
                     status = "API method does not exist."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps({"status": status + " " + CONTACT})
-            else:  # TODO: Think about it!
-                # Join old values to projects
-                for project in projects:
-                    corresponding_goal = (
-                        next(item
-                             for item in previous_result["tree"]
-                             if item["id"] == project["id"]))
-                    for task in project["ch"]:
-                        task["val"] = (
-                            next(item["val"]  # TODO: KeyError: 'val'
-                                 for item in corresponding_goal["ch"]
-                                 if item["id"] == task["id"]))
+            # else:  # TODO: Think about it!
+            #     # Join old values to projects
+            #     for project in projects:
+            #         corresponding_goal = (
+            #             next(item
+            #                  for item in previous_result["tree"]
+            #                  if item["id"] == project["id"]))
+            #         for task in project["ch"]:
+            #             task["val"] = (
+            #                 next(item["val"]  # TODO: KeyError: 'val'
+            #                      for item in corresponding_goal["ch"]
+            #                      if item["id"] == task["id"]))
             
             task_list = task_list_from_projects(projects)
             if scheduler == "basic":
                 final_tasks = basic_scheduler(
-                    task_list, today_duration=today_hours * 60)
+                    task_list, today_duration=today_minutes)
             elif scheduler == "deadline":
                 final_tasks = deadline_scheduler(
-                    task_list, today_duration=today_hours * 60)
+                    task_list, today_duration=today_minutes)
             elif scheduler == "mdp":
                 pass
             else:

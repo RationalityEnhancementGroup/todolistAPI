@@ -6,6 +6,100 @@ import time
 from todolistMDP import mdp
 
 
+class Task:
+    def __init__(self, description, task_id, completed=False, goal=None,
+                 prob=1., reward=None, time_est=1):
+        """
+        # TODO: Complete this...
+
+        Non-goal tasks are goals for themselves with reward proportional to the
+        value of the misc goal node, and infinite deadline. To simulate infinite
+        deadline, we set the deadline of each non-goal task to be an addition to
+        the latest deadline of all "real" goals, i.e.
+            latest_deadline(all_goals) + sum(non_goal_task["time_est"])
+
+        Args:
+            description: Description of the task
+            time_est: Units of time required to perform a task
+
+            completed: Whether the task has been completed
+            goal: Goal object whom this task belongs to
+            prob: Probability of successful completion of the task
+            reward: Reward of completing the task, usually 0 (?!)
+        """
+        
+        # Set parameters
+        self.description = description
+        self.task_id = task_id
+        
+        self.completed = completed
+        self.goal = goal
+        self.prob = prob
+        self.reward = reward
+        self.time_est = time_est
+    
+    def __str__(self):
+        return f'Description: {self.description}\n' \
+               f'Completed: {self.completed}\n' \
+               f'ID: {self.task_id}\n' \
+               f'Goal: {self.goal.get_description()}\n' \
+               f'Probability: {self.prob}\n' \
+               f'Reward: {self.reward}\n' \
+               f'Time est.: {self.time_est}\n'
+    
+    def get_copy(self):
+        return Task(self.description, self.time_est,
+                    completed=self.completed, goal=self.goal,
+                    prob=self.prob, reward=self.reward)
+    
+    def get_description(self):
+        return self.description
+    
+    def get_goal(self):
+        return self.goal
+    
+    def get_prob(self):
+        return self.prob
+    
+    def get_reward(self):
+        return self.reward
+    
+    def get_task_id(self):
+        return self.task_id
+    
+    def get_time_est(self):
+        return self.time_est
+    
+    def is_completed(self):
+        return self.completed
+    
+    # def set_completed(self, completed):
+    #     if self.completed != completed:
+    #         self.completed = completed
+    #         if completed:
+    #             self.goal.add_completed_time(self.time_est)
+    #             # TODO: Check whether this is the last completed task
+    #         else:
+    #             self.goal.add_completed_time(-self.time_est)
+    #             # TODO: Check whether this makes a completed goal active again
+    
+    def set_goal(self, goal):
+        if self.goal is not goal:
+            
+            # Remove task from the old goal
+            if self.goal is not None:
+                self.goal.remove_task(self)
+            
+            # Set new goal
+            self.goal = goal
+            
+            # Add task to the new goal
+            self.goal.add_task(self)
+    
+    def set_reward(self, value):
+        self.reward = value
+
+
 class Goal:
     def __init__(self, description, goal_id, rewards, tasks,
                  completed=False, penalty=0):
@@ -41,7 +135,6 @@ class Goal:
         self.completed_time_est = 0  # Time estimation of completed tasks
         self.uncompleted_time_est = 0  # Time estimation of uncompleted tasks
         self.total_time_est = 0  # Time estimation of all tasks
-        self.value_est = 0  # Value estimation
 
         # Split tasks into completed and uncompleted
         self.all_tasks = tasks
@@ -58,8 +151,6 @@ class Goal:
                 self.uncompleted_tasks.add(task)
                 self.uncompleted_time_est += task.get_time_est()
                 
-            self.value_est += task.get_prob() * task.get_reward()
-            
         self.update_total_time_est()
 
     def __hash__(self):
@@ -143,7 +234,7 @@ class Goal:
     def get_reward_dict(self):
         return self.rewards
 
-    def is_complete(self, check_tasks=False):
+    def is_completed(self, check_tasks=False):
         """
         Method for checking whether a goal is complete by checking
         if all tasks are complete
@@ -157,9 +248,9 @@ class Goal:
         """
         if check_tasks:
             for task in self.all_tasks:
-                if not task.is_complete():
+                if not task.is_completed():
                     return False
-            self.set_completed(True)
+            # self.set_completed(True)
         return self.completed
 
     def add_completed_time(self, time_est):
@@ -178,149 +269,55 @@ class Goal:
             task_time_est = task.get_time_est()
             
             if not task.completed:
-                self.set_completed(False)
+                # self.set_completed(False)
                 self.uncompleted_time_est += task_time_est
             else:
                 self.completed_time_est += task_time_est
             
             self.total_time_est += task_time_est
-            self.value_est += task.get_prob() * task.get_reward()
+            # self.value_est += task.get_prob() * task.get_reward()
 
-    def remove_task(self, task):
-        if task in self.all_tasks:
-            self.all_tasks.remove(task)
-            task_time_est = task.get_time_est()
-
-            # Subtract task time estimation
-            if task.is_complete():
-                self.completed_time_est -= task_time_est
-            else:
-                self.uncompleted_time_est -= task_time_est
-        
-            self.total_time_est -= task_time_est
-            
-            # Subtract task value
-            self.value_est -= task.get_prob() * task.get_reward()
+    # def remove_task(self, task):
+    #     if task in self.all_tasks:
+    #         self.all_tasks.remove(task)
+    #         task_time_est = task.get_time_est()
+    #
+    #         # Subtract task time estimation
+    #         if task.is_completed():
+    #             self.completed_time_est -= task_time_est
+    #         else:
+    #             self.uncompleted_time_est -= task_time_est
+    #
+    #         self.total_time_est -= task_time_est
+    #
+    #         # Subtract task value
+    #         self.value_est -= task.get_prob() * task.get_reward()
     
-    def reset_completed(self):
-        self.completed = False
-        self.uncompleted_time_est = 0
-        self.completed_time_est = 0
-        
-        for task in self.all_tasks:
-            task.set_completed(False)
-            self.uncompleted_time_est += task.get_time_est()
-            
-        self.update_total_time_est()
+    # def reset_completed(self):
+    #     self.completed = False
+    #     self.uncompleted_time_est = 0
+    #     self.completed_time_est = 0
+    #
+    #     for task in self.all_tasks:
+    #         task.set_completed(False)
+    #         self.uncompleted_time_est += task.get_time_est()
+    #
+    #     self.update_total_time_est()
 
-    def set_completed(self, completed):
-        self.completed = completed
-        if completed:
-            for task in self.all_tasks:
-                task.set_completed(completed)
-        
-            # Change time-estimation values
-            self.completed_time_est = self.total_time_est
-            self.uncompleted_time_est = 0
-            self.update_total_time_est()
+    # def set_completed(self, completed):
+    #     self.completed = completed
+    #     if completed:
+    #         for task in self.all_tasks:
+    #             task.set_completed(completed)
+    #
+    #         # Change time-estimation values
+    #         self.completed_time_est = self.total_time_est
+    #         self.uncompleted_time_est = 0
+    #         self.update_total_time_est()
             
     def update_total_time_est(self):
         self.total_time_est = self.completed_time_est + \
                               self.uncompleted_time_est
-
-
-class Task:
-    def __init__(self, description, task_id, completed=False, goal=None,
-                 prob=1., reward=0, time_est=1):
-        """
-        # TODO: Complete this...
-        
-        Non-goal tasks are goals for themselves with reward proportional to the
-        value of the misc goal node, and infinite deadline. To simulate infinite
-        deadline, we set the deadline of each non-goal task to be an addition to
-        the latest deadline of all "real" goals, i.e.
-            latest_deadline(all_goals) + sum(non_goal_task["time_est"])
-        
-        Args:
-            description: Description of the task
-            time_est: Units of time required to perform a task
-            
-            completed: Whether the task has been completed
-            goal: Goal object whom this task belongs to
-            prob: Probability of successful completion of the task
-            reward: Reward of completing the task, usually 0 (?!)
-        """
-        
-        # Set parameters
-        self.description = description
-        self.task_id = task_id
-        
-        self.completed = completed
-        self.goal = goal
-        self.prob = prob
-        self.reward = reward
-        self.time_est = time_est
-
-    def __str__(self):
-        return f'Description: {self.description}\n' \
-               f'Completed: {self.completed}\n' \
-               f'ID: {self.task_id}\n' \
-               f'Goal: {self.goal.get_description()}\n' \
-               f'Probability: {self.prob}\n' \
-               f'Reward: {self.reward}\n' \
-               f'Time est.: {self.time_est}\n'
-
-    def get_copy(self):
-        return Task(self.description, self.time_est,
-                    completed=self.completed, goal=self.goal,
-                    prob=self.prob, reward=self.reward)
-    
-    def get_description(self):
-        return self.description
-
-    def get_goal(self):
-        return self.goal
-    
-    def get_prob(self):
-        return self.prob
-
-    def get_reward(self):
-        return self.reward
-    
-    def get_task_id(self):
-        return self.task_id
-
-    def get_time_est(self):
-        return self.time_est
-
-    def is_complete(self):
-        return self.completed
-
-    def set_completed(self, completed):
-        if self.completed != completed:
-            self.completed = completed
-            if completed:
-                self.goal.add_completed_time(self.time_est)
-                # TODO: Check whether this is the last completed task
-            else:
-                self.goal.add_completed_time(-self.time_est)
-                # TODO: Check whether this makes a completed goal active again
-
-    def set_goal(self, goal):
-        if self.goal is not goal:
-        
-            # Remove task from the old goal
-            if self.goal is not None:
-                self.goal.remove_task(self)
-        
-            # Set new goal
-            self.goal = goal
-        
-            # Add task to the new goal
-            self.goal.add_task(self)
-
-    def set_reward(self, value):
-        self.reward = value
 
 
 class ToDoList:
@@ -349,7 +346,7 @@ class ToDoList:
 
         # Add goals and tasks to the to-do list
         for goal in self.goals:
-            if goal.is_complete():
+            if goal.is_completed():
                 self.completed_goals.add(goal)
             else:
                 self.uncompleted_goals.add(goal)
@@ -358,7 +355,7 @@ class ToDoList:
             for task in goal.get_tasks():
                 self.all_tasks.add(task)  # TODO: goal.get_tasks
     
-                if task.is_complete():
+                if task.is_completed():
                     # TODO: goal.get_completed_tasks
                     self.completed_tasks.add(task)
                 else:
@@ -439,14 +436,14 @@ class ToDoList:
         # Check whether the task is completed on time
         # TODO: self.time + task.get_time_cost() (!?)
         if p < threshold and self.time <= goal.get_latest_deadline_time() \
-                and not goal.is_complete():
+                and not goal.is_completed():
                 
             task.set_completed(True)
             self.uncompleted_tasks.discard(task)
             self.completed_tasks.add(task)
             
             # If completion of the task completes the goal
-            if goal.is_complete():
+            if goal.is_completed():
                 reward += goal.get_reward(self.time)  # Goal completion reward
                 self.uncompleted_goals.discard(goal)
                 self.completed_goals.add(goal)
@@ -455,23 +452,10 @@ class ToDoList:
 
     # ===== Getters =====
     
-    # @staticmethod
-    # TODO: Implemented on a level of a Goal?!
-    # def is_goal_complete(goal):
-    #     """
-    #     Method for checking whether a goal is complete by checking
-    #     if all tasks are complete
-    #     """
-    #     if goal.is_complete():
-    #         return True
-    #     for task in goal.tasks:
-    #         if not task.is_complete():
-    #             return False
-    #     goal.set_completed(True)
-    #     return True
-
     def get_end_time(self):
         return self.end_time
+    
+    # TODO: get_goal
 
     def get_goals(self):
         return self.goals
@@ -494,7 +478,7 @@ class ToDoList:
         self.goals.append(goal)
         self.all_tasks.extend(goal.get_tasks())  # TODO: Fix this...
         
-        if goal.is_complete():
+        if goal.is_completed():
             self.completed_goals.add(goal)
         else:
             self.uncompleted_goals.add(goal)
@@ -599,7 +583,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         Convert a list of Task objects to a bit vector with 1 being complete and
         0 if not complete.
         """
-        return tuple([1 if task.is_complete() else 0 for task in tasks])
+        return tuple([1 if task.is_completed() else 0 for task in tasks])
 
     def transform_pseudo_rewards(self, print_values=False):
         """
