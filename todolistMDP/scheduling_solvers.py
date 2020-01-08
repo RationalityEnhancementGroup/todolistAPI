@@ -131,7 +131,6 @@ def get_attainable_goals(goals, dp):
             if dp[i, t] == dp[i - 1, t]:
                 i -= 1
                 unattainable_goals.append(goals[goal_idx])
-                goals[goal_idx].set_not_attainable()
             else:
                 t_ = min(t, goals[goal_idx].get_latest_deadline_time()) \
                      - goals[goal_idx].get_uncompleted_time_est()
@@ -293,9 +292,9 @@ def simple_goal_scheduler(to_do_list, mixing_parameter=0.0, verbose=False):
     # Generate ordered lists of attainable and unattainable goals
     attainable_goals, unattainable_goals = get_attainable_goals(goals, dp)
     
-    if len(unattainable_goals) > 0:
-        goals_str = ', '.join(goal.description for goal in unattainable_goals)
-        raise Exception(f"Goals \"{goals_str[:-2]}\" are unattainable!")
+    # if len(unattainable_goals) > 0:
+    #     goals_str = ', '.join(goal.description for goal in unattainable_goals)
+    #     raise Exception(f"Goals \"{goals_str[:-2]}\" are unattainable!")
 
     # Compute mixing time & mixing values
     mixing_time, last_0_idx = compute_simple_mixing_time(attainable_goals)
