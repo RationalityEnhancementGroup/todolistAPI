@@ -56,13 +56,15 @@ class PostResource(RESTResource):
         try:
             start_time = datetime.now()
 
+            # Compulsory parameters
             method = vpath[0]
             scheduler = vpath[1]
-            allowed_task_time = np.float("inf")  # TODO: Check URL allowed_task_time parameter value
-            parameters = [int(item) for item in vpath[2:-3]]
             user_key = vpath[-2]
             api_method = vpath[-1]
             
+            # Additional parameters (the order of URL input matters!)
+            parameters = [item for item in vpath[3:-3]]
+
             log_dict = {
                 "api_method": api_method,
                 "duration": str(datetime.now() - start_time),
@@ -73,12 +75,24 @@ class PostResource(RESTResource):
                 "user_key": user_key,
                 
                 # Must be provided on each store (if needed)
+                "allowed_task_time": None,
                 "lm": None,
+                "mixing_parameter": None,
                 "status": None,
                 "timestamp": None,
                 "user_id": None,
             }
             
+            # Get allowed task time | Default URL value: 'inf'
+            try:
+                allowed_task_time = float(vpath[2])
+                log_dict["allowed_task_time"] = allowed_task_time
+            except:
+                status = "There was an issue with the allowed task time value."
+                store_log(db.request_log, log_dict, status=status)
+                cherrypy.response.status = 403
+                return json.dumps({"status": status + " " + CONTACT})
+
             # Is there a user key
             try:
                 current_id = jsonData["userkey"]
@@ -213,13 +227,16 @@ class PostResource(RESTResource):
                 
                 # DP method
                 elif method == "dp":
-                    # TODO: URL input
-                    # TODO: Fix invalid access to the mixing parameter
-                    mixing_parameter = 0
+                    # Get mixing parameter | Default URL value: 0
+                    mixing_parameter = int(vpath[3])
                     
-                    # TODO: Log mixing parameter & other changes
+                    # Convert the mixing parameter to probability
+                    while mixing_parameter > 1:
+                        mixing_parameter /= 10
+                    
+                    # Store the value of the mixing parameter in the log dict
+                    log_dict['mixing_parameter'] = mixing_parameter
 
-                    # TODO: Edit after making it URL input
                     # Defined by the experimenter
                     if not (0 <= mixing_parameter < 1):
                         status = "There was an issue with the mixing-parameter value."
@@ -253,15 +270,15 @@ class PostResource(RESTResource):
             else:  # TODO: Think about it!
                 # Join old values to projects
                 for project in projects:
-                    corresponding_goal = (next(
-                        item
-                        for item in previous_result["tree"]
-                        if item["id"] == project["id"]))
+                    corresponding_goal = (
+                        next(item
+                             for item in previous_result["tree"]
+                             if item["id"] == project["id"]))
                     for task in project["ch"]:
-                        task["val"] = (next(
-                            item["val"]
-                            for item in corresponding_goal["ch"]
-                            if item["id"] == task["id"]))
+                        task["val"] = (
+                            next(item["val"]  # TODO: KeyError: 'val'
+                                 for item in corresponding_goal["ch"]
+                                 if item["id"] == task["id"]))
             
             task_list = task_list_from_projects(projects)
             if scheduler == "basic":
