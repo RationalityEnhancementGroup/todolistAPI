@@ -9,6 +9,7 @@ from todolistMDP.scheduling_solvers import simple_goal_scheduler
 from src.utils import task_list_from_projects, task_dict_from_projects, \
     misc_tasks_to_goals
 from src.point_scalers import utility_scaling
+from src.schedulers import schedule_tasks_for_today
 
 
 def assign_constant_points(projects, default_task=10):
@@ -55,50 +56,17 @@ def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
     misc_goals = tree_to_old_structure(misc_goals)
     
     # Add them together into a single list
-    # old_structure = tree_to_old_structure(projects, day_duration)
     to_do_list = ToDoList(real_goals + misc_goals, start_time=0)
     ordered_tasks = \
         solver_fn(to_do_list,
                   mixing_parameter=params["mixing_parameter"],
                   verbose=params["verbose"])
-    
-    # print("===== Before scaling =====")
-    # for task in ordered_tasks:
-    #     print(task.get_description(), task.get_reward())
-    # print()
-    
+
+    # TODO: Make this an argument of the function
     utility_scaling(ordered_tasks, scale_min=None, scale_max=None)
     
-    # print("===== After scaling =====")
-    # for task in ordered_tasks:
-    #     print(task.get_description(), task.get_reward())
-    # print()
-
-    task_dict = task_dict_from_projects(projects)
-    
-    # Schedule tasks marked for today
-    today_tasks = []
-    for task in ordered_tasks:
-        task_id = task.get_task_id()
-        task_from_project = task_dict[task_id]
-        task_from_project["val"] = task.get_reward()
-        
-        if task_from_project["today"] and \
-                day_duration >= task_from_project["est"]:
-            today_tasks += [task_from_project]
-            day_duration -= task_from_project["est"]
-    
-    # Schedule other tasks
-    for task in ordered_tasks:
-        task_id = task.get_task_id()
-        task_from_project = task_dict[task_id]
-        
-        # If the task is not marked for today and
-        # if there is enough time to complete the task today
-        if task_from_project["today"] != 1 and \
-                day_duration >= task_from_project["est"]:
-            today_tasks += [task_from_project]
-            day_duration -= task_from_project["est"]
+    # Schedule tasks for today
+    today_tasks = schedule_tasks_for_today(projects, ordered_tasks, day_duration)
     
     return today_tasks  # List of tasks from projects
 
