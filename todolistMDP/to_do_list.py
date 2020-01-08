@@ -8,8 +8,9 @@ from todolistMDP import mdp
 
 class Task:
     def __init__(self, description, task_id, completed=False, goal=None,
-                 prob=1., reward=None, time_est=1):
+                 prob=1., reward=0, time_est=1):
         """
+        # TODO: reward=None
         # TODO: Complete this...
 
         Non-goal tasks are goals for themselves with reward proportional to the
@@ -508,7 +509,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         self.start_state = self.get_start_state()
 
         # Create mapping of indices to tasks represented as list
-        self.index_to_task = list(to_do_list.get_tasks())  # TODO: Fix this
+        self.index_to_task = list(to_do_list.get_all_tasks())
         
         # Create mapping of tasks to indices represented as dict
         self.task_to_index = {}
@@ -524,7 +525,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
 
         # Generate state space
         self.states = []
-        num_tasks = len(to_do_list.get_tasks())
+        num_tasks = len(to_do_list.get_all_tasks())
         for t in range(self.to_do_list.get_end_time() + 2):  # TODO: Why +2?!
             for bit_vector in itertools.product([0, 1], repeat=num_tasks):
                 state = (bit_vector, t)
@@ -764,7 +765,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         """
         # TODO: I don't think that this is the start state necessarily because
         #        it returns the current state with time 0...
-        start_state = self.tasks_to_binary(self.to_do_list.get_tasks())
+        start_state = self.tasks_to_binary(self.to_do_list.get_all_tasks())
         return start_state, 0  # TODO: Maybe curr_state, self.get_time()
 
     # def get_state_index(self, state):

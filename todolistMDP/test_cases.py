@@ -222,18 +222,18 @@ Optimal Ordering:
 #          penalty=-110)
 # ]
 
-# d_7 = [
-#     Goal("CS HW", [
-#         Task("CS 1", time_est=1, prob=1),
-#         Task("CS 2", time_est=1, prob=1)],
-#          reward={3: 5},
-#          penalty=-10),
-#     Goal("EE Project", [
-#         Task("EE 1", time_est=1, prob=1),
-#         Task("EE 2", time_est=2, prob=1)],
-#          reward={4: 100},
-#          penalty=-200)
-# ]
+d_7 = [
+    Goal(description="CS HW", goal_id="CS HW",
+         tasks=[Task(description="CS 1", task_id="CS 1", time_est=1, prob=1),
+                Task(description="CS 2", task_id="CS 2", time_est=1, prob=1)],
+         rewards={3: 5},
+         penalty=-10),
+    Goal(description="EE Project", goal_id="EE Project",
+         tasks=[Task(description="EE 1", task_id="EE 1", time_est=1, prob=1),
+                Task(description="EE 2", task_id="EE 2", time_est=2, prob=1)],
+         rewards={4: 100},
+         penalty=-200)
+]
 
 # ===== New deterministic tests (not included in the original code) =====
 
