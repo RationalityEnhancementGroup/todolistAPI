@@ -54,9 +54,13 @@ class PostResource(RESTResource):
     
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
-        try:
-            start_time = datetime.now()
 
+        # Initialize log dictionary
+        log_dict = {
+            "start_time": datetime.now(),
+        }
+        
+        try:
             # Compulsory parameters
             method = vpath[0]
             scheduler = vpath[1]
@@ -66,13 +70,12 @@ class PostResource(RESTResource):
             # Additional parameters (the order of URL input matters!)
             parameters = [item for item in vpath[3:-3]]
 
-            log_dict = {
+            log_dict.update({
                 "api_method": api_method,
-                "duration": str(datetime.now() - start_time),
+                "duration": str(datetime.now() - log_dict["start_time"]),
                 "method": method,
                 "parameters": parameters,
                 "scheduler": scheduler,
-                "start_time": start_time,
                 "user_key": user_key,
                 
                 # Must be provided on each store (if needed)
@@ -82,7 +85,7 @@ class PostResource(RESTResource):
                 "status": None,
                 "timestamp": None,
                 "user_id": None,
-            }
+            })
             
             # Get allowed task time | Default URL value: 'inf'
             try:
@@ -106,13 +109,13 @@ class PostResource(RESTResource):
                 return json.dumps({"status": status + " " + CONTACT})
 
             # TODO: ?
-            if db.trees.find({'user_id': str(current_id)}) \
-                       .sort('timestamp', DESCENDING).count() == 0:
+            if db.request_log.find({'user_id': str(current_id)}) \
+                             .sort('timestamp', DESCENDING).count() == 0:
                 previous_result = 0
             else:
                 previous_result = \
-                    db.trees.find({'user_id': str(current_id)}) \
-                            .sort('timestamp', DESCENDING)[0]
+                    db.request_log.find({'user_id': str(current_id)}) \
+                                  .sort('timestamp', DESCENDING)[0]
 
             # Check for changes if an existing user (..?)
             if previous_result != 0:
@@ -220,22 +223,19 @@ class PostResource(RESTResource):
             # keep participant data anonymous
             store_log(db.request_log, log_dict, status="Save parsed tree")
 
-            run_point_method = True
-            # if previous_result == 0:
-            #     run_point_method = True
-            # else:
-            #     run_point_method = are_there_tree_differences(
-            #         previous_result["tree"], projects)
+            if previous_result == 0:
+                run_point_method = True
+            else:
+                run_point_method = are_there_tree_differences(
+                    previous_result["tree"], projects)
             
-            # TODO if we can do scheduling with old MDP points, we should do that
-            if run_point_method or (scheduler == "mdp") or (scheduler == "dp"):
+            # Assign values for each task
+            if run_point_method:
                 if method == "constant":
                     projects = assign_constant_points(projects, *params)
                 elif method == "random":
                     projects = assign_random_points(projects,
                                                     fxn_args=params)
-                elif method == "hierarchical":
-                    projects = assign_hierarchical_points(projects)
                 elif method == "length":
                     projects = assign_length_points(projects)
                 
@@ -281,20 +281,28 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps({"status": status + " " + CONTACT})
-            # else:  # TODO: Think about it!
-            #     # Join old values to projects
-            #     for project in projects:
-            #         corresponding_goal = (
-            #             next(item
-            #                  for item in previous_result["tree"]
-            #                  if item["id"] == project["id"]))
-            #         for task in project["ch"]:
-            #             task["val"] = (
-            #                 next(item["val"]  # TODO: KeyError: 'val'
-            #                      for item in corresponding_goal["ch"]
-            #                      if item["id"] == task["id"]))
             
+            # If there are no changes in the tree, give back the values
+            # assigned in the previous parsing
+            else:
+                for goal in projects:
+                    corresponding_goal = (
+                        next(item
+                             for item in previous_result["tree"]
+                             if item["id"] == goal["id"]))
+                    for task in goal["ch"]:
+                        task["val"] = (
+                            next(item["val"]
+                                 for item in corresponding_goal["ch"]
+                                 if item["id"] == task["id"]))
+
+            # Update values in the tree
+            log_dict["tree"] = create_projects_to_save(projects)
+            
+            # Get task list from the tree
             task_list = task_list_from_projects(projects)
+            
+            # Schedule tasks for today
             if scheduler == "basic":
                 final_tasks = basic_scheduler(
                     task_list, today_duration=today_minutes)
@@ -342,7 +350,8 @@ class PostResource(RESTResource):
             
             # Store anonymous error info in DB collection
             anonymous_error = parse_error_info(str(error))
-            store_log(db.request_log, {}, status=status + " " + anonymous_error)
+            store_log(db.request_log, log_dict,
+                      status=status + " " + anonymous_error)
             
             cherrypy.response.status = 403
             return json.dumps({"status": status + " " + CONTACT})
