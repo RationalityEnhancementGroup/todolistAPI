@@ -5,6 +5,19 @@ from functools import reduce
 from math import gcd
 
 
+def compute_gcd(goals):
+    # Compute the GCD scale
+    times = []
+    
+    for goal in goals:
+        times.append(goal.get_latest_deadline_time())
+        times.append(goal.get_uncompleted_time_est())
+        
+    gcd_scale = reduce(gcd, times)
+
+    return gcd_scale
+
+
 def compute_mixing_values(attainable_goals, mixing_parameter):
     mixing_values = np.zeros(len(attainable_goals))
     
@@ -35,16 +48,11 @@ def compute_optimal_values(goals):
         Dynamic programming table of shape (number of goals + 1,
                                             latest_deadline + 1)
     """
-    # Initialize constants
-    # original_deadlines = np.array(
-    #     [goal.get_deadline_time() for goal in goals], dtype=np.int32)
-    # gcd_scale = reduce(gcd, original_deadlines)
-    # scaled_deadlines = original_deadlines / gcd_scale
     
-    # d = scaled_deadlines[-1]  # Latest (scaled) deadline time
+    # Initialize constants
     d = goals[-1].get_latest_deadline_time()
     n = len(goals)  # Number of goals
-
+    
     # Initialize dynamic programming table
     dp = np.zeros(shape=(n + 1, d + 1))
     
@@ -237,6 +245,34 @@ def print_optimal_solution(goals, dp):
     return
 
 
+def scale_time(goals, scale, up=True):
+    if scale > 1:
+        
+        for goal in goals:
+            rewards = goal.get_reward_dict()
+            new_rewards = dict()
+            
+            # Scale down goal deadline times
+            for deadline, reward in rewards.items():
+                
+                # Scaling up
+                if up:
+                    deadline = deadline * scale
+                    goal.scale_uncompleted_task_time(scale, up=True)
+                    
+                # Scaling down
+                else:
+                    deadline = deadline // scale
+                    goal.scale_uncompleted_task_time(scale, up=False)
+                    
+                new_rewards[deadline] = reward
+            
+            # Replace old rewards dictionary
+            goal.set_rewards_dict(new_rewards)
+            
+    return goals
+
+
 def shuffle(tasks_list, mixing_parameter=0.0):
     shuffled_list = []
 
@@ -286,12 +322,25 @@ def simple_goal_scheduler(to_do_list, mixing_parameter=0.0, verbose=False):
     # Sort goals in increasing order w.r.t. their (latest) deadlines
     goals.sort()
     
+    # Compute GCD value
+    gcd_scale = compute_gcd(goals)
+    
+    # Scale down time
+    if gcd_scale > 1:
+        goals = scale_time(goals, gcd_scale, up=False)
+    else:
+        goals = goals
+    
     # Compute optimal values
     dp = compute_optimal_values(goals)
 
     # Generate ordered lists of attainable and unattainable goals
     attainable_goals, unattainable_goals = get_attainable_goals(goals, dp)
     
+    # Scale up time
+    if gcd_scale > 1:
+        goals = scale_time(goals, gcd_scale, up=True)
+
     # if len(unattainable_goals) > 0:
     #     goals_str = ', '.join(goal.description for goal in unattainable_goals)
     #     raise Exception(f"Goals \"{goals_str[:-2]}\" are unattainable!")
@@ -308,7 +357,6 @@ def simple_goal_scheduler(to_do_list, mixing_parameter=0.0, verbose=False):
     if verbose:
         print('===== DP table =====')
         print(dp, '\n')
-        print_optimal_solution(goals, dp)
     
         print('===== Attainable goals =====')
         if len(attainable_goals) == 0:
