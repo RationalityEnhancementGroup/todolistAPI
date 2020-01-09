@@ -319,6 +319,16 @@ class Goal:
     def update_total_time_est(self):
         self.total_time_est = self.completed_time_est + \
                               self.uncompleted_time_est
+        
+    def set_rewards_dict(self, rewards):
+        self.rewards = rewards
+        self.latest_deadline = max(rewards.keys())
+
+    def scale_uncompleted_task_time(self, scale, up=True):
+        if up:
+            self.uncompleted_time_est = self.uncompleted_time_est * scale
+        else:
+            self.uncompleted_time_est = self.uncompleted_time_est // scale
 
 
 class ToDoList:
