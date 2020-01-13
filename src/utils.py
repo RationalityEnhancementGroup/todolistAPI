@@ -9,11 +9,13 @@ from string import digits
 
 from todolistMDP.to_do_list import Goal, Task
 
-deadline_regex = r"DUE:\s*([1-2][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
+deadline_regex = r"DUE:\s*([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
 goal_code_regex = r"#CG(\d+|&|_)"
 time_est_regex = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
 today_regex = r"#today(?:\b|)"
 total_value_regex = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
+
+DEADLINE_YEAR_LIMIT = 2100
 
 
 def are_there_tree_differences(old_tree, new_tree):
@@ -306,6 +308,9 @@ def process_deadline(deadline, today_minutes, typical_minutes):
             year, month, day = re.split(r"[\-\.\\\/]+", deadline_args[0])
         except:
             raise Exception(f"Invalid deadline date!")
+        
+        if int(year) >= DEADLINE_YEAR_LIMIT:
+            raise Exception(f"Deadline too far in the future!")
     
         if len(deadline_args) == 2:
             # Parse time
