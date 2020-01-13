@@ -1,10 +1,6 @@
 """
 Tests for the algorithms that solve the to-do list MDP.
-
-Test cases:
-- "Complex" deterministic case (6 tasks x 2 goals)
-- Simple deterministic case (2 tasks x 2 goals)
-- Probabilistic case (2 tasks x 2 goals)
+The test cases are provided in the todolistMDP/test_cases.py file.
 """
 
 from todolistMDP.mdp_solvers import *
@@ -15,6 +11,15 @@ from pprint import pprint
 
 
 def follow_policy(mdp):
+    """
+    Prints the optimal policy.
+    
+    Args:
+        mdp: ToDoListMDP.
+
+    Returns:
+        /
+    """
     policy = mdp.get_optimal_policy()
     values = mdp.get_value_function()
     
@@ -50,6 +55,7 @@ def follow_policy(mdp):
 def solve(to_do_list, solver, print_policy=False, print_pseudo_rewards=False,
           print_values=False):
     """
+    Runs one of the algorithms from the old report, based on MDP formulation.
     
     Args:
         to_do_list: ToDoList
@@ -92,17 +98,11 @@ def solve(to_do_list, solver, print_policy=False, print_pseudo_rewards=False,
 
 
 # Set of goals to use
-# goals = d_bm   # Deterministic case (6 goals x 2 tasks)
-# goals = d_7  # Simple deterministic case (2 goals x 2 tasks)
-# goals = p_bm   # Probabilistic case (2 goals x 2 tasks)
-goals = d_different_value_extra_time_deadlines  # New deterministic cases
+goals = d_different_value_extra_time_deadlines
 
 # Generate to-do list MDP
 s_time = time.time()  # Start timer
 to_do_list = ToDoList(goals, start_time=0)
-# mdp = ToDoListMDP(to_do_list)
-# print(f'MDP initialization takes {time.time() - s_time:.4f} seconds.')
-
 
 # ===== Backward induction =====
 """
@@ -110,6 +110,8 @@ to_do_list = ToDoList(goals, start_time=0)
     (+) Simple deterministic case (2 goals x 2 tasks)
     (+) Probabilistic case (2 goals x 2 tasks)
 """
+# mdp = ToDoListMDP(to_do_list)
+# print(f'MDP initialization takes {time.time() - s_time:.4f} seconds.')
 # mdp = solve(to_do_list, backward_induction)
 
 # ===== Policy iteration =====
@@ -119,6 +121,8 @@ to_do_list = ToDoList(goals, start_time=0)
     (+) Simple deterministic case (2 goals x 2 tasks)
     (+) Probabilistic case (2 goals x 2 tasks)
 """
+# mdp = ToDoListMDP(to_do_list)
+# print(f'MDP initialization takes {time.time() - s_time:.4f} seconds.')
 # mdp = solve(to_do_list, policy_iteration)
 
 # ===== Value iteration =====
@@ -127,6 +131,8 @@ to_do_list = ToDoList(goals, start_time=0)
     (+) Simple deterministic case (2 goals x 2 tasks)
     (+) Probabilistic case (2 goals x 2 tasks)
 """
+# mdp = ToDoListMDP(to_do_list)
+# print(f'MDP initialization takes {time.time() - s_time:.4f} seconds.')
 # mdp = solve(to_do_list, value_iteration)
 
 # ===== Simple scheduler =====
