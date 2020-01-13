@@ -4,10 +4,12 @@ import re
 from copy import deepcopy
 from datetime import datetime
 from math import ceil
+from pprint import pprint
 from string import digits
+
 from todolistMDP.to_do_list import Goal, Task
 
-deadline_regex = r"DUE:\s*(20[1-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
+deadline_regex = r"DUE:\s*([1-2][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
 goal_code_regex = r"#CG(\d+|&|_)"
 time_est_regex = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
 today_regex = r"#today(?:\b|)"
@@ -75,16 +77,16 @@ def create_tree_dict(tree):
     for goal in tree:
         final_dict[goal["id"]] = (goal["deadline"], goal["value"])
         for task in goal["ch"]:
-            final_dict[task["id"]] = task["est"]
+            final_dict[task["id"]] = (task["deadline"], task["est"])
     return final_dict
 
 
 def flatten_intentions(projects):
     for goal in projects:
-        for child in goal["ch"]:
-            if "ch" in child:
-                goal["ch"].extend(child["ch"])
-                del child["ch"]
+        for task in goal["ch"]:
+            if "ch" in task:
+                goal["ch"].extend(task["ch"])
+                del task["ch"]
     return projects
 
 
@@ -112,18 +114,20 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
         # Assign deadline and value for misc goal
         misc_goal['deadline'] = latest_deadline
 
-        for child in misc_goal['ch']:
+        for task in misc_goal['ch']:
             task_goal = deepcopy(misc_goal)
+
+            if task["deadline"]:
+                task_goal["deadline"] = task["deadline"]
+            task_goal["est"] = task["est"]
+            task_goal['id'] = task['id']
+            task_goal['nm'] = task['nm']
+            task_goal["parentId"] = task["parentId"]
             
-            # TODO: Do we need info about parent ID?
-            
-            task_goal['id'] = child['id']
-            task_goal['nm'] = child['nm']
-            
-            task_goal["value"] *= child["est"] / misc_goal["est"]
+            task_goal["value"] *= task["est"] / misc_goal["est"]
             task_goal["value"] = ceil(task_goal["value"])
             
-            task_goal['ch'] = [child]
+            task_goal['ch'] = [task]
 
             misc_tasks += [task_goal]
     
@@ -199,15 +203,51 @@ def parse_tree(projects, current_intentions, allowed_task_time,
     misc_goals = []
     
     for goal in projects:
+        # Initialize goal time estimation
+        goal["est"] = 0
+
         # Extract goal information
         goal["code"] = re.search(goal_code_regex, goal["nm"], re.IGNORECASE)[1]
         goal_deadline = re.search(deadline_regex, goal["nm"], re.IGNORECASE)
         
+        # If no deadline has been provided --> Misc goal
+        if goal["code"][0] not in digits:
+            goal["deadline"] = None
+            misc_goals += [goal]
+        else:
+            # Process goal deadline and check whether the value is valid
+            try:
+                goal["deadline"] = \
+                    process_deadline(goal_deadline, today_minutes,
+                                     typical_minutes)
+            except Exception as error:
+                raise Exception(f"Goal {goal['nm']}: {str(error)}")
+
+            real_goals += [goal]
+            
         for task in goal["ch"]:
             
             # Get the last part of the HEX ID code for the task in WorkFlowy
             task_id = get_wf_task_id(task["id"])
             
+            # Get task deadline (if provided)
+            task_deadline = re.search(deadline_regex, task["nm"], re.IGNORECASE)
+            
+            if task_deadline:
+                try:
+                    task["deadline"] = \
+                        process_deadline(task_deadline, today_minutes,
+                                         typical_minutes)
+                except Exception as error:
+                    raise Exception(f"Task {task['nm']}: {str(error)}")
+                    
+                # Check whether task deadline is after goal deadline
+                if goal["deadline"] and task["deadline"] > goal["deadline"]:
+                    raise Exception(f"Task {task['nm']}: Task deadline should "
+                                    f"be before goal's deadline.")
+            else:
+                task["deadline"] = None
+             
             # Check whether the task has already been scheduled in CompliceX or
             # completed in WorkFlowy
             if task_id in current_intentions.keys() or \
@@ -223,6 +263,9 @@ def parse_tree(projects, current_intentions, allowed_task_time,
             except Exception as error:
                 raise Exception(f"Task {task['nm']}: {str(error)}")
             
+            # Update goal time estimation
+            goal["est"] += task["est"]
+            
             # Check whether a task has been marked to be completed today
             task["today"] = process_today_code(task)
     
@@ -231,32 +274,17 @@ def parse_tree(projects, current_intentions, allowed_task_time,
             
             # Append goal's name to task's name
             task["nm"] = goal["code"] + ") " + task["nm"]
-                
+            
         # Process goal value and check whether the value is valid
         try:
             goal["value"] = process_goal_value(goal)
         except Exception as error:
             raise Exception(f"Goal {goal['nm']}: {str(error)}")
-
-        # If no deadline has been provided --> Misc goal
-        if goal["code"][0] not in digits:
-            goal["deadline"] = None
-            misc_goals += [goal]
-        else:
-            # Process goal deadline and check whether the value is valid
-            try:
-                goal["deadline"] = \
-                    process_goal_deadline(goal_deadline, today_minutes,
-                                          typical_minutes)
-            except Exception as error:
-                raise Exception(f"Goal {goal['nm']}: {str(error)}")
-
-            real_goals += [goal]
     
     return real_goals, misc_goals
 
 
-def process_goal_deadline(deadline, today_minutes, typical_minutes):
+def process_deadline(deadline, today_minutes, typical_minutes):
     # Time from which the deadlines are computed
     current_time = datetime.now()  # TODO: Is this a good starting point?
 
@@ -346,8 +374,12 @@ def process_time_est(task_name, allowed_task_time=float('inf')):
     if in_hours:
         duration *= 60
     
+    # Check whether the value is valid
+    if duration <= 0:
+        raise Exception(f"{task_name}: Time estimation is not a "
+                        f"positive number!")
     if duration > allowed_task_time:
-        raise Exception(f"Time duration not allowed!")
+        raise Exception(f"{task_name}: Time duration not allowed!")
     
     # Convert time to minutes. If fractional, get the higher rounded value!
     duration = int(ceil(duration))
@@ -363,6 +395,40 @@ def process_today_code(task):
     else:
         return False
 
+
+def separate_tasks_with_deadlines(goals):
+    tasks_with_deadlines = []
+    
+    for goal in goals:
+        separated_tasks = []
+        
+        for task in goal["ch"]:
+            if task["deadline"]:
+                task_goal = deepcopy(goal)
+                
+                task_goal["deadline"] = task["deadline"]
+                task_goal["est"] = task["est"]
+                task_goal["id"] = task["id"]
+                task_goal["nm"] = task["nm"]
+                task_goal["parentId"] = task["parentId"]
+                
+                task_goal["value"] *= task["est"] / goal["est"]
+                task_goal["value"] = ceil(task_goal["value"])
+
+                task_goal["ch"] = [task]
+    
+                separated_tasks += [task_goal]
+                
+        tasks_with_deadlines += separated_tasks
+        
+        # Separate task from goal tasks & subtract time estimation and value
+        for task in separated_tasks:
+            goal["ch"].remove(task["ch"][0])
+            goal["est"] = max(goal["est"] - task["est"], 0)
+            goal["value"] = max(goal["value"] - task["value"], 0)
+
+    return goals + tasks_with_deadlines
+    
 
 def store_log(db_collection, log_dict, **params):
     """
@@ -420,30 +486,20 @@ def tree_to_old_structure(projects):
         # Get list of tasks
         tasks = []
         for task in goal['ch']:
-            
-            # Get time estimation and check whether the value is valid
-            # --> Upper limit done in the parse_tree function
-            # TODO: Move to parse_tree
-            if task['est'] <= 0:
-                raise Exception(f"{task['nm']}: Time estimation is not a "
-                                f"positive number!")
 
-            # TODO: Probability of success
-
+            # Create new task and add it to the task list
             tasks.append(Task(completed=task["completed"],
                               description=task["nm"],
                               task_id=task["id"],
                               time_est=task["est"],
-                              prob=1))
+                              prob=1))  # TODO: Probability of success
 
-        # TODO: Penalties
-        
         # Create new goal and add it to the goal list
         goals.append(
             Goal(description=goal["nm"],
                  goal_id=goal["id"],
                  tasks=tasks,
                  rewards={goal["deadline"]: goal["value"]},
-                 penalty=0))
+                 penalty=0))  # TODO: Penalty for missing a deadline
         
     return goals

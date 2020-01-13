@@ -2,13 +2,14 @@ import cherrypy
 import json
 import os
 
+from copy import deepcopy
+from datetime import datetime
+from pprint import pprint
+from pymongo import MongoClient, DESCENDING
+
 from src.utils import *
 from src.apis import *
 from src.schedulers import *
-from pymongo import MongoClient, DESCENDING
-from datetime import datetime
-from copy import deepcopy
-from pprint import pprint
 
 
 CONTACT = "Please contact the experimenter."
@@ -108,17 +109,18 @@ class PostResource(RESTResource):
                 cherrypy.response.status = 403
                 return json.dumps({"status": status + " " + CONTACT})
 
-            # TODO: ?
-            if db.request_log.find({'user_id': str(current_id)}) \
-                             .sort('timestamp', DESCENDING).count() == 0:
-                previous_result = 0
-            else:
+            # Get the latest result from the current user
+            try:
                 previous_result = \
-                    db.request_log.find({'user_id': str(current_id)}) \
-                                  .sort('timestamp', DESCENDING)[0]
-
+                    db.request_log.find({"user_id": str(current_id),
+                                         "status":  "Successful pull!"}) \
+                                  .sort("timestamp", DESCENDING)[0]
+            # If this is a new user, then run the value assignment
+            except:
+                previous_result = None
+                
             # Check for changes if an existing user (..?)
-            if previous_result != 0:
+            if previous_result is not None:
                 if jsonData["updated"] <= previous_result["lm"]:
                     status = "No update needed."
                     store_log(db.request_log, log_dict, status=status)
@@ -223,7 +225,7 @@ class PostResource(RESTResource):
             # keep participant data anonymous
             store_log(db.request_log, log_dict, status="Save parsed tree")
 
-            if previous_result == 0:
+            if previous_result is None:
                 run_point_method = True
             else:
                 run_point_method = are_there_tree_differences(
@@ -262,7 +264,9 @@ class PostResource(RESTResource):
                     try:
                         final_tasks = \
                             assign_dynamic_programming_points(
-                                real_goals, misc_goals, simple_goal_scheduler,
+                                real_goals, misc_goals,
+                                solver_fn=simple_goal_scheduler,
+                                scaling_fn=utility_scaling,
                                 day_duration=today_minutes,
                                 mixing_parameter=mixing_parameter,
                                 verbose=False
