@@ -1,18 +1,8 @@
-import numpy as np
-import pandas as pd
-import json
-
-from pprint import pprint
-
 from src.utils import tree_to_old_structure
-from src.utils import task_list_from_projects, task_dict_from_projects, \
-    misc_tasks_to_goals, separate_tasks_with_deadlines
-from src.point_scalers import utility_scaling
+from src.utils import misc_tasks_to_goals, separate_tasks_with_deadlines, \
+                      task_list_from_projects
 from src.schedulers import schedule_tasks_for_today
 
-from todolistMDP.mdp_solvers \
-    import backward_induction, policy_iteration, value_iteration
-from todolistMDP.scheduling_solvers import simple_goal_scheduler
 from todolistMDP.to_do_list import *
 
 
@@ -72,7 +62,8 @@ def assign_dynamic_programming_points(real_goals, misc_goals,
     scaling_fn(ordered_tasks, scale_min=None, scale_max=None)
     
     # Schedule tasks for today
-    today_tasks = schedule_tasks_for_today(projects, ordered_tasks, day_duration)
+    today_tasks = schedule_tasks_for_today(projects, ordered_tasks,
+                                           day_duration)
     
     return today_tasks  # List of tasks from projects
 
@@ -154,7 +145,8 @@ def assign_length_points(projects):
     Outputs project tree with points assigned according to length heuristic
     """
     for goal in projects:
-        value_per_minute = goal["value"]/float(sum([child["est"] for child in goal["ch"]]))
+        value_per_minute = goal["value"]/float(sum([child["est"]
+                                                    for child in goal["ch"]]))
         for child in goal["ch"]:
             child["val"] = child["est"]/float(value_per_minute)
     return projects
