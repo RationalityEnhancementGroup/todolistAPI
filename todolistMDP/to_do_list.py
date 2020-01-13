@@ -7,8 +7,8 @@ from todolistMDP import mdp
 
 
 class Task:
-    def __init__(self, description, task_id, completed=False, goal=None,
-                 prob=1., reward=0, time_est=1):
+    def __init__(self, description, completed=False, goal=None,
+                 prob=1., reward=0, task_id=None, time_est=1):
         """
         # TODO: reward=None
         # TODO: Complete this...
@@ -31,7 +31,10 @@ class Task:
         
         # Set parameters
         self.description = description
+        
         self.task_id = task_id
+        if self.task_id is None:
+            self.task_id = description
         
         self.completed = completed
         self.goal = goal
@@ -102,8 +105,8 @@ class Task:
 
 
 class Goal:
-    def __init__(self, description, goal_id, rewards, tasks,
-                 completed=False, penalty=0):
+    def __init__(self, description, rewards, tasks,
+                 completed=False, goal_id=None, penalty=0):
         """
         # TODO: Complete this...
         
@@ -123,8 +126,11 @@ class Goal:
         """
         # Parameters
         self.description = description
-        self.goal_id = goal_id
         self.rewards = rewards
+        
+        self.goal_id = goal_id
+        if self.goal_id is None:
+            self.goal_id = description
         
         # Set up a deadline
         self.latest_deadline = max(rewards.keys())
