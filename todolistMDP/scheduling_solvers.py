@@ -179,7 +179,7 @@ def get_ordered_task_list(attainable_goals, mixing_time, mixing_values):
     """
     ordered_task_list = \
         list(attainable_goals[-1].get_uncompleted_tasks())
-    
+
     for goal_idx in reversed(range(len(attainable_goals)-1)):
         batch_tasks = \
             list(attainable_goals[goal_idx].get_uncompleted_tasks())
@@ -203,7 +203,7 @@ def get_ordered_task_list(attainable_goals, mixing_time, mixing_values):
             batch_tasks = shuffle(batch_tasks, mixing_parameter)
         
         ordered_task_list = batch_tasks + ordered_task_list
-        
+
     return ordered_task_list
 
 
@@ -341,9 +341,9 @@ def simple_goal_scheduler(to_do_list, mixing_parameter=0.0, verbose=False):
     if gcd_scale > 1:
         goals = scale_time(goals, gcd_scale, up=True)
 
-    # if len(unattainable_goals) > 0:
-    #     goals_str = ', '.join(goal.description for goal in unattainable_goals)
-    #     raise Exception(f"Goals \"{goals_str[:-2]}\" are unattainable!")
+    if len(unattainable_goals) > 0:
+        goals_str = ', '.join(goal.description for goal in unattainable_goals)
+        raise Exception(f"Goals \"{goals_str[:-2]}\" are unattainable!")
 
     # Compute mixing time & mixing values
     mixing_time, last_0_idx = compute_simple_mixing_time(attainable_goals)
@@ -356,6 +356,7 @@ def simple_goal_scheduler(to_do_list, mixing_parameter=0.0, verbose=False):
     # Whether to print the optimal solution
     if verbose:
         print('===== DP table =====')
+        print(f"Shape: {dp.shape}", end="\n\n")
         print(dp, '\n')
     
         print('===== Attainable goals =====')

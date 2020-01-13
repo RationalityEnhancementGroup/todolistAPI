@@ -1,15 +1,19 @@
 import numpy as np
 import pandas as pd
 import json
+
+from pprint import pprint
+
 from src.utils import tree_to_old_structure
-from todolistMDP.mdp_solvers \
-    import backward_induction, policy_iteration, value_iteration
-from todolistMDP.to_do_list import *
-from todolistMDP.scheduling_solvers import simple_goal_scheduler
 from src.utils import task_list_from_projects, task_dict_from_projects, \
-    misc_tasks_to_goals
+    misc_tasks_to_goals, separate_tasks_with_deadlines
 from src.point_scalers import utility_scaling
 from src.schedulers import schedule_tasks_for_today
+
+from todolistMDP.mdp_solvers \
+    import backward_induction, policy_iteration, value_iteration
+from todolistMDP.scheduling_solvers import simple_goal_scheduler
+from todolistMDP.to_do_list import *
 
 
 def assign_constant_points(projects, default_task=10):
@@ -36,18 +40,18 @@ def assign_random_points(projects, distribution_fxn=np.random.normal,
     return projects
     
     
-def assign_hierarchical_points(projects):
-    raise NotImplementedError
-
-
-def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
+def assign_dynamic_programming_points(real_goals, misc_goals,
+                                      solver_fn, scaling_fn,
                                       day_duration=8 * 60, **params):
     projects = real_goals + misc_goals
     
+    # Separate tasks with deadlines from real goals
+    real_goals = separate_tasks_with_deadlines(real_goals)
+
     # Convert real goals from JSON to Goal class objects
     real_goals = tree_to_old_structure(real_goals)
     
-    # Assign deadlines to the misc goals
+    # Assign deadlines to the misc goals & Separate tasks with deadlines
     misc_goals = misc_tasks_to_goals(real_goals, misc_goals)
     
     # Convert misc goals from JSON to Goal class objects
@@ -57,13 +61,15 @@ def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
     
     # Add them together into a single list
     to_do_list = ToDoList(real_goals + misc_goals, start_time=0)
+    
+    # Get ordered list of tasks
     ordered_tasks = \
         solver_fn(to_do_list,
                   mixing_parameter=params["mixing_parameter"],
                   verbose=params["verbose"])
-
-    # TODO: Make this an argument of the function
-    utility_scaling(ordered_tasks, scale_min=None, scale_max=None)
+    
+    # Scale task values according to the provided scaling function
+    scaling_fn(ordered_tasks, scale_min=None, scale_max=None)
     
     # Schedule tasks for today
     today_tasks = schedule_tasks_for_today(projects, ordered_tasks, day_duration)
