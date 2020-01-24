@@ -359,7 +359,7 @@ class ToDoList:
         self.start_time = start_time  # TODO: Do we need this?
         self.end_time = end_time  # TODO: Do we need this?
         
-        self.max_deadline = float('-inf')
+        self.max_deadline = float('-inf')  # TODO: Replace -> max(goal_deadline)
 
         # Add goals and tasks to the to-do list
         for goal in self.goals:
