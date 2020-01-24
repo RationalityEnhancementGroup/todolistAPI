@@ -64,8 +64,16 @@ def create_projects_to_save(projects):
     projects_to_save = deepcopy(projects)
     for project in projects_to_save:
         del project["nm"]
+        try:
+            del project["no"]
+        except:
+            pass
         for task in project["ch"]:
             del task["nm"]
+            try:
+                del task["no"]
+            except:
+                pass
     return projects_to_save
 
 
