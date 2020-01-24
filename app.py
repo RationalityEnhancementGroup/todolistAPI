@@ -248,11 +248,7 @@ class PostResource(RESTResource):
                 # DP method
                 elif method == "dp":
                     # Get mixing parameter | Default URL value: 0
-                    mixing_parameter = int(vpath[3])
-                    
-                    # Convert the mixing parameter to probability
-                    while mixing_parameter > 1:
-                        mixing_parameter /= 10
+                    mixing_parameter = float('0.' + vpath[3])
                     
                     # Store the value of the mixing parameter in the log dict
                     log_dict['mixing_parameter'] = mixing_parameter
