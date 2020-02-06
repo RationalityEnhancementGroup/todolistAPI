@@ -64,7 +64,7 @@ class PostResource(RESTResource):
         log_dict = {
             "start_time": datetime.now(),
         }
-        
+        print(" ")
         try:
             # Compulsory parameters
             method = vpath[0]
