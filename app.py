@@ -69,16 +69,18 @@ class PostResource(RESTResource):
             # Compulsory parameters
             method = vpath[0]
             scheduler = vpath[1]
+            exp_identifier = vpath[-3]
             user_key = vpath[-2]
             api_method = vpath[-1]
             
             # Additional parameters (the order of URL input matters!)
-            parameters = [item for item in vpath[2:-2]]
+            parameters = [item for item in vpath[2:-3]]
 
             log_dict.update({
                 "api_method": api_method,
                 "duration": str(datetime.now() - log_dict["start_time"]),
                 "method": method,
+                "exp_identifier": exp_identifier,
                 "parameters": parameters,
                 "scheduler": scheduler,
                 "user_key": user_key,
