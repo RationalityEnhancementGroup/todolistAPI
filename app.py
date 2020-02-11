@@ -212,7 +212,7 @@ class PostResource(RESTResource):
             try:
                 real_goals, misc_goals = \
                     parse_tree(projects, current_intentions, allowed_task_time,
-                               today_minutes, typical_minutes)
+                               today_minutes, typical_minutes, default_duration=default_duration, default_deadline=default_deadline)
             except Exception as error:
                 status = str(error)
                 

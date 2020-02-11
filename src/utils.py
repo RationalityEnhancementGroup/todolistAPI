@@ -2,7 +2,7 @@ import cherrypy
 import re
 
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime,timedelta
 from math import ceil
 from pprint import pprint
 from string import digits
@@ -201,7 +201,7 @@ def parse_hours(time_string):
     
     
 def parse_tree(projects, current_intentions, allowed_task_time,
-               today_minutes, typical_minutes):
+               today_minutes, typical_minutes, default_duration, default_deadline):
     """
     This function reads in a flattened project tree and parses fields like goal
     code, total value, duration and deadline
@@ -229,7 +229,7 @@ def parse_tree(projects, current_intentions, allowed_task_time,
             try:
                 goal["deadline"] = \
                     process_deadline(goal_deadline, today_minutes,
-                                     typical_minutes)
+                                     typical_minutes, default_deadline)
             except Exception as error:
                 raise Exception(f"Goal {goal['nm']}: {str(error)}")
 
@@ -269,7 +269,7 @@ def parse_tree(projects, current_intentions, allowed_task_time,
             # Process time estimation for a task
             try:
                 task["est"] = \
-                    process_time_est(task["nm"], allowed_task_time)
+                    process_time_est(task["nm"], allowed_task_time, default_duration)
             except Exception as error:
                 raise Exception(f"Task {task['nm']}: {str(error)}")
             
@@ -294,12 +294,14 @@ def parse_tree(projects, current_intentions, allowed_task_time,
     return real_goals, misc_goals
 
 
-def process_deadline(deadline, today_minutes, typical_minutes):
+def process_deadline(deadline, today_minutes, typical_minutes, default_deadline=None):
     # Time from which the deadlines are computed
     current_time = datetime.now()  # TODO: Is this a good starting point?
-
     if deadline is None:
-        raise Exception("Invalid or no deadline provided!")
+        if default_deadline is not None:
+            deadline = "DUE:"+(current_time + timedelta(days=int(default_deadline))).strftime("%Y-%m-%d")
+        else:
+            raise Exception("Invalid or no deadline provided!")
 
     # Remove empty spaces at the beginning and the end of the string
     deadline = deadline[0].strip()
@@ -364,11 +366,14 @@ def process_goal_value(goal):
     return goal_value
 
 
-def process_time_est(task_name, allowed_task_time=float('inf')):
+def process_time_est(task_name, allowed_task_time=float('inf'), default_duration=None):
     try:
         time_est = re.search(time_est_regex, task_name, re.IGNORECASE)[0]
     except:
-        raise Exception("No time estimation or invalid time estimation provided!")
+        if default_duration is not None:
+            time_est = "~~"+str(default_duration)+"min"
+        else:
+            raise Exception("No time estimation or invalid time estimation provided!")
 
     # Get time units (the number of hours or minutes) | Allows time fractions
     try:
