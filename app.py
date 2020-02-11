@@ -102,7 +102,7 @@ class PostResource(RESTResource):
                 allowed_task_time = float(parameters[0])
                 log_dict["allowed_task_time"] = allowed_task_time
             except:
-                status = "There was an issue with the allowed task time value."
+                status = "There was an issue with the API input (allowed time parameter.) Please contact us at re-mturk@tuebingen.mpg.de."
                 store_log(db.request_log, log_dict, status=status)
                 cherrypy.response.status = 403
                 return json.dumps({"status": status + " " + CONTACT})
@@ -128,7 +128,7 @@ class PostResource(RESTResource):
             except:
                 previous_result = None
                 
-            Check for changes if an existing user (..?)
+            # Check for changes if an existing user (..?)
             if previous_result is not None:
                 if jsonData["updated"] <= previous_result["lm"]:
                     status = "No update needed."
@@ -136,8 +136,7 @@ class PostResource(RESTResource):
 
                     cherrypy.response.status = 403
                     return json.dumps({"status": status +
-                        " If you think you are seeing this message in error, " +
-                                                 CONTACT.lower()})
+                        " " + CONTACT})
 
             # Update last modified
             log_dict["lm"] = jsonData["updated"]
