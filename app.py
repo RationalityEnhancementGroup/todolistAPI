@@ -73,7 +73,7 @@ class PostResource(RESTResource):
             api_method = vpath[-1]
             
             # Additional parameters (the order of URL input matters!)
-            parameters = [item for item in vpath[3:-3]]
+            parameters = [item for item in vpath[2:-2]]
 
             log_dict.update({
                 "api_method": api_method,
