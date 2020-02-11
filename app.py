@@ -128,16 +128,16 @@ class PostResource(RESTResource):
             except:
                 previous_result = None
                 
-            # Check for changes if an existing user (..?)
-            # if previous_result is not None:
-            #     if jsonData["updated"] <= previous_result["lm"]:
-            #         status = "No update needed."
-            #         store_log(db.request_log, log_dict, status=status)
+            Check for changes if an existing user (..?)
+            if previous_result is not None:
+                if jsonData["updated"] <= previous_result["lm"]:
+                    status = "No update needed."
+                    store_log(db.request_log, log_dict, status=status)
 
-            #         cherrypy.response.status = 403
-            #         return json.dumps({"status": status +
-            #             " If you think you are seeing this message in error, " +
-            #                                      CONTACT.lower()})
+                    cherrypy.response.status = 403
+                    return json.dumps({"status": status +
+                        " If you think you are seeing this message in error, " +
+                                                 CONTACT.lower()})
 
             # Update last modified
             log_dict["lm"] = jsonData["updated"]
@@ -234,81 +234,61 @@ class PostResource(RESTResource):
             # keep participant data anonymous
             store_log(db.request_log, log_dict, status="Save parsed tree")
 
-            if previous_result is None:
-                run_point_method = True
-            else:
-                run_point_method = are_there_tree_differences(
-                    previous_result["tree"], projects)
+
+            if method == "constant":
+                projects = assign_constant_points(projects, *params)
+            elif method == "random":
+                projects = assign_random_points(projects,
+                                                fxn_args=params)
+            elif method == "length":
+                projects = assign_length_points(projects)
             
-            # Assign values for each task
-            if run_point_method:
-                if method == "constant":
-                    projects = assign_constant_points(projects, *params)
-                elif method == "random":
-                    projects = assign_random_points(projects,
-                                                    fxn_args=params)
-                elif method == "length":
-                    projects = assign_length_points(projects)
-                
-                # DP method
-                elif method == "dp":
-                    # Get mixing parameter | Default URL value: 0
-                    mixing_parameter = int(parameters[1])
+            # DP method
+            elif method == "dp":
+                # Get mixing parameter | Default URL value: 0
+                mixing_parameter = int(parameters[1])
 
-                    
-                    # Convert the mixing parameter to probability
-                    while mixing_parameter > 1:
-                        mixing_parameter /= 10
-                    
-                    # Store the value of the mixing parameter in the log dict
-                    log_dict['mixing_parameter'] = mixing_parameter
-
-                    # Defined by the experimenter
-                    if not (0 <= mixing_parameter < 1):
-                        status = "There was an issue with the API input (mixing-parameter value.) Please contact us at re-mturk@tuebingen.mpg.de."
-                        store_log(db.request_log, log_dict, status=status)
-                        cherrypy.response.status = 403
-                        return json.dumps({"status": status})
-                    
-                    # TODO: Get informative exceptions
-                    try:
-                        final_tasks = \
-                            assign_dynamic_programming_points(
-                                real_goals, misc_goals,
-                                solver_fn=simple_goal_scheduler,
-                                scaling_fn=utility_scaling,
-                                day_duration=today_minutes,
-                                mixing_parameter=mixing_parameter,
-                                verbose=False
-                            )
-                    except Exception as error:
-                        cherrypy.response.status = 403
-                        return json.dumps({"status": str(error)})
                 
-                # TODO: Test and fix potential bugs!
-                elif method == "old-report":
-                    final_tasks = \
-                        assign_old_api_points(projects, backward_induction,
-                                              duration=today_minutes)
-                else:
-                    status = "API method does not exist. Please contact us at re-mturk@tuebingen.mpg.de."
+                # Convert the mixing parameter to probability
+                while mixing_parameter > 1:
+                    mixing_parameter /= 10
+                
+                # Store the value of the mixing parameter in the log dict
+                log_dict['mixing_parameter'] = mixing_parameter
+
+                # Defined by the experimenter
+                if not (0 <= mixing_parameter < 1):
+                    status = "There was an issue with the API input (mixing-parameter value.) Please contact us at re-mturk@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps({"status": status})
+                
+                # TODO: Get informative exceptions
+                try:
+                    final_tasks = \
+                        assign_dynamic_programming_points(
+                            real_goals, misc_goals,
+                            solver_fn=simple_goal_scheduler,
+                            scaling_fn=utility_scaling,
+                            day_duration=today_minutes,
+                            mixing_parameter=mixing_parameter,
+                            verbose=False
+                        )
+                except Exception as error:
+                    cherrypy.response.status = 403
+                    return json.dumps({"status": str(error)})
             
-            # If there are no changes in the tree, give back the values
-            # assigned in the previous parsing
+            # TODO: Test and fix potential bugs!
+            elif method == "old-report":
+                final_tasks = \
+                    assign_old_api_points(projects, backward_induction,
+                                          duration=today_minutes)
             else:
-                for goal in projects:
-                    corresponding_goal = (
-                        next(item
-                             for item in previous_result["tree"]
-                             if item["id"] == goal["id"]))
-                    for task in goal["ch"]:
-                        task["val"] = (
-                            next(item["val"]
-                                 for item in corresponding_goal["ch"]
-                                 if item["id"] == task["id"]))
+                status = "API method does not exist. Please contact us at re-mturk@tuebingen.mpg.de."
+                store_log(db.request_log, log_dict, status=status)
+                cherrypy.response.status = 403
+                return json.dumps({"status": status})
+    
 
             # Update values in the tree
             log_dict["tree"] = create_projects_to_save(projects)
