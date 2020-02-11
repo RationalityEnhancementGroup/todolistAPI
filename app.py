@@ -69,12 +69,15 @@ class PostResource(RESTResource):
             # Compulsory parameters
             method = vpath[0]
             scheduler = vpath[1]
-            exp_identifier = vpath[-3]
+            default_duration = vpath[2] #this needs to be in minutes
+            default_deadline = vpath[3] #this needs to be in days
+            exp_identifier = vpath[-4]
             user_key = vpath[-2]
             api_method = vpath[-1]
             
             # Additional parameters (the order of URL input matters!)
-            parameters = [item for item in vpath[4:-3]]
+            parameters = [item for item in vpath[4:-4]]
+
 
             log_dict.update({
                 "api_method": api_method,
@@ -96,7 +99,7 @@ class PostResource(RESTResource):
             
             # Get allowed task time | Default URL value: 'inf'
             try:
-                allowed_task_time = float(vpath[2])
+                allowed_task_time = float(parameters[0])
                 log_dict["allowed_task_time"] = allowed_task_time
             except:
                 status = "There was an issue with the allowed task time value."
@@ -126,10 +129,10 @@ class PostResource(RESTResource):
                 previous_result = None
                 
             # Check for changes if an existing user (..?)
-            if previous_result is not None:
-                if jsonData["updated"] <= previous_result["lm"]:
-                    status = "No update needed."
-                    store_log(db.request_log, log_dict, status=status)
+            # if previous_result is not None:
+            #     if jsonData["updated"] <= previous_result["lm"]:
+            #         status = "No update needed."
+            #         store_log(db.request_log, log_dict, status=status)
 
             #         cherrypy.response.status = 403
             #         return json.dumps({"status": status +
@@ -220,7 +223,7 @@ class PostResource(RESTResource):
                 # Store error in DB
                 store_log(db.request_log, log_dict, status=anonymous_error)
                 
-                status += ("Please take a look at your Workflowy inputs and then try again.  " + CONTACT)
+                status += (" Please take a look at your Workflowy inputs and then try again.  " + CONTACT)
                 cherrypy.response.status = 403
                 return json.dumps({"status": status})
             
@@ -250,7 +253,8 @@ class PostResource(RESTResource):
                 # DP method
                 elif method == "dp":
                     # Get mixing parameter | Default URL value: 0
-                    mixing_parameter = int(vpath[3])
+                    mixing_parameter = int(parameters[1])
+
                     
                     # Convert the mixing parameter to probability
                     while mixing_parameter > 1:
