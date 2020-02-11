@@ -16,7 +16,7 @@ from todolistMDP.mdp_solvers import backward_induction, policy_iteration, \
                                     value_iteration
 from todolistMDP.scheduling_solvers import simple_goal_scheduler
 
-CONTACT = "Please contact the experimenter."
+CONTACT = "If you continue to encounter this issue, please contact us at re-mturk@tuebingen.mpg.de."
 
 
 class RESTResource(object):
@@ -64,7 +64,7 @@ class PostResource(RESTResource):
         log_dict = {
             "start_time": datetime.now(),
         }
-        print(" ")
+
         try:
             # Compulsory parameters
             method = vpath[0]
@@ -74,7 +74,7 @@ class PostResource(RESTResource):
             api_method = vpath[-1]
             
             # Additional parameters (the order of URL input matters!)
-            parameters = [item for item in vpath[2:-3]]
+            parameters = [item for item in vpath[4:-3]]
 
             log_dict.update({
                 "api_method": api_method,
@@ -109,7 +109,7 @@ class PostResource(RESTResource):
                 current_id = jsonData["userkey"]
                 log_dict["user_id"] = current_id
             except:
-                status = "Problem with user key."
+                status = "We encountered a problem with the inputs from Workflowy, please try again."
                 store_log(db.request_log, log_dict, status=status)
                 
                 cherrypy.response.status = 403
@@ -131,10 +131,10 @@ class PostResource(RESTResource):
                     status = "No update needed."
                     store_log(db.request_log, log_dict, status=status)
 
-                    cherrypy.response.status = 403
-                    return json.dumps({"status": status +
-                        " If you think you are seeing this message in error, " +
-                                                 CONTACT.lower()})
+            #         cherrypy.response.status = 403
+            #         return json.dumps({"status": status +
+            #             " If you think you are seeing this message in error, " +
+            #                                      CONTACT.lower()})
 
             # Update last modified
             log_dict["lm"] = jsonData["updated"]
@@ -148,7 +148,7 @@ class PostResource(RESTResource):
                 projects = flatten_intentions(jsonData["projects"])
                 log_dict["tree"] = create_projects_to_save(projects)
             except:
-                status = "Error with parsing inputted projects."
+                status = "Something is wrong with your inputted goals and tasks. Please take a look at your Workflowy inputs and then try again."
                 
                 # Save the data if there was a change, removing nm fields so
                 # that we keep participant data anonymous
@@ -162,7 +162,7 @@ class PostResource(RESTResource):
                 today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
                 log_dict["today_hours"] = today_hours
             except:
-                status = "Error with parsing today hours."
+                status = "Something is wrong with the hours in HOURS_TODAY. Please take a look and try again."
                 store_log(db.request_log, log_dict, status=status)
                 
                 cherrypy.response.status = 403
@@ -172,7 +172,7 @@ class PostResource(RESTResource):
                 typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
                 log_dict["typical_hours"] = typical_hours
             except:
-                status = "Error with parsing typical hours."
+                status = "Something is wrong with the hours in HOURS_TYPICAL. Please take a look and try again."
                 store_log(db.request_log, log_dict, status=status)
                 
                 cherrypy.response.status = 403
@@ -182,7 +182,7 @@ class PostResource(RESTResource):
                 store_log(db.request_log, log_dict,
                           status="Invalid typical hours value.")
                 
-                status = "Please edit the hours you typically work today on Workflowy. " \
+                status = "Please edit the hours you typically work on Workflowy. " \
                          "The hours you work should be between 0 and 24."
                 cherrypy.response.status = 403
                 return json.dumps({"status": status})
@@ -220,7 +220,7 @@ class PostResource(RESTResource):
                 # Store error in DB
                 store_log(db.request_log, log_dict, status=anonymous_error)
                 
-                status += " Please contact the experimenter if you feel you are not able to fix this issue."
+                status += ("Please take a look at your Workflowy inputs and then try again.  " + CONTACT)
                 cherrypy.response.status = 403
                 return json.dumps({"status": status})
             
@@ -261,10 +261,10 @@ class PostResource(RESTResource):
 
                     # Defined by the experimenter
                     if not (0 <= mixing_parameter < 1):
-                        status = "There was an issue with the mixing-parameter value."
+                        status = "There was an issue with the API input (mixing-parameter value.) Please contact us at re-mturk@tuebingen.mpg.de."
                         store_log(db.request_log, log_dict, status=status)
                         cherrypy.response.status = 403
-                        return json.dumps({"status": status + " " + CONTACT})
+                        return json.dumps({"status": status})
                     
                     # TODO: Get informative exceptions
                     try:
@@ -287,10 +287,10 @@ class PostResource(RESTResource):
                         assign_old_api_points(projects, backward_induction,
                                               duration=today_minutes)
                 else:
-                    status = "API method does not exist."
+                    status = "API method does not exist. Please contact us at re-mturk@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status + " " + CONTACT})
+                    return json.dumps({"status": status})
             
             # If there are no changes in the tree, give back the values
             # assigned in the previous parsing
@@ -322,10 +322,10 @@ class PostResource(RESTResource):
             elif scheduler == "mdp":
                 pass
             else:
-                status = "Scheduling method does not exist."
+                status = "Scheduling method does not exist. Please contact us at re-mturk@tuebingen.mpg.de."
                 store_log(db.request_log, log_dict, status=status)
                 cherrypy.response.status = 403
-                return json.dumps({"status": status + " " + CONTACT})
+                return json.dumps({"status": status})
             
             store_log(db.trees, log_dict, status="Save tree!")
 
@@ -349,14 +349,14 @@ class PostResource(RESTResource):
                 return json.dumps(final_tasks)
             
             else:
-                status = "API Method not implemented."
+                status = "API Method not implemented. Please contact us at re-mturk@tuebingen.mpg.de."
                 store_log(db.request_log, log_dict, status=status)
                 
                 cherrypy.response.status = 405
-                return json.dumps({"status": status + " " + CONTACT})
+                return json.dumps({"status": status})
             
         except Exception as error:
-            status = "The API has encountered an error."
+            status = "The API has encountered an error, please try again."
             
             # Store anonymous error info in DB collection
             anonymous_error = parse_error_info(str(error))
