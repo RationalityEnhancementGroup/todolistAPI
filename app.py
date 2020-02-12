@@ -75,6 +75,11 @@ class PostResource(RESTResource):
             exp_identifier = vpath[-4]
             user_key = vpath[-2]
             api_method = vpath[-1]
+
+            if "cite" in exp_identifier:
+                round_param = 2
+            else:
+                round_param = 0
             
             # Additional parameters (the order of URL input matters!)
             parameters = [float(item) for item in vpath[5:-4]]
@@ -320,7 +325,7 @@ class PostResource(RESTResource):
             
             elif api_method == "getTasksForToday":
                 try:
-                    final_tasks = clean_output(final_tasks)
+                    final_tasks = clean_output(final_tasks,round_param)
                 except:
                     status = "Error while preparing final output."
                     store_log(db.request_log, log_dict, status=status)
