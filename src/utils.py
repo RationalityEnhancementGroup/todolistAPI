@@ -122,7 +122,8 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
     for misc_goal in misc_goals:
         
         # Assign deadline and value for misc goal
-        misc_goal['deadline'] = latest_deadline
+        if (misc_goal["deadline"]) is None:
+            misc_goal['deadline'] = latest_deadline
 
         for task in misc_goal['ch']:
             task_goal = deepcopy(misc_goal)
@@ -222,7 +223,11 @@ def parse_tree(projects, current_intentions, allowed_task_time,
         
         # If no deadline has been provided --> Misc goal
         if goal["code"][0] not in digits:
-            goal["deadline"] = None
+            try:
+                goal["deadline"] = process_deadline(None, today_minutes,
+                                         typical_minutes, default_deadline)
+            except:
+                pass
             misc_goals += [goal]
         else:
             # Process goal deadline and check whether the value is valid
