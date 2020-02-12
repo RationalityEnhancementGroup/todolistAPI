@@ -246,7 +246,7 @@ class PostResource(RESTResource):
             # DP method
             elif method == "dp":
                 # Get mixing parameter | Default URL value: 0
-                mixing_parameter = parameters[1]
+                mixing_parameter = parameters[0]
 
                 
                 # Convert the mixing parameter to probability
