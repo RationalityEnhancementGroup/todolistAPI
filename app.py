@@ -71,12 +71,13 @@ class PostResource(RESTResource):
             scheduler = vpath[1]
             default_duration = vpath[2] #this needs to be in minutes
             default_deadline = vpath[3] #this needs to be in days
+            allowed_task_time = vpath[4] 
             exp_identifier = vpath[-4]
             user_key = vpath[-2]
             api_method = vpath[-1]
             
             # Additional parameters (the order of URL input matters!)
-            parameters = [item for item in vpath[4:-4]]
+            parameters = [float(item) for item in vpath[5:-4]]
 
 
             log_dict.update({
@@ -99,7 +100,7 @@ class PostResource(RESTResource):
             
             # Get allowed task time | Default URL value: 'inf'
             try:
-                allowed_task_time = float(parameters[0])
+                allowed_task_time = float(allowed_task_time)
                 log_dict["allowed_task_time"] = allowed_task_time
             except:
                 status = "There was an issue with the API input (allowed time parameter.) Please contact us at re-mturk@tuebingen.mpg.de."
@@ -212,7 +213,7 @@ class PostResource(RESTResource):
             try:
                 real_goals, misc_goals = \
                     parse_tree(projects, current_intentions, allowed_task_time,
-                               today_minutes, typical_minutes, default_duration=default_duration, default_deadline=default_deadline)
+                               today_minutes, typical_minutes, default_duration=int(default_duration), default_deadline=int(default_deadline))
             except Exception as error:
                 status = str(error)
                 
@@ -235,17 +236,17 @@ class PostResource(RESTResource):
 
 
             if method == "constant":
-                projects = assign_constant_points(projects, *params)
+                projects = assign_constant_points(projects, *parameters)
             elif method == "random":
                 projects = assign_random_points(projects,
-                                                fxn_args=params)
+                                                fxn_args=parameters)
             elif method == "length":
                 projects = assign_length_points(projects)
             
             # DP method
             elif method == "dp":
                 # Get mixing parameter | Default URL value: 0
-                mixing_parameter = int(parameters[1])
+                mixing_parameter = parameters[1]
 
                 
                 # Convert the mixing parameter to probability
