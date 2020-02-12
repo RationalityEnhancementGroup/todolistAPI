@@ -62,7 +62,7 @@ class PostResource(RESTResource):
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
 
-        with stopit.ThreadingTimeout(1) as to_ctx_mgr:
+        with stopit.ThreadingTimeout(28) as to_ctx_mgr:
             assert to_ctx_mgr.state == to_ctx_mgr.EXECUTING
 
             # Initialize log dictionary
