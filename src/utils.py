@@ -31,7 +31,7 @@ def are_there_tree_differences(old_tree, new_tree):
         return True
 
 
-def clean_output(task_list):
+def clean_output(task_list,round_param):
     """
     Input is list of tasks
     Outputs list of tasks for today with fields:
@@ -55,7 +55,7 @@ def clean_output(task_list):
                 task[missing_key] = None
     
     for task in task_list:
-        task["val"] = round(task["val"])
+        task["val"] = round(task["val"], round_param)
     
     return task_list
 
