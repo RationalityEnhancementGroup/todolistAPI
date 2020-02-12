@@ -299,7 +299,7 @@ def process_deadline(deadline, today_minutes, typical_minutes, default_deadline=
     current_time = datetime.now()  # TODO: Is this a good starting point?
     if deadline is None:
         if default_deadline is not None:
-            deadline = "DUE:"+(current_time + timedelta(days=int(default_deadline))).strftime("%Y-%m-%d")
+            deadline = re.search(deadline_regex,"DUE:"+(current_time + timedelta(days=int(default_deadline))).strftime("%Y-%m-%d"), re.IGNORECASE)
         else:
             raise Exception("Invalid or no deadline provided!")
 
