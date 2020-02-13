@@ -52,7 +52,8 @@ def schedule_tasks_for_today(projects, ordered_tasks, day_duration):
                 day_duration >= task_from_project["est"]:
             today_tasks += [task_from_project]
             day_duration -= task_from_project["est"]
-    
+
+
     # Schedule other tasks
     for task in ordered_tasks:
         task_id = task.get_task_id()

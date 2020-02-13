@@ -137,14 +137,15 @@ to_do_list = ToDoList(goals, start_time=0)
 
 # ===== Simple scheduler =====
 start_time = time.time()
-tasks_list = simple_goal_scheduler(to_do_list, mixing_parameter=0.90,
-                                   verbose=True)
+tasks_list = simple_goal_scheduler(to_do_list, mixing_parameter=0.20,
+                                   verbose=False)
 
-current_time = 0
-for task in tasks_list:
-    print(f'Current time: {current_time}')
-    print(task)
-    current_time += task.get_time_est()
-    
 print(f'Scheduling goals with DP algorithm took '
-      f'{int(time.time() - start_time)} seconds!')
+      f'{time.time() - start_time:.4f} seconds!')
+
+# current_time = 0
+# for task in tasks_list:
+#     print(f'Current time: {current_time}')
+#     print(task)
+#     current_time += task.get_time_est()
+
