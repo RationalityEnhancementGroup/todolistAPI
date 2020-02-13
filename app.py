@@ -87,8 +87,9 @@ class PostResource(RESTResource):
                     round_param = 0
                 
                 # Additional parameters (the order of URL input matters!)
-                parameters = [float(item) for item in vpath[5:-4]]
-
+                # Casting to other data types is done in the functions that use
+                # these parameters
+                parameters = [item for item in vpath[5:-4]]
 
                 log_dict.update({
                     "api_method": api_method,
@@ -247,8 +248,10 @@ class PostResource(RESTResource):
                 store_log(db.request_log, log_dict, status="Save parsed tree")
 
                 if method == "constant":
+                    parameters = [float(param) for param in parameters]
                     projects = assign_constant_points(projects, *parameters)
                 elif method == "random":
+                    parameters = [float(param) for param in parameters]
                     projects = assign_random_points(projects,
                                                     fxn_args=parameters)
                 elif method == "length":
