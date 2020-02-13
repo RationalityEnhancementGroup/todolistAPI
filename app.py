@@ -118,7 +118,7 @@ class PostResource(RESTResource):
                     status = "There was an issue with the API input (allowed time parameter.) Please contact us at re-mturk@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status + " " + CONTACT})
+                    return json.dumps({"status": status})
 
                 # Is there a user key
                 try:
@@ -237,9 +237,9 @@ class PostResource(RESTResource):
                     # Store error in DB
                     store_log(db.request_log, log_dict, status=anonymous_error)
                     
-                    status += " Please take a look at your Workflowy inputs and then try again.  " + CONTACT
+                    status += " Please take a look at your Workflowy inputs and then try again. "
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status})
+                    return json.dumps({"status": status + CONTACT})
                 
                 projects = real_goals + misc_goals
                 log_dict["tree"] = create_projects_to_save(projects)
@@ -268,7 +268,7 @@ class PostResource(RESTResource):
 
                     # Defined by the experimenter
                     if not (0 <= mixing_parameter < 1):
-                        status = "There was an issue with the API input (mixing-parameter value.) Please contact us at re-mturk@tuebingen.mpg.de."
+                        status = "There was an issue with the API input (mixing-parameter value). Please contact us at re-mturk@tuebingen.mpg.de."
                         store_log(db.request_log, log_dict, status=status)
                         cherrypy.response.status = 403
                         return json.dumps({"status": status})
@@ -333,7 +333,7 @@ class PostResource(RESTResource):
                 
                 elif api_method == "getTasksForToday":
                     try:
-                        final_tasks = clean_output(final_tasks,round_param)
+                        final_tasks = clean_output(final_tasks, round_param)
                     except:
                         status = "Error while preparing final output."
                         store_log(db.request_log, log_dict, status=status)
@@ -367,14 +367,14 @@ class ExperimentPostResource(RESTResource):
     
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
-        query = {'data.0.subject' : jsonData[0]["subject"]}
+        query = {'data.0.subject': jsonData[0]["subject"]}
         if db.tiny_experiment.find(query).count() > 0:
             newvalues = { "$set": {"data":      jsonData,
-                                       "timestamp": datetime.now()} }
+                                   "timestamp": datetime.now()}}
             db.tiny_experiment.update_one(query, newvalues)
         else:
             db.tiny_experiment.insert_one({"data":      jsonData,
-                                       "timestamp": datetime.now()})
+                                           "timestamp": datetime.now()})
         cherrypy.response.status = 204
         return None
 
@@ -383,10 +383,11 @@ class SurveyPostResource(RESTResource):
 
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
-        query = {'data.0.url_variables.userid' : jsonData[0]["url_variables"]["userid"]}
+        query = {'data.0.url_variables.userid':
+                     jsonData[0]["url_variables"]["userid"]}
         if db.tiny_survey.find(query).count() > 0:
             newvalues = { "$set": {"data":      jsonData,
-                                       "timestamp": datetime.now()} }
+                                   "timestamp": datetime.now()}}
             db.tiny_survey.update_one(query, newvalues)
         else:
             db.tiny_survey.insert_one({"data":      jsonData,
