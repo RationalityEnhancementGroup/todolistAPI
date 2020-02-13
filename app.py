@@ -74,8 +74,8 @@ class PostResource(RESTResource):
                 # Compulsory parameters
                 method = vpath[0]
                 scheduler = vpath[1]
-                default_duration = vpath[2] #this needs to be in minutes
-                default_deadline = vpath[3] #this needs to be in days
+                default_duration = vpath[2]  # This needs to be in minutes
+                default_deadline = vpath[3]  # This needs to be in days
                 allowed_task_time = vpath[4]
                 exp_identifier = vpath[-4]
                 user_key = vpath[-2]
@@ -221,8 +221,11 @@ class PostResource(RESTResource):
                 
                 try:
                     real_goals, misc_goals = \
-                        parse_tree(projects, current_intentions, allowed_task_time,
-                                   today_minutes, typical_minutes, default_duration=int(default_duration), default_deadline=int(default_deadline))
+                        parse_tree(projects, current_intentions,
+                                   allowed_task_time,
+                                   today_minutes, typical_minutes,
+                                   default_duration=int(default_duration),
+                                   default_deadline=int(default_deadline))
                 except Exception as error:
                     status = str(error)
                     
@@ -239,10 +242,9 @@ class PostResource(RESTResource):
                 projects = real_goals + misc_goals
                 log_dict["tree"] = create_projects_to_save(projects)
 
-                # Save the data if there was a change, removing nm fields so that we
-                # keep participant data anonymous
+                # Save the data if there was a change, removing nm fields so
+                # that we keep participant data anonymous
                 store_log(db.request_log, log_dict, status="Save parsed tree")
-
 
                 if method == "constant":
                     projects = assign_constant_points(projects, *parameters)
@@ -297,7 +299,6 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps({"status": status})
         
-
                 # Update values in the tree
                 log_dict["tree"] = create_projects_to_save(projects)
                 
