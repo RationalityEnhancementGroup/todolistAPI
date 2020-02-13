@@ -2,4 +2,5 @@ CherryPy==18.4.0
 numpy==1.16.4
 pandas==0.24.2
 pymongo==3.9.0
-stopit==1.1.2  
+stopit==1.1.2
+tqdm-4.42.1
