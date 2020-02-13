@@ -3,6 +3,7 @@ import numpy as np
 
 from functools import reduce
 from math import gcd
+from tqdm import tqdm
 
 
 def compute_gcd(goals):
@@ -57,7 +58,7 @@ def compute_optimal_values(goals):
     dp = np.zeros(shape=(n + 1, d + 1))
     
     # Compute the optimal values
-    for i in range(1, n + 1):
+    for i in tqdm(range(1, n + 1)):
         for t in range(d + 1):
             goal_idx = i - 1
             
