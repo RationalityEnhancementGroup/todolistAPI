@@ -24,8 +24,11 @@ def are_there_tree_differences(old_tree, new_tree):
     output: boolean of whether or not we need to rerun the point calculations
     (e.g. we don't need to if only day durations change or #today has been added)
     """
+    # pprint(create_tree_dict(old_tree).items())
+    # pprint(create_tree_dict(new_tree).items())
     if len(set(create_tree_dict(old_tree).items()) ^
            set(create_tree_dict(new_tree).items())) == 0:
+        # TODO: set(create_tree_dict(old_tree).items() | Proper comparison
         return False
     else:
         return True
