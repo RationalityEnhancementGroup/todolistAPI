@@ -2,7 +2,7 @@ import cherrypy
 import re
 
 from copy import deepcopy
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 from math import ceil
 from pprint import pprint
 from string import digits
@@ -24,17 +24,27 @@ def are_there_tree_differences(old_tree, new_tree):
     output: boolean of whether or not we need to rerun the point calculations
     (e.g. we don't need to if only day durations change or #today has been added)
     """
-    # pprint(create_tree_dict(old_tree).items())
-    # pprint(create_tree_dict(new_tree).items())
+    def create_tree_dict(tree):
+        """
+        input: parsed tree
+        output: a dict with info we may want to use to compare trees
+        """
+        final_dict = {}
+        for goal in tree:
+            final_dict[goal["id"]] = (goal["deadline_datetime"], goal["value"])
+            for task in goal["ch"]:
+                final_dict[task["id"]] = \
+                    (task["deadline_datetime"], task["est"])
+        return final_dict
+
     if len(set(create_tree_dict(old_tree).items()) ^
            set(create_tree_dict(new_tree).items())) == 0:
-        # TODO: set(create_tree_dict(old_tree).items() | Proper comparison
         return False
     else:
         return True
 
 
-def clean_output(task_list,round_param):
+def clean_output(task_list, round_param):
     """
     Input is list of tasks
     Outputs list of tasks for today with fields:
@@ -80,20 +90,6 @@ def create_projects_to_save(projects):
     return projects_to_save
 
 
-def create_tree_dict(tree):
-    """
-    input: parsed tree
-    output: a dict with info we may want to use to compare trees
-    # TODO probably a better way to do this in are_there_tree_differences
-    """
-    final_dict = {}
-    for goal in tree:
-        final_dict[goal["id"]] = (goal["deadline"], goal["value"])
-        for task in goal["ch"]:
-            final_dict[task["id"]] = (task["deadline"], task["est"])
-    return final_dict
-
-
 def flatten_intentions(projects):
     for goal in projects:
         for task in goal["ch"]:
@@ -133,6 +129,10 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
 
             if task["deadline"]:
                 task_goal["deadline"] = task["deadline"]
+
+            if task["deadline_datetime"]:
+                task_goal["deadline_datetime"] = task["deadline_datetime"]
+                
             task_goal["est"] = task["est"]
             task_goal['id'] = task['id']
             task_goal['nm'] = task['nm']
@@ -215,7 +215,7 @@ def parse_tree(projects, current_intentions, allowed_task_time,
     
     real_goals = []
     misc_goals = []
-    
+
     for goal in projects:
         # Initialize goal time estimation
         goal["est"] = 0
@@ -227,15 +227,16 @@ def parse_tree(projects, current_intentions, allowed_task_time,
         # If no deadline has been provided --> Misc goal
         if goal["code"][0] not in digits:
             try:
-                goal["deadline"] = process_deadline(None, today_minutes,
-                                         typical_minutes, default_deadline)
-            except:
-                pass
+                goal["deadline"], goal["deadline_datetime"] = \
+                    process_deadline(None, today_minutes,
+                                     typical_minutes, default_deadline)
+            except Exception as error:
+                raise Exception(f"Goal {goal['nm']}: {str(error)}")
             misc_goals += [goal]
         else:
             # Process goal deadline and check whether the value is valid
             try:
-                goal["deadline"] = \
+                goal["deadline"], goal["deadline_datetime"] = \
                     process_deadline(goal_deadline, today_minutes,
                                      typical_minutes, default_deadline)
             except Exception as error:
@@ -253,9 +254,9 @@ def parse_tree(projects, current_intentions, allowed_task_time,
             
             if task_deadline:
                 try:
-                    task["deadline"] = \
+                    task["deadline"], task["deadline_datetime"] = \
                         process_deadline(task_deadline, today_minutes,
-                                         typical_minutes)
+                                         typical_minutes, default_deadline)
                 except Exception as error:
                     raise Exception(f"Task {task['nm']}: {str(error)}")
                     
@@ -265,6 +266,7 @@ def parse_tree(projects, current_intentions, allowed_task_time,
                                     f"be before goal's deadline.")
             else:
                 task["deadline"] = None
+                task["deadline_datetime"] = None
              
             # Check whether the task has already been scheduled in CompliceX or
             # completed in WorkFlowy
@@ -302,12 +304,18 @@ def parse_tree(projects, current_intentions, allowed_task_time,
     return real_goals, misc_goals
 
 
-def process_deadline(deadline, today_minutes, typical_minutes, default_deadline=None):
+def process_deadline(deadline, today_minutes, typical_minutes,
+                     default_deadline=None):
     # Time from which the deadlines are computed
     current_time = datetime.now()  # TODO: Is this a good starting point?
     if deadline is None:
         if default_deadline is not None:
-            deadline = re.search(deadline_regex,"DUE:"+(current_time + timedelta(days=int(default_deadline))).strftime("%Y-%m-%d"), re.IGNORECASE)
+            default_deadline_datetime = \
+                timedelta(days=int(default_deadline))
+            deadline = \
+                re.search(deadline_regex, "DUE:" +
+                          (current_time + default_deadline_datetime).strftime("%Y-%m-%d"),
+                          re.IGNORECASE)
         else:
             raise Exception("Invalid or no deadline provided!")
 
@@ -343,8 +351,8 @@ def process_deadline(deadline, today_minutes, typical_minutes, default_deadline=
         deadline = f"{year}-{month}-{day} {hours}:{minutes}"
         
     # Convert deadline into datetime object
-    deadline_value = datetime.strptime(deadline, "%Y-%m-%d %H:%M")
-    td = deadline_value - current_time
+    deadline_datetime = datetime.strptime(deadline, "%Y-%m-%d %H:%M")
+    td = deadline_datetime - current_time
     
     # Convert difference between deadlines into minutes
     # (ignoring remaining seconds)
@@ -355,7 +363,7 @@ def process_deadline(deadline, today_minutes, typical_minutes, default_deadline=
     if deadline_value <= 0:
         raise Exception(f"Deadline not in the future!")
 
-    return deadline_value
+    return deadline_value, deadline_datetime
 
 
 def process_goal_value(goal):
@@ -433,6 +441,7 @@ def separate_tasks_with_deadlines(goals):
                 task_goal = deepcopy(goal)
                 
                 task_goal["deadline"] = task["deadline"]
+                task_goal["deadline_datetime"] = task["deadline_datetime"]
                 task_goal["est"] = task["est"]
                 task_goal["id"] = task["id"]
                 task_goal["nm"] = task["nm"]
