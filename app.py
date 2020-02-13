@@ -18,6 +18,7 @@ from todolistMDP.mdp_solvers import backward_induction, policy_iteration, \
 from todolistMDP.scheduling_solvers import simple_goal_scheduler
 
 CONTACT = "If you continue to encounter this issue, please contact us at re-mturk@tuebingen.mpg.de."
+TIMEOUT_SECONDS = 28
 
 
 class RESTResource(object):
@@ -62,7 +63,7 @@ class PostResource(RESTResource):
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
 
-        with stopit.ThreadingTimeout(28) as to_ctx_mgr:
+        with stopit.ThreadingTimeout(TIMEOUT_SECONDS) as to_ctx_mgr:
             assert to_ctx_mgr.state == to_ctx_mgr.EXECUTING
 
             # Initialize log dictionary
