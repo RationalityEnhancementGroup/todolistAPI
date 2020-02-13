@@ -328,28 +328,36 @@ d_unattainable_low_reward_goal = [
 # Tests related to deadlines
 d_different_value_extra_time_deadlines = [
     Goal(description="G1",
-         tasks=[Task(description="T1", time_est=1),
-                Task(description="T2", time_est=2),
-                Task(description="T3", time_est=3),
-                Task(description="T4", time_est=4)],
+         tasks=[
+            Task(description="T1", time_est=1),
+            Task(description="T2", time_est=2),
+            Task(description="T3", time_est=3),
+            Task(description="T4", time_est=4)
+         ],
          rewards={15: 1}),
     Goal(description="G2",
-         tasks=[Task(description="T1", time_est=1),
-                Task(description="T2", time_est=2),
-                Task(description="T3", time_est=3),
-                Task(description="T4", time_est=4)],
+         tasks=[
+            Task(description="T1", time_est=1),
+            Task(description="T2", time_est=2),
+            Task(description="T3", time_est=3),
+            Task(description="T4", time_est=4)
+         ],
          rewards={25: 1}),
     Goal(description="G3",
-         tasks=[Task(description="T1", time_est=1),
-                Task(description="T2", time_est=2),
-                Task(description="T3", time_est=3),
-                Task(description="T4", time_est=4)],
+         tasks=[
+            Task(description="T1", time_est=1),
+            Task(description="T2", time_est=2),
+            Task(description="T3", time_est=3),
+            Task(description="T4", time_est=4)
+         ],
          rewards={35: 1}),
     Goal(description="G4",
-         tasks=[Task(description="T1", time_est=1),
-                Task(description="T2", time_est=2),
-                Task(description="T3", time_est=3),
-                Task(description="T4", time_est=4)],
+         tasks=[
+            Task(description="T1", time_est=1),
+            Task(description="T2", time_est=2),
+            Task(description="T3", time_est=3),
+            Task(description="T4", time_est=4)
+         ],
          rewards={45: 1})
 ]
 

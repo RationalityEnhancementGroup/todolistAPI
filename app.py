@@ -76,7 +76,7 @@ class PostResource(RESTResource):
                 scheduler = vpath[1]
                 default_duration = vpath[2] #this needs to be in minutes
                 default_deadline = vpath[3] #this needs to be in days
-                allowed_task_time = vpath[4] 
+                allowed_task_time = vpath[4]
                 exp_identifier = vpath[-4]
                 user_key = vpath[-2]
                 api_method = vpath[-1]
@@ -146,8 +146,7 @@ class PostResource(RESTResource):
                         store_log(db.request_log, log_dict, status=status)
 
                         cherrypy.response.status = 403
-                        return json.dumps({"status": status +
-                            " " + CONTACT})
+                        return json.dumps({"status": status + " " + CONTACT})
 
                 # Update last modified
                 log_dict["lm"] = jsonData["updated"]
@@ -233,7 +232,7 @@ class PostResource(RESTResource):
                     # Store error in DB
                     store_log(db.request_log, log_dict, status=anonymous_error)
                     
-                    status += (" Please take a look at your Workflowy inputs and then try again.  " + CONTACT)
+                    status += " Please take a look at your Workflowy inputs and then try again.  " + CONTACT
                     cherrypy.response.status = 403
                     return json.dumps({"status": status})
                 
@@ -256,12 +255,7 @@ class PostResource(RESTResource):
                 # DP method
                 elif method == "dp":
                     # Get mixing parameter | Default URL value: 0
-                    mixing_parameter = parameters[0]
-
-                    
-                    # Convert the mixing parameter to probability
-                    while mixing_parameter > 1:
-                        mixing_parameter /= 10
+                    mixing_parameter = float('0.' + parameters[0])
                     
                     # Store the value of the mixing parameter in the log dict
                     log_dict['mixing_parameter'] = mixing_parameter

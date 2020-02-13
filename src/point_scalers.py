@@ -33,9 +33,11 @@ def utility_scaling(task_list, scale_min=None, scale_max=None):
         goal_reward = task_goal.get_reward(0)
         goal_time_est = task_goal.get_uncompleted_time_est()
         
-        task_reward = (task_time_est / goal_time_est) * goal_reward
+        # Calculate task utility according to its goal value
+        task_reward = (goal_reward / goal_time_est) * task_time_est
         task.set_reward(task_reward)
 
+        # Update minimum and maximum values
         min_value = min(task_reward, min_value)
         max_value = max(task_reward, max_value)
 
