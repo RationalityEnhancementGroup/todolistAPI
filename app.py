@@ -249,8 +249,10 @@ class PostResource(RESTResource):
                 store_log(db.request_log, log_dict, status="Save parsed tree")
 
                 if method == "constant":
-                    parameters = [float(param) for param in parameters]
-                    projects = assign_constant_points(projects, *parameters)
+                    default_task_value = float(parameters[0])
+                    projects = assign_constant_points(projects,
+                                                      default_task_value)
+                    
                 elif method == "random":
                     distrib = parameters[0].lower()
                     distrip_params = [float(param) for param in parameters[1:]]
