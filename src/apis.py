@@ -32,7 +32,7 @@ def assign_random_points(projects, distribution_fxn=np.random.normal,
     
     
 def assign_dynamic_programming_points(real_goals, misc_goals,
-                                      solver_fn, scaling_fn,
+                                      solver_fn, scaling_fn, scaling_inputs,
                                       day_duration=8 * 60, **params):
     projects = deepcopy(real_goals + misc_goals)
     
@@ -60,7 +60,7 @@ def assign_dynamic_programming_points(real_goals, misc_goals,
                   verbose=params["verbose"])
 
     # Scale task values according to the provided scaling function
-    scaling_fn(ordered_tasks, scale_min=None, scale_max=None)
+    scaling_fn(ordered_tasks, **scaling_inputs)
     
     # Schedule tasks for today
     today_tasks = schedule_tasks_for_today(projects, ordered_tasks,

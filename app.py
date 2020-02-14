@@ -90,7 +90,7 @@ class PostResource(RESTResource):
                 # Additional parameters (the order of URL input matters!)
                 # Casting to other data types is done in the functions that use
                 # these parameters
-                parameters = [item for item in vpath[5:-4]]
+                parameters = [float(item) for item in vpath[5:-4]]
 
                 log_dict.update({
                     "api_method": api_method,
@@ -249,10 +249,8 @@ class PostResource(RESTResource):
                 store_log(db.request_log, log_dict, status="Save parsed tree")
 
                 if method == "constant":
-                    parameters = [float(param) for param in parameters]
                     projects = assign_constant_points(projects, *parameters)
                 elif method == "random":
-                    parameters = [float(param) for param in parameters]
                     projects = assign_random_points(projects,
                                                     fxn_args=parameters)
                 elif method == "length":
@@ -261,7 +259,10 @@ class PostResource(RESTResource):
                 # DP method
                 elif method == "dp":
                     # Get mixing parameter | Default URL value: 0
-                    mixing_parameter = float('0.' + parameters[0])
+                    if parameters[0] == 0:
+                        mixing_parameter = parameters[0]
+                    else:
+                        mixing_parameter = parameters[0]/(10**len(str(int((parameters[0])))))
                     
                     # Store the value of the mixing parameter in the log dict
                     log_dict['mixing_parameter'] = mixing_parameter
@@ -273,6 +274,10 @@ class PostResource(RESTResource):
                         cherrypy.response.status = 403
                         return json.dumps({"status": status})
                     
+                    if (len(parameters) >= 3):
+                        utility_inputs = {'scale_min':parameters[1], 'scale_max':parameters[2]}
+                    else:
+                        utility_inputs = {'scale_min': None, 'scale_max': None}
                     # TODO: Get informative exceptions
                     try:
                         final_tasks = \
@@ -280,6 +285,7 @@ class PostResource(RESTResource):
                                 real_goals, misc_goals,
                                 solver_fn=simple_goal_scheduler,
                                 scaling_fn=utility_scaling,
+                                scaling_inputs = utility_inputs,
                                 day_duration=today_minutes,
                                 mixing_parameter=mixing_parameter,
                                 verbose=False
