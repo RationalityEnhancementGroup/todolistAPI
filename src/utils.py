@@ -261,7 +261,7 @@ def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
                     raise Exception(f"Task {task['nm']}: {str(error)}")
 
                 # Check whether task deadline is after goal deadline
-                if goal["deadline"] and task["deadline"] > goal["deadline"]:
+                if task["deadline"] > goal["deadline"]:
                     raise Exception(f"Task {task['nm']}: Task deadline should "
                                     f"be before goal's deadline.")
             else:
@@ -307,7 +307,7 @@ def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
 def process_deadline(deadline, today_minutes, typical_minutes,
                      default_deadline=None):
     # Time from which the deadlines are computed
-    current_time = datetime.now()  # TODO: Is this a good starting point?
+    current_time = datetime.utcnow()
     if deadline is None:
         if default_deadline is not None:
             default_deadline_datetime = \
