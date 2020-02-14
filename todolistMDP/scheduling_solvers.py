@@ -337,6 +337,12 @@ def simple_goal_scheduler(to_do_list, mixing_parameter=0.0, verbose=False):
 
     # Generate ordered lists of attainable and unattainable goals
     attainable_goals, unattainable_goals = get_attainable_goals(goals, dp)
+
+    nonzero_unattainable_goals = []
+    for goal in unattainable_goals:
+        if goal.get_uncompleted_time_est() > 0:
+            nonzero_unattainable_goals += [goal]
+    unattainable_goals = nonzero_unattainable_goals
     
     # Scale up time
     if gcd_scale > 1:
