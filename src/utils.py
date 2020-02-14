@@ -232,6 +232,10 @@ def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
                                      typical_minutes, default_deadline)
             except Exception as error:
                 raise Exception(f"Goal {goal['nm']}: {str(error)}")
+            if "_CSC209" in goal["nm"]:
+                goal["code"] = "^"
+            else:
+                goal["code"] = "&"
             misc_goals += [goal]
         else:
             # Process goal deadline and check whether the value is valid
