@@ -7,14 +7,14 @@ from src.schedulers import schedule_tasks_for_today
 from todolistMDP.to_do_list import *
 
 
-def assign_constant_points(projects, default_task=10):
+def assign_constant_points(projects, default_task_value=10):
     """
     Takes in parsed project tree, with one level of tasks
     Outputs project tree with constant points assigned
     """
     for goal in projects:
-        for child in goal["ch"]:
-            child["val"] = default_task
+        for task in goal["ch"]:
+            task["val"] = default_task_value
     return projects
 
 
