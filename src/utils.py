@@ -10,7 +10,7 @@ from string import digits
 from todolistMDP.to_do_list import Goal, Task
 
 deadline_regex = r"DUE:\s*([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
-goal_code_regex = r"#CG(\d+|&|_)"
+goal_code_regex = r"#CG(\d+|&|_|\^)"
 time_est_regex = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
 today_regex = r"#today(?:\b|)"
 total_value_regex = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
