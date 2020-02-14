@@ -19,15 +19,23 @@ def assign_constant_points(projects, default_task=10):
 
 
 def assign_random_points(projects, distribution_fxn=np.random.normal,
-                         fxn_args=(10, 2)):
+                         fxn_args=(10, 2), min_value=1., max_value=float('inf')):
     """
     Takes in parsed project tree, with one level of tasks
     Outputs project tree with random points assigned according to distribution 
     function with inputted args
     """
     for goal in projects:
-        for child in goal["ch"]:
-            child["val"] = distribution_fxn(*fxn_args)
+        for task in goal["ch"]:
+            
+            # Bound values in the interval [min_value, max_value]
+            task["val"] = max(min_value,
+                              min(max_value, distribution_fxn(*fxn_args)))
+            
+            # In case of negative rewards, convert them to absolute value
+            # - This also depends on the choice of lower bound
+            task["val"] = abs(task["val"])
+            
     return projects
     
     

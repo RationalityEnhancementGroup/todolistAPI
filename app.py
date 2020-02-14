@@ -252,9 +252,18 @@ class PostResource(RESTResource):
                     parameters = [float(param) for param in parameters]
                     projects = assign_constant_points(projects, *parameters)
                 elif method == "random":
-                    parameters = [float(param) for param in parameters]
+                    distrib = parameters[0].lower()
+                    distrip_params = [float(param) for param in parameters[1:]]
+                    
+                    if distrib == 'uniform':
+                        distrib = np.random.uniform
+                    if distrib == 'normal':
+                        distrib = np.random.normal
+                        
                     projects = assign_random_points(projects,
-                                                    fxn_args=parameters)
+                                                    distribution_fxn=distrib,
+                                                    fxn_args=distrip_params)
+                    
                 elif method == "length":
                     projects = assign_length_points(projects)
                 
