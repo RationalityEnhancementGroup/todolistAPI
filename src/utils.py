@@ -204,8 +204,8 @@ def parse_hours(time_string):
     return int(re.search(total_value_regex, time_string, re.IGNORECASE)[1])
     
     
-def parse_tree(projects, current_intentions, allowed_task_time,
-               today_minutes, typical_minutes, default_duration, default_deadline):
+def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
+               typical_minutes, default_duration, default_deadline):
     """
     This function reads in a flattened project tree and parses fields like goal
     code, total value, duration and deadline
@@ -256,10 +256,10 @@ def parse_tree(projects, current_intentions, allowed_task_time,
                 try:
                     task["deadline"], task["deadline_datetime"] = \
                         process_deadline(task_deadline, today_minutes,
-                                         typical_minutes, default_deadline)
+                                         typical_minutes)
                 except Exception as error:
                     raise Exception(f"Task {task['nm']}: {str(error)}")
-                    
+
                 # Check whether task deadline is after goal deadline
                 if goal["deadline"] and task["deadline"] > goal["deadline"]:
                     raise Exception(f"Task {task['nm']}: Task deadline should "
@@ -267,7 +267,7 @@ def parse_tree(projects, current_intentions, allowed_task_time,
             else:
                 task["deadline"] = None
                 task["deadline_datetime"] = None
-             
+                
             # Check whether the task has already been scheduled in CompliceX or
             # completed in WorkFlowy
             if task_id in current_intentions.keys() or \
@@ -506,7 +506,10 @@ def task_dict_from_projects(projects):
 def task_list_from_projects(projects):
     task_list = []
     for goal in projects:
-        task_list.extend(goal["ch"])
+        for task in goal["ch"]:
+            if task["deadline"] is None:
+                task["deadline"] = goal["deadline"]
+            task_list.append(task)
     return task_list
 
 
