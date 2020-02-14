@@ -225,7 +225,7 @@ def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
         goal_deadline = re.search(deadline_regex, goal["nm"], re.IGNORECASE)
         
         # If no deadline has been provided --> Misc goal
-        if goal["code"][0] not in digits:
+        if goal["code"][0] not in digits+"^":
             try:
                 goal["deadline"], goal["deadline_datetime"] = \
                     process_deadline(None, today_minutes,
