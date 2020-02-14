@@ -361,7 +361,7 @@ def process_deadline(deadline, today_minutes, typical_minutes,
     # Convert difference between deadlines into minutes
     # (ignoring remaining seconds)
     deadline_value = today_minutes + \
-                     ((td.days - 1) * typical_minutes) + (td.seconds // 60)
+                     ((td.days - 1) * typical_minutes)
 
     # Check whether it is in the future
     if deadline_value <= 0:
