@@ -12,14 +12,14 @@ def basic_scheduler(task_list, today_duration=8 * 60, with_today=True):
         final_tasks = []
     else:
         final_tasks = [task for task in task_list
-                       if task["today"] == 1 and not task["completed"]]
+                       if task["today"] and not task["completed"]]
         duration_remaining -= sum([task["est"] for task in final_tasks])
 
     # From: https://stackoverflow.com/a/73050
-    sorted_by_value = sorted(task_list, key=lambda k: k['val'])
-    for task in sorted_by_value[::-1]:
+    sorted_by_deadline = sorted(task_list, key=lambda k: k['deadline'])
+    for task in sorted_by_deadline:
         if (task["est"] <= duration_remaining) \
-                and (task["today"] != 1 and not task["completed"]):
+                and (not task["today"] and not task["completed"]):
             final_tasks.append(task)
             duration_remaining -= task["est"]
     
@@ -31,7 +31,7 @@ def deadline_scheduler(task_list, deadline_window=1, today_duration=8 * 60,
     # Tasks within deadline window are tagged with today
     for task in task_list:
         if task["deadline"] <= deadline_window:
-            task["today"] = 1
+            task["today"] = True
     
     final_tasks = basic_scheduler(task_list, today_duration=today_duration,
                                   with_today=with_today)
