@@ -94,15 +94,16 @@ class PostResource(RESTResource):
 
                 log_dict.update({
                     "api_method": api_method,
+                    "allowed_task_time": allowed_task_time,
                     "duration": str(datetime.now() - log_dict["start_time"]),
-                    "method": method,
                     "exp_identifier": exp_identifier,
+                    "method": method,
                     "parameters": parameters,
+                    "round_param": round_param,
                     "scheduler": scheduler,
                     "user_key": user_key,
                     
                     # Must be provided on each store (if needed)
-                    "allowed_task_time": None,
                     "lm": None,
                     "mixing_parameter": None,
                     "status": None,
@@ -254,17 +255,17 @@ class PostResource(RESTResource):
                                                       default_task_value)
                     
                 elif method == "random":
-                    distrib = parameters[0].lower()
-                    distrip_params = [float(param) for param in parameters[1:]]
+                    distribution = parameters[0].lower()
+                    distribution_params = [float(param) for param in parameters[1:]]
                     
-                    if distrib == 'uniform':
-                        distrib = np.random.uniform
-                    if distrib == 'normal':
-                        distrib = np.random.normal
+                    if distribution == 'uniform':
+                        distribution = np.random.uniform
+                    if distribution == 'normal':
+                        distribution = np.random.normal
                         
                     projects = assign_random_points(projects,
-                                                    distribution_fxn=distrib,
-                                                    fxn_args=distrip_params)
+                                                    distribution_fxn=distribution,
+                                                    fxn_args=distribution_params)
                     
                 elif method == "length":
                     projects = assign_length_points(projects)
