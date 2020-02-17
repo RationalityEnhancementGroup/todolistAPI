@@ -155,9 +155,19 @@ class PostResource(RESTResource):
                 log_dict["lm"] = jsonData["updated"]
                 
                 # Parse current intentions
-                current_intentions = parse_current_intentions_list(
-                    jsonData["currentIntentionsList"])
-                
+                try:
+                    current_intentions = parse_current_intentions_list(
+                        jsonData["currentIntentionsList"])
+                except:
+                    status = "An error related to the current intentions has occurred."
+                    
+                    # Save the data if there was a change, removing nm fields so
+                    # that we keep participant data anonymous
+                    store_log(db.request_log, log_dict, status=status)
+
+                    cherrypy.response.status = 403
+                    return json.dumps({"status": status + " " + CONTACT})
+
                 # New calculation + Save updated, user id, and skeleton
                 try:
                     projects = flatten_intentions(jsonData["projects"])
