@@ -13,9 +13,10 @@ from src.schedulers import *
 from src.point_scalers import utility_scaling
 from src.utils import *
 
-from todolistMDP.mdp_solvers import backward_induction, policy_iteration, \
-                                    value_iteration
-from todolistMDP.scheduling_solvers import simple_goal_scheduler
+from todolistMDP.mdp_solvers \
+    import backward_induction, policy_iteration, value_iteration
+from todolistMDP.scheduling_solvers \
+    import run_dp_algorithm, run_greedy_algorithm
 
 CONTACT = "If you continue to encounter this issue, please contact us at re-mturk@tuebingen.mpg.de."
 TIMEOUT_SECONDS = 28
@@ -143,7 +144,8 @@ class PostResource(RESTResource):
                     previous_result = None
                     
                 # Check for changes if an existing user (..?)
-                if (previous_result is not None) and (len(jsonData["currentIntentionsList"])>0):
+                if (previous_result is not None) and \
+                        (len(jsonData["currentIntentionsList"]) > 0):
                     if jsonData["updated"] <= previous_result["lm"]:
                         status = "No update needed. If you want to pull a specific task, please tag it #today on Workflowy."
                         store_log(db.request_log, log_dict, status=status)
@@ -282,7 +284,7 @@ class PostResource(RESTResource):
                     projects = assign_length_points(projects)
                 
                 # DP method
-                elif method == "dp":
+                elif method == "dp" or method == "greedy":
                     # Get mixing parameter | Default URL value: 0
                     mixing_parameter = float('0.' + parameters[0])
                     
@@ -301,12 +303,16 @@ class PostResource(RESTResource):
                         utility_inputs['scale_min'] = float(parameters[1])
                         utility_inputs['scale_max'] = float(parameters[2])
                         
+                    solver_fn = run_dp_algorithm
+                    if method == "greedy":
+                        solver_fn = run_greedy_algorithm
+                        
                     # TODO: Get informative exceptions
                     try:
                         final_tasks = \
                             assign_dynamic_programming_points(
                                 real_goals, misc_goals,
-                                solver_fn=simple_goal_scheduler,
+                                solver_fn=solver_fn,
                                 scaling_fn=utility_scaling,
                                 scaling_inputs=utility_inputs,
                                 day_duration=today_minutes,

@@ -52,9 +52,8 @@ class Task:
                f'Time est.: {self.time_est}\n'
     
     def get_copy(self):
-        return Task(self.description, self.time_est,
-                    completed=self.completed, goal=self.goal,
-                    prob=self.prob, reward=self.reward)
+        return Task(self.description, completed=self.completed, goal=self.goal,
+                    prob=self.prob, reward=self.reward, time_est=self.time_est)
     
     def get_description(self):
         return self.description
