@@ -148,7 +148,7 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
     return misc_tasks
 
 
-def parse_current_intentions_list(current_intentions):
+def parse_current_intentions_list(current_intentions, default_duration=None):
     """
     Extracts necessary information from CompliceX's current intentions list.
     
@@ -178,7 +178,7 @@ def parse_current_intentions_list(current_intentions):
         # Get necessary information
         task_dict["id"] = get_wf_task_id(task["t"])
         task_dict["d"] = task["d"] if "d" in task.keys() else False
-        task_dict["est"] = process_time_est(task["t"])
+        task_dict["est"] = process_time_est(task["t"], default_duration=default_duration)
         task_dict["vd"] = task["vd"]
         
         # Add current task to the dictionary of all parsed current intentions
