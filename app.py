@@ -263,26 +263,89 @@ class PostResource(RESTResource):
                 store_log(db.request_log, log_dict, status="Save parsed tree")
 
                 if method == "constant":
-                    default_task_value = float(parameters[0])
-                    projects = assign_constant_points(projects,
-                                                      default_task_value)
+                    # Parse default task value
+                    try:
+                        default_task_value = float(parameters[0])
+                    except:
+                        status = "Error while parsing default task value. "
+                        
+                        # Store error in DB
+                        store_log(db.request_log, log_dict, status=status)
+    
+                        cherrypy.response.status = 403
+                        return json.dumps({"status": status + CONTACT})
                     
+                    # Assign constant points
+                    try:
+                        projects = assign_constant_points(projects,
+                                                          default_task_value)
+                    except:
+                        status = "Problem while assigning points. "
+                        
+                        # Store error in DB
+                        store_log(db.request_log, log_dict, status=status)
+
+                        cherrypy.response.status = 403
+                        return json.dumps({"status": status + CONTACT})
+
                 elif method == "random":
-                    distribution = parameters[0].lower()
-                    distribution_params = [float(param) for param in parameters[1:]]
-                    
+                    # Parse distribution name
+                    try:
+                        distribution = parameters[0].lower()
+                    except:
+                        status = "Error while parsing distribution name. "
+    
+                        # Store error in DB
+                        store_log(db.request_log, log_dict, status=status)
+    
+                        cherrypy.response.status = 403
+                        return json.dumps({"status": status + CONTACT})
+
+                    # Parse distribution parameters
+                    try:
+                        distribution_params = [float(param)
+                                               for param in parameters[1:]]
+                    except:
+                        status = "Error while parsing distribution parameters. "
+    
+                        # Store error in DB
+                        store_log(db.request_log, log_dict, status=status)
+    
+                        cherrypy.response.status = 403
+                        return json.dumps({"status": status + CONTACT})
+
                     if distribution == 'uniform':
                         distribution = np.random.uniform
                     if distribution == 'normal':
                         distribution = np.random.normal
                         
-                    projects = assign_random_points(projects,
-                                                    distribution_fxn=distribution,
-                                                    fxn_args=distribution_params)
-                    
+                    # Assign random points
+                    try:
+                        projects = assign_random_points(
+                            projects, distribution_fxn=distribution,
+                            fxn_args=distribution_params)
+                    except:
+                        status = "Problem while assigning points. "
+    
+                        # Store error in DB
+                        store_log(db.request_log, log_dict, status=status)
+
+                        cherrypy.response.status = 403
+                        return json.dumps({"status": status + CONTACT})
+
                 elif method == "length":
-                    projects = assign_length_points(projects)
-                
+                    # Assign random points
+                    try:
+                        projects = assign_length_points(projects)
+                    except:
+                        status = "Problem while assigning points. "
+    
+                        # Store error in DB
+                        store_log(db.request_log, log_dict, status=status)
+    
+                        cherrypy.response.status = 403
+                        return json.dumps({"status": status + CONTACT})
+
                 # DP method
                 elif method == "dp" or method == "greedy":
                     # Get mixing parameter | Default URL value: 0
@@ -346,11 +409,31 @@ class PostResource(RESTResource):
                 
                 # Schedule tasks for today
                 if scheduler == "basic":
-                    final_tasks = basic_scheduler(
-                        task_list, today_duration=today_minutes)
+                    try:
+                        final_tasks = basic_scheduler(
+                            task_list, today_duration=today_minutes)
+                    except Exception as error:
+                        status = str(error) + ' '
+    
+                        # Store error in DB
+                        store_log(db.request_log, log_dict, status=status)
+    
+                        cherrypy.response.status = 403
+                        return json.dumps({"status": status + CONTACT})
+
                 elif scheduler == "deadline":
-                    final_tasks = deadline_scheduler(
-                        task_list, today_duration=today_minutes)
+                    try:
+                        final_tasks = deadline_scheduler(
+                            task_list, today_duration=today_minutes)
+                    except Exception as error:
+                        status = str(error) + ' '
+
+                        # Store error in DB
+                        store_log(db.request_log, log_dict, status=status)
+
+                        cherrypy.response.status = 403
+                        return json.dumps({"status": status + CONTACT})
+
                 elif scheduler == "mdp":
                     pass
                 else:
@@ -394,6 +477,7 @@ class PostResource(RESTResource):
                 
             except Exception as error:
                 status = "The API has encountered an error, please try again."
+                
                 # Store anonymous error info in DB collection
                 anonymous_error = parse_error_info(str(error))
                 store_log(db.request_log, log_dict,
