@@ -144,13 +144,14 @@ class PostResource(RESTResource):
                     previous_result = None
                     
                 # Check for changes if an existing user (..?)
-                # if previous_result is not None:
-                #     if jsonData["updated"] <= previous_result["lm"]:
-                #         status = "No update needed."
-                #         store_log(db.request_log, log_dict, status=status)
-                #
-                #         cherrypy.response.status = 403
-                #         return json.dumps({"status": status + " " + CONTACT})
+                if (previous_result is not None) and \
+                        (len(jsonData["currentIntentionsList"]) > 0):
+                    if jsonData["updated"] <= previous_result["lm"]:
+                        status = "No update needed. If you want to pull a specific task, please tag it #today on Workflowy."
+                        store_log(db.request_log, log_dict, status=status)
+
+                        cherrypy.response.status = 403
+                        return json.dumps(status + " " + CONTACT)
 
                 # Update last modified
                 log_dict["lm"] = jsonData["updated"]
