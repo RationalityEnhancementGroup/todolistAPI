@@ -157,7 +157,8 @@ class PostResource(RESTResource):
                 # Parse current intentions
                 try:
                     current_intentions = parse_current_intentions_list(
-                        jsonData["currentIntentionsList"])
+                        jsonData["currentIntentionsList"], default_duration=default_duration)
+
                 except:
                     status = "An error related to the current intentions has occurred."
                     
@@ -360,6 +361,11 @@ class PostResource(RESTResource):
                     return None
                 
                 elif api_method == "getTasksForToday":
+                    if len(final_tasks) == 0:
+                        status = "No update needed. If you want to pull a specific task, please tag it #today on Workflowy."
+                        store_log(db.request_log, log_dict, status=status)
+                        cherrypy.response.status = 403
+                        return json.dumps(status + " " + CONTACT)
                     try:
                         final_tasks = clean_output(final_tasks, round_param)
                     except:
