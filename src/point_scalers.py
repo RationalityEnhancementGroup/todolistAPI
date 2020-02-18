@@ -68,4 +68,3 @@ def utility_scaling(task_list, scale_type="min_max",
         else:
             raise Exception("Scaling method not implemented!")
         task.set_reward(task_reward)
-

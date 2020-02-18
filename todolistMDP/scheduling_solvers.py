@@ -136,7 +136,8 @@ def get_attainable_goals_dp(goals, dp):
         
         if dp[i, t] == dp[i - 1, t]:
             i -= 1
-            if goals[goal_idx].get_reward(t) > 0:
+            if (len(goals[goal_idx].get_uncompleted_tasks()) > 0 and
+                goals[goal_idx].get_reward(t) >= 0):
                 raise Exception(
                     f"Goal \"{goals[goal_idx].get_description()}\" "
                     f"is unattainable!")
