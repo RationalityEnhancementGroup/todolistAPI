@@ -241,10 +241,28 @@ d_7 = [
          penalty=-200)
 ]
 
+
 # ===== New deterministic tests (not included in the original code) =====
+def generate_deterministic_test(num_goals, num_tasks, goal_reward=1,
+                                task_time_est=1, goal_deadline=None):
+    if goal_deadline is None:
+        goal_deadline = num_goals * num_tasks * task_time_est
+        
+    return [
+        Goal(description=f"G{goal_idx + 1}",
+             tasks=[
+                 Task(description=f"T{task_idx + 1}", time_est=task_time_est)
+                 for task_idx in range(num_tasks)
+             ],
+             rewards={goal_deadline: goal_reward})
+        for goal_idx in range(num_goals)
+    ]
+
+
+deterministic_tests = dict()
 
 # Tests related to points
-d_negative_reward_attainable_goals = [
+deterministic_tests["negative_reward_attainable_goals"] = [
     Goal(description="G1",
          tasks=[Task(description="T1", time_est=1),
                 Task(description="T2", time_est=2),
@@ -271,7 +289,7 @@ d_negative_reward_attainable_goals = [
          rewards={40: -1})
 ]
 
-d_unattainable_high_reward_goal = [
+deterministic_tests["unattainable_high_reward_goal"] = [
     Goal(description="G1",
          tasks=[Task(description="T1", time_est=1),
                 Task(description="T2", time_est=2),
@@ -298,7 +316,7 @@ d_unattainable_high_reward_goal = [
          rewards={30: 1})
 ]
 
-d_unattainable_low_reward_goal = [
+deterministic_tests["unattainable_low_reward_goal"] = [
     Goal(description="G1",
          tasks=[Task(description="T1", time_est=1),
                 Task(description="T2", time_est=2),
@@ -326,7 +344,7 @@ d_unattainable_low_reward_goal = [
 ]
 
 # Tests related to deadlines
-d_different_value_extra_time_deadlines = [
+deterministic_tests["different_value_extra_time_deadlines"] = [
     Goal(description="G1",
          tasks=[
             Task(description="T1", time_est=1),
@@ -361,7 +379,7 @@ d_different_value_extra_time_deadlines = [
          rewards={45: 1})
 ]
 
-d_distant_deadlines = [
+deterministic_tests["distant_deadlines"] = [
     Goal(description="G1",
          tasks=[Task(description="T1", time_est=1),
                 Task(description="T2", time_est=2),
@@ -424,7 +442,7 @@ d_distant_deadlines = [
          rewards={10 * YEAR_TO_MINS: 1})
 ]
 
-d_one_mixing = [
+deterministic_tests["one_mixing"] = [
     Goal(description="G1",
          tasks=[Task(description="T1", time_est=1),
                 Task(description="T2", time_est=2),
@@ -451,7 +469,7 @@ d_one_mixing = [
          rewards={40: 1})
 ]
 
-d_negative_value_deadlines = [
+deterministic_tests["negative_value_deadlines"] = [
     Goal(description="G1",
          tasks=[Task(description="T1", time_est=1),
                 Task(description="T2", time_est=2),
@@ -478,7 +496,7 @@ d_negative_value_deadlines = [
          rewards={-1: 1})
 ]
 
-d_partially_negative_value_deadlines = [
+deterministic_tests["partially_negative_value_deadlines"] = [
     Goal(description="G1",
          tasks=[Task(description="T1", time_est=1),
                 Task(description="T2", time_est=2),
@@ -505,7 +523,7 @@ d_partially_negative_value_deadlines = [
          rewards={40: 1})
 ]
 
-d_same_value_extra_time_deadlines = [
+deterministic_tests["same_value_extra_time_deadlines"] = [
     Goal(description="G1",
          tasks=[Task(description="T1", time_est=1),
                 Task(description="T2", time_est=2),
@@ -532,7 +550,7 @@ d_same_value_extra_time_deadlines = [
          rewards={50: 1})
 ]
 
-d_same_value_sharp_deadlines = [
+deterministic_tests["same_value_sharp_deadlines"] = [
     Goal(description="G1",
          tasks=[Task(description="T1", time_est=1),
                 Task(description="T2", time_est=2),
@@ -559,7 +577,7 @@ d_same_value_sharp_deadlines = [
          rewards={40: 1})
 ]
 
-d_same_value_unattainable_deadlines = [
+deterministic_tests["same_value_unattainable_deadlines"] = [
     Goal(description="G1",
          tasks=[Task(description="T1", time_est=1),
                 Task(description="T2", time_est=2),
@@ -586,7 +604,7 @@ d_same_value_unattainable_deadlines = [
          rewards={1: 1})
 ]
 
-d_sharp_deadlines = [
+deterministic_tests["sharp_deadlines"] = [
     Goal(description="G1",
          tasks=[Task(description="T1", time_est=1),
                 Task(description="T2", time_est=2),
@@ -613,7 +631,7 @@ d_sharp_deadlines = [
          rewards={40: 1})
 ]
 
-d_zero_value_deadlines = [
+deterministic_tests["zero_value_deadlines"] = [
     Goal(description="G1",
          tasks=[Task(description="T1", time_est=1),
                 Task(description="T2", time_est=2),
