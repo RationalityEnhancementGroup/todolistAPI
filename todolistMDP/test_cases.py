@@ -241,7 +241,25 @@ d_7 = [
          penalty=-200)
 ]
 
+
 # ===== New deterministic tests (not included in the original code) =====
+def generate_deterministic_test(num_goals, num_tasks, goal_reward=1,
+                                task_time_est=1, goal_deadline=None):
+    if goal_deadline is None:
+        goal_deadline = num_goals * num_tasks * task_time_est
+        
+    return [
+        Goal(description=f"G{goal_idx + 1}",
+             tasks=[
+                 Task(description=f"T{task_idx + 1}", time_est=task_time_est)
+                 for task_idx in range(num_tasks)
+             ],
+             rewards={goal_deadline: goal_reward})
+        for goal_idx in range(num_goals)
+    ]
+
+
+deterministic_tests = dict()
 
 # Tests related to points
 deterministic_tests["negative_reward_attainable_goals"] = [
