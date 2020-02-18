@@ -22,9 +22,12 @@ import numpy as np
 #             max_value * (self.pseudo_rewards[trans] - minimum) / (ptp)
 
 
-def utility_scaling(task_list, scale_min=None, scale_max=None):
+def utility_scaling(task_list, scale_type="min_max",
+                    scale_min=None, scale_max=None):
     min_value = float("inf")
     max_value = -float("inf")
+    
+    mean_reward = []
     
     for task in task_list:
         task_goal = task.get_goal()
@@ -36,10 +39,14 @@ def utility_scaling(task_list, scale_min=None, scale_max=None):
         # Calculate task utility according to its goal value
         task_reward = (goal_reward / goal_time_est) * task_time_est
         task.set_reward(task_reward)
+        
+        mean_reward += [task_reward]
 
         # Update minimum and maximum values
         min_value = min(task_reward, min_value)
         max_value = max(task_reward, max_value)
+        
+    mean_reward = np.mean(mean_reward)
 
     if scale_min is None:
         scale_min = min_value
@@ -48,6 +55,14 @@ def utility_scaling(task_list, scale_min=None, scale_max=None):
 
     for task in task_list:
         task_reward = task.get_reward()
-        task_reward = (task_reward - min_value) / (max_value - min_value) * \
-                      (scale_max - scale_min) + scale_min
+        if scale_type == "min_max":
+            task_reward = (task_reward - min_value) / (max_value - min_value) \
+                          * (scale_max - scale_min) + scale_min
+        elif scale_type == "mean_value":
+            task_reward = (task_reward - mean_reward) / (max_value - min_value) \
+                          * (scale_max - scale_min) \
+                          + ((scale_max - scale_min) / 2)
+        else:
+            raise Exception("Scaling method not implemented!")
         task.set_reward(task_reward)
+

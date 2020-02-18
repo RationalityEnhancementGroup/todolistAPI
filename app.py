@@ -365,6 +365,7 @@ class PostResource(RESTResource):
                     if len(parameters) >= 3:
                         utility_inputs['scale_min'] = float(parameters[1])
                         utility_inputs['scale_max'] = float(parameters[2])
+                        utility_inputs['scale_type'] = 'min_max'
                         
                     solver_fn = run_dp_algorithm
                     if method == "greedy":
