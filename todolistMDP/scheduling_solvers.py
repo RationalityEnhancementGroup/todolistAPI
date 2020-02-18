@@ -136,11 +136,11 @@ def get_attainable_goals_dp(goals, dp):
         
         if dp[i, t] == dp[i - 1, t]:
             i -= 1
-            if goals[goal_idx].get_reward(t) >= 0:
+            if goals[goal_idx].get_reward(t) > 0:
                 raise Exception(
                     f"Goal \"{goals[goal_idx].get_description()}\" "
                     f"is unattainable!")
-            else:
+            elif goals[goal_idx].get_reward(t) < 0:
                 raise Exception(
                     f"Goal \"{goals[goal_idx].get_description()}\" "
                     f"has a negative reward value!")
@@ -187,7 +187,8 @@ def get_attainable_goals_greedy(goals):
             attainable_goals += [goal]
             current_time += goal.get_total_time_est()
         else:
-            raise Exception(f"Goal \"{goal.get_description()}\" is unattainable!")
+            raise Exception(f"Goal \"{goal.get_description()}\" "
+                            f"is unattainable!")
         
     return attainable_goals
     
