@@ -6,7 +6,8 @@ The test cases are provided in the todolistMDP/test_cases.py file.
 from todolistMDP.mdp_solvers import *
 from todolistMDP.test_cases import *
 from todolistMDP.to_do_list import *
-from todolistMDP.scheduling_solvers import simple_goal_scheduler
+from todolistMDP.scheduling_solvers \
+    import run_algorithm, run_dp_algorithm, run_greedy_algorithm
 from pprint import pprint
 
 
@@ -52,8 +53,8 @@ def follow_policy(mdp):
     return
 
 
-def solve(to_do_list, solver, print_policy=False, print_pseudo_rewards=False,
-          print_values=False):
+def solve(to_do_list, solver,
+          print_policy=False, print_pseudo_rewards=False, print_values=False):
     """
     Runs one of the algorithms from the old report, based on MDP formulation.
     
@@ -97,8 +98,49 @@ def solve(to_do_list, solver, print_policy=False, print_pseudo_rewards=False,
     return mdp
 
 
+def test_multiple_test_cases(test_cases, algorithm,
+                             mixing_parameter=0.0, verbose=False):
+    for test_type in test_cases.keys():
+        
+        # Set of goals to use
+        goals = test_cases[test_type]
+        
+        # Generate to-do list MDP
+        to_do_list = ToDoList(goals, start_time=0)
+        
+        start_time = time.time()
+        
+        print(f"{test_type}...")
+        
+        try:
+            if algorithm == run_dp_algorithm or \
+                    algorithm == run_greedy_algorithm:
+                tasks_list = run_algorithm(to_do_list, algorithm_fn=algorithm,
+                                           mixing_parameter=mixing_parameter,
+                                           verbose=verbose)
+            else:
+                print_policy = False or verbose
+                print_pseudo_rewards = False or verbose
+                print_values = False or verbose
+                
+                tasks_list = solve(to_do_list, algorithm,
+                                   print_policy=print_policy,
+                                   print_pseudo_rewards=print_pseudo_rewards,
+                                   print_values=print_values)
+            
+            print(f'Running the algorithm took '
+                  f'{time.time() - start_time:.4f} seconds!')
+        except Exception as error:
+            print(str(error))
+            tasks_list = None
+        
+        print()
+        
+        return tasks_list
+
+
 # Set of goals to use
-goals = d_different_value_extra_time_deadlines
+goals = generate_deterministic_test(num_goals=10000, num_tasks=1)
 
 # Generate to-do list MDP
 s_time = time.time()  # Start timer
@@ -135,12 +177,13 @@ to_do_list = ToDoList(goals, start_time=0)
 # print(f'MDP initialization takes {time.time() - s_time:.4f} seconds.')
 # mdp = solve(to_do_list, value_iteration)
 
-# ===== Simple scheduler =====
+# ===== DP / Greedy algorithm =====
 start_time = time.time()
-tasks_list = simple_goal_scheduler(to_do_list, mixing_parameter=0.20,
-                                   verbose=False)
 
-print(f'Scheduling goals with DP algorithm took '
+tasks_list = run_algorithm(to_do_list,
+                           algorithm_fn=run_greedy_algorithm,
+                           mixing_parameter=0.0, verbose=False)
+print(f'Running the algorithm took '
       f'{time.time() - start_time:.4f} seconds!')
 
 # current_time = 0
@@ -148,4 +191,3 @@ print(f'Scheduling goals with DP algorithm took '
 #     print(f'Current time: {current_time}')
 #     print(task)
 #     current_time += task.get_time_est()
-
