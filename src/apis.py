@@ -4,6 +4,8 @@ from src.utils import misc_tasks_to_goals, separate_tasks_with_deadlines, \
                       task_list_from_projects
 from src.schedulers import schedule_tasks_for_today
 
+from todolistMDP.scheduling_solvers import run_algorithm
+
 from todolistMDP.to_do_list import *
 
 
@@ -39,8 +41,8 @@ def assign_random_points(projects, distribution_fxn=np.random.normal,
     return projects
     
     
-def assign_dynamic_programming_points(real_goals, misc_goals,
-                                      solver_fn, scaling_fn, scaling_inputs,
+def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
+                                      scaling_fn, scaling_inputs,
                                       day_duration=8 * 60, **params):
     projects = deepcopy(real_goals + misc_goals)
     
@@ -63,9 +65,9 @@ def assign_dynamic_programming_points(real_goals, misc_goals,
 
     # Get ordered list of tasks
     ordered_tasks = \
-        solver_fn(to_do_list,
-                  mixing_parameter=params["mixing_parameter"],
-                  verbose=params["verbose"])
+        run_algorithm(to_do_list, solver_fn,
+                      mixing_parameter=params["mixing_parameter"],
+                      verbose=params["verbose"])
 
     # Scale task values according to the provided scaling function
     scaling_fn(ordered_tasks, **scaling_inputs)
