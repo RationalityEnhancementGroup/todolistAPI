@@ -45,7 +45,7 @@ class RESTResource(object):
             cherrypy.response.headers["Allow"] = ",".join(methods)
             cherrypy.response.status = 405
             status = "Method not implemented."
-            return json.dumps({"status": status})
+            return json.dumps(status)
         
         # Can we load the request body (json)
         try:
@@ -54,7 +54,7 @@ class RESTResource(object):
         except:
             cherrypy.response.status = 403
             status = "No request body"
-            return json.dumps({"status": status})
+            return json.dumps(status)
 
         return method(jsonData, *vpath, **params)
 
@@ -120,7 +120,7 @@ class PostResource(RESTResource):
                     status = "There was an issue with the API input (allowed time parameter.) Please contact us at re-mturk@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status})
+                    return json.dumps(status)
 
                 # Is there a user key
                 try:
@@ -131,7 +131,7 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status + " " + CONTACT})
+                    return json.dumps(status + " " + CONTACT)
 
                 # Get the latest result from the current user
                 try:
@@ -169,7 +169,7 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
 
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status + " " + CONTACT})
+                    return json.dumps(status + " " + CONTACT)
 
                 # New calculation + Save updated, user id, and skeleton
                 try:
@@ -183,7 +183,7 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status + " " + CONTACT})
+                    return json.dumps(status + " " + CONTACT)
 
                 # Parse today hours
                 try:
@@ -194,7 +194,7 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status + " " + CONTACT})
+                    return json.dumps(status + " " + CONTACT)
                 
                 try:
                     typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
@@ -204,7 +204,7 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status + " " + CONTACT})
+                    return json.dumps(status + " " + CONTACT)
 
                 if not (0 < typical_hours <= 24):
                     store_log(db.request_log, log_dict,
@@ -213,7 +213,7 @@ class PostResource(RESTResource):
                     status = "Please edit the hours you typically work on Workflowy. " \
                              "The hours you work should be between 0 and 24."
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status})
+                    return json.dumps(status)
                 
                 # 0 is an allowed value in case users want to skip a day
                 if not (0 <= today_hours <= 24):
@@ -223,7 +223,7 @@ class PostResource(RESTResource):
                     status = "Please edit the hours you can work today on Workflowy. " \
                              "The hours you work should be between 0 and 24."
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status})
+                    return json.dumps(status)
                 
                 # Convert typical and today hours into minutes
                 typical_minutes = typical_hours * 60
@@ -253,7 +253,7 @@ class PostResource(RESTResource):
                     
                     status += " Please take a look at your Workflowy inputs and then try again. "
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status + CONTACT})
+                    return json.dumps(status + CONTACT)
                 
                 projects = real_goals + misc_goals
                 log_dict["tree"] = create_projects_to_save(projects)
@@ -273,7 +273,7 @@ class PostResource(RESTResource):
                         store_log(db.request_log, log_dict, status=status)
     
                         cherrypy.response.status = 403
-                        return json.dumps({"status": status + CONTACT})
+                        return json.dumps(status + CONTACT)
                     
                     # Assign constant points
                     try:
@@ -286,7 +286,7 @@ class PostResource(RESTResource):
                         store_log(db.request_log, log_dict, status=status)
 
                         cherrypy.response.status = 403
-                        return json.dumps({"status": status + CONTACT})
+                        return json.dumps(status + CONTACT)
 
                 elif method == "random":
                     # Parse distribution name
@@ -299,7 +299,7 @@ class PostResource(RESTResource):
                         store_log(db.request_log, log_dict, status=status)
     
                         cherrypy.response.status = 403
-                        return json.dumps({"status": status + CONTACT})
+                        return json.dumps(status + CONTACT)
 
                     # Parse distribution parameters
                     try:
@@ -312,7 +312,7 @@ class PostResource(RESTResource):
                         store_log(db.request_log, log_dict, status=status)
     
                         cherrypy.response.status = 403
-                        return json.dumps({"status": status + CONTACT})
+                        return json.dumps(status + CONTACT)
 
                     if distribution == 'uniform':
                         distribution = np.random.uniform
@@ -331,7 +331,7 @@ class PostResource(RESTResource):
                         store_log(db.request_log, log_dict, status=status)
 
                         cherrypy.response.status = 403
-                        return json.dumps({"status": status + CONTACT})
+                        return json.dumps(status + CONTACT)
 
                 elif method == "length":
                     # Assign random points
@@ -344,7 +344,7 @@ class PostResource(RESTResource):
                         store_log(db.request_log, log_dict, status=status)
     
                         cherrypy.response.status = 403
-                        return json.dumps({"status": status + CONTACT})
+                        return json.dumps(status + CONTACT)
 
                 # DP method
                 elif method == "dp" or method == "greedy":
@@ -359,7 +359,7 @@ class PostResource(RESTResource):
                         status = "There was an issue with the API input (mixing-parameter value). Please contact us at re-mturk@tuebingen.mpg.de."
                         store_log(db.request_log, log_dict, status=status)
                         cherrypy.response.status = 403
-                        return json.dumps({"status": status})
+                        return json.dumps(status)
 
                     utility_inputs = {'scale_min': None, 'scale_max': None}
                     if len(parameters) >= 2:
@@ -391,7 +391,7 @@ class PostResource(RESTResource):
 
                             error = "The API took to long retrieving your Workflowy information, please try again."
             
-                        return json.dumps({"status": str(error) + " " + CONTACT})
+                        return json.dumps(str(error) + " " + CONTACT)
                 
                 # TODO: Test and fix potential bugs!
                 elif method == "old-report":
@@ -402,7 +402,7 @@ class PostResource(RESTResource):
                     status = "API method does not exist. Please contact us at re-mturk@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status})
+                    return json.dumps(status)
         
                 # Update values in the tree
                 log_dict["tree"] = create_projects_to_save(projects)
@@ -422,7 +422,7 @@ class PostResource(RESTResource):
                         store_log(db.request_log, log_dict, status=status)
     
                         cherrypy.response.status = 403
-                        return json.dumps({"status": status + CONTACT})
+                        return json.dumps(status + CONTACT)
 
                 elif scheduler == "deadline":
                     try:
@@ -435,7 +435,7 @@ class PostResource(RESTResource):
                         store_log(db.request_log, log_dict, status=status)
 
                         cherrypy.response.status = 403
-                        return json.dumps({"status": status + CONTACT})
+                        return json.dumps(status + CONTACT)
 
                 elif scheduler == "mdp":
                     pass
@@ -443,7 +443,7 @@ class PostResource(RESTResource):
                     status = "Scheduling method does not exist. Please contact us at re-mturk@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
-                    return json.dumps({"status": status})
+                    return json.dumps(status)
                 
                 store_log(db.trees, log_dict, status="Save tree!")
 
@@ -464,7 +464,7 @@ class PostResource(RESTResource):
                         status = "Error while preparing final output."
                         store_log(db.request_log, log_dict, status=status)
                         cherrypy.response.status = 403
-                        return json.dumps({"status": status + " " + CONTACT})
+                        return json.dumps({status + " " + CONTACT)
 
                     store_log(db.request_log, log_dict, status="Successful pull!")
 
@@ -476,7 +476,7 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     
                     cherrypy.response.status = 405
-                    return json.dumps({"status": status})
+                    return json.dumps(status)
                 
             except Exception as error:
                 status = "The API has encountered an error, please try again."
@@ -487,7 +487,7 @@ class PostResource(RESTResource):
                           status=status + " " + anonymous_error)
                 
                 cherrypy.response.status = 403
-                return json.dumps({"status": status + " " + CONTACT})
+                return json.dumps({status + " " + CONTACT)
 
 
 class ExperimentPostResource(RESTResource):
