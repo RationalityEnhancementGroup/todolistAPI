@@ -362,10 +362,12 @@ class PostResource(RESTResource):
                         return json.dumps({"status": status})
 
                     utility_inputs = {'scale_min': None, 'scale_max': None}
-                    if len(parameters) >= 3:
+                    if len(parameters) >= 2:
                         utility_inputs['scale_min'] = float(parameters[1])
                         utility_inputs['scale_max'] = float(parameters[2])
-                        utility_inputs['scale_type'] = 'min_max'
+
+                    if len(parameters) >= 3: #use function default, if not in URL
+                        utility_inputs['scaling_fn'] = parameters[3]
                         
                     solver_fn = run_dp_algorithm
                     if method == "greedy":
