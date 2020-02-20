@@ -464,7 +464,7 @@ class PostResource(RESTResource):
                         status = "Error while preparing final output."
                         store_log(db.request_log, log_dict, status=status)
                         cherrypy.response.status = 403
-                        return json.dumps({status + " " + CONTACT)
+                        return json.dumps(status + " " + CONTACT)
 
                     store_log(db.request_log, log_dict, status="Successful pull!")
 
@@ -487,7 +487,7 @@ class PostResource(RESTResource):
                           status=status + " " + anonymous_error)
                 
                 cherrypy.response.status = 403
-                return json.dumps({status + " " + CONTACT)
+                return json.dumps(status + " " + CONTACT)
 
 
 class ExperimentPostResource(RESTResource):
