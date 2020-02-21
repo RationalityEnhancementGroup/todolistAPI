@@ -27,10 +27,11 @@ def compute_mixing_values(attainable_goals, mixing_parameter):
     
     # Calculate distance between two consecutive goals
     for idx in range(len(attainable_goals) - 1):
-        mixing_values[idx] = attainable_goals[idx + 1].get_latest_deadline_time() \
-                             - attainable_goals[idx].get_latest_deadline_time()
+        mixing_values[idx] = \
+            attainable_goals[idx + 1].get_latest_deadline_time() \
+            - attainable_goals[idx].get_latest_deadline_time()
         
-    # Transform values s.t. the longest distance has value == mixing_parameter
+    # Transform values s.t. the shortest distance has value == mixing_parameter
     mixing_values = (max_deadline - mixing_values) / max_deadline \
                     * mixing_parameter
     
