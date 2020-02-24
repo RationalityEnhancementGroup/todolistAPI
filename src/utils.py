@@ -362,6 +362,7 @@ def process_deadline(deadline, today_minutes, typical_minutes,
     # (ignoring remaining seconds)
     deadline_value = today_minutes + \
                      ((td.days - 1) * typical_minutes) + td.seconds // 60
+    deadline_value += 300  # Toronto time zone  # TODO: Make this flexible!
 
     # Check whether it is in the future
     if deadline_value <= 0:
