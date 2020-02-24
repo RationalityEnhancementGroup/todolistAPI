@@ -154,7 +154,6 @@ def get_attainable_goals_dp(goals, dp):
             
             attainable_goals = [goals[goal_idx]] + attainable_goals
         
-        attainable_goals.sort()
         current_time_est = 0
         for goal in attainable_goals:
             goal_reward = goal.get_reward(current_time_est)
