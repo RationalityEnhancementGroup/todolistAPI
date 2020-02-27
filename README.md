@@ -67,6 +67,12 @@ Important: The order of all the parameters provided in the URL matters!
 
 - URL example: `http://127.0.0.1:6789/api/dp/mdp/30/14/inf/0/5/10/cite/tree/u123/getTasksForToday`
 
+### Greedy-algorithm point-assignment method (`greedy`)
+- Additional parameters
+    - (Same as the `dp` method. See above.)
+
+- URL example: `http://127.0.0.1:6789/api/greedy/mdp/30/14/inf/0/5/10/cite/tree/u123/getTasksForToday`
+
 ### Length heuristics point-assignment method (`length`)
 - There are no additional parameters for this method/
 
