@@ -18,7 +18,7 @@ from todolistMDP.mdp_solvers \
 from todolistMDP.scheduling_solvers \
     import run_dp_algorithm, run_greedy_algorithm
 
-CONTACT = "If you continue to encounter this issue, please contact us at re-mturk@tuebingen.mpg.de."
+CONTACT = "If you continue to encounter this issue, please contact us at reg.experiments@tuebingen.mpg.de."
 TIMEOUT_SECONDS = 28
 
 
@@ -117,7 +117,7 @@ class PostResource(RESTResource):
                     allowed_task_time = float(allowed_task_time)
                     log_dict["allowed_task_time"] = allowed_task_time
                 except:
-                    status = "There was an issue with the API input (allowed time parameter.) Please contact us at re-mturk@tuebingen.mpg.de."
+                    status = "There was an issue with the API input (allowed time parameter.) Please contact us at reg.experiments@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
@@ -356,7 +356,7 @@ class PostResource(RESTResource):
 
                     # Defined by the experimenter
                     if not (0 <= mixing_parameter < 1):
-                        status = "There was an issue with the API input (mixing-parameter value). Please contact us at re-mturk@tuebingen.mpg.de."
+                        status = "There was an issue with the API input (mixing-parameter value). Please contact us at reg.experiments@tuebingen.mpg.de."
                         store_log(db.request_log, log_dict, status=status)
                         cherrypy.response.status = 403
                         return json.dumps(status)
@@ -400,7 +400,7 @@ class PostResource(RESTResource):
                         assign_old_api_points(projects, backward_induction,
                                               duration=today_minutes)
                 else:
-                    status = "API method does not exist. Please contact us at re-mturk@tuebingen.mpg.de."
+                    status = "API method does not exist. Please contact us at reg.experiments@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
@@ -441,7 +441,7 @@ class PostResource(RESTResource):
                 elif scheduler == "mdp":
                     pass
                 else:
-                    status = "Scheduling method does not exist. Please contact us at re-mturk@tuebingen.mpg.de."
+                    status = "Scheduling method does not exist. Please contact us at reg.experiments@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
@@ -473,7 +473,7 @@ class PostResource(RESTResource):
                     return json.dumps(final_tasks)
                 
                 else:
-                    status = "API Method not implemented. Please contact us at re-mturk@tuebingen.mpg.de."
+                    status = "API Method not implemented. Please contact us at reg.experiments@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     
                     cherrypy.response.status = 405
