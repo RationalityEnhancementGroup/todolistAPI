@@ -205,7 +205,7 @@ def parse_hours(time_string):
     
     
 def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
-               typical_minutes, default_duration, default_deadline):
+               typical_minutes, default_duration, default_deadline, time_zone):
     """
     This function reads in a flattened project tree and parses fields like goal
     code, total value, duration and deadline
@@ -229,7 +229,7 @@ def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
             try:
                 goal["deadline"], goal["deadline_datetime"] = \
                     process_deadline(goal_deadline, today_minutes,
-                                     typical_minutes, default_deadline)
+                                     typical_minutes, time_zone, default_deadline)
             except Exception as error:
                 raise Exception(f"Goal {goal['nm']}: {str(error)}")
             if "_CSC209" in goal["nm"]:
@@ -242,7 +242,7 @@ def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
             try:
                 goal["deadline"], goal["deadline_datetime"] = \
                     process_deadline(goal_deadline, today_minutes,
-                                     typical_minutes, default_deadline)
+                                     typical_minutes, time_zone, default_deadline)
             except Exception as error:
                 raise Exception(f"Goal {goal['nm']}: {str(error)}")
 
@@ -260,7 +260,7 @@ def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
                 try:
                     task["deadline"], task["deadline_datetime"] = \
                         process_deadline(task_deadline, today_minutes,
-                                         typical_minutes)
+                                         typical_minutes, time_zone)
                 except Exception as error:
                     raise Exception(f"Task {task['nm']}: {str(error)}")
 
@@ -308,10 +308,15 @@ def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
     return real_goals, misc_goals
 
 
-def process_deadline(deadline, today_minutes, typical_minutes,
+def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
                      default_deadline=None):
-    # Time from which the deadlines are computed
+    # Set starting time to the UTC time at the moment
     current_time = datetime.utcnow()
+    
+    # Shift the starting time according to the time zone
+    current_time += timedelta(minutes=time_zone)
+    
+    # If no deadline provided, set the default deadline
     if deadline is None:
         if default_deadline is not None:
             default_deadline_datetime = \
