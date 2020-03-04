@@ -82,6 +82,9 @@ class PostResource(RESTResource):
                 exp_identifier = vpath[-4]
                 user_key = vpath[-2]
                 api_method = vpath[-1]
+                
+                # JSON tree parameters
+                time_zone = int(jsonData["timezoneOffsetMinutes"])
 
                 if "cite" in exp_identifier:
                     round_param = 2
@@ -102,6 +105,7 @@ class PostResource(RESTResource):
                     "parameters": parameters,
                     "round_param": round_param,
                     "scheduler": scheduler,
+                    "time_zone": time_zone,
                     "user_key": user_key,
                     
                     # Must be provided on each store (if needed)
@@ -160,7 +164,6 @@ class PostResource(RESTResource):
                 try:
                     current_intentions = parse_current_intentions_list(
                         jsonData["currentIntentionsList"], default_duration=default_duration)
-
                 except:
                     status = "An error related to the current intentions has occurred."
                     
@@ -241,7 +244,8 @@ class PostResource(RESTResource):
                                    allowed_task_time,
                                    today_minutes, typical_minutes,
                                    default_duration=int(default_duration),
-                                   default_deadline=int(default_deadline))
+                                   default_deadline=int(default_deadline),
+                                   time_zone=time_zone)
                 except Exception as error:
                     status = str(error)
                     
