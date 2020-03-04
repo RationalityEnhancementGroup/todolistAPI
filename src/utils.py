@@ -13,6 +13,7 @@ deadline_regex = r"DUE:\s*([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[
 goal_code_regex = r"#CG(\d+|&|_|\^)"
 time_est_regex = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
 today_regex = r"#today(?:\b|)"
+future_regex = r"#future(?:\b|)"
 total_value_regex = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
 
 DEADLINE_YEAR_LIMIT = 2100
@@ -291,7 +292,8 @@ def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
             goal["est"] += task["est"]
             
             # Check whether a task has been marked to be completed today
-            task["today"] = process_today_code(task)
+            task["today"] = process_today_tag(task)
+            task["future"] = process_future_tag(task)
     
             task["parentId"] = goal["id"]
             task["pcp"] = False  # TODO: Not sure what this field is...
@@ -442,10 +444,19 @@ def process_time_est(task_name, allowed_task_time=float('inf'), default_duration
     return duration
 
 
-def process_today_code(task):
-    today_code = re.search(today_regex, task["nm"], re.IGNORECASE)
+def process_today_tag(task):
+    today_tag = re.search(today_regex, task["nm"], re.IGNORECASE)
     
-    if today_code:  # ... is not None
+    if today_tag:  # ... is not None
+        return True
+    else:
+        return False
+
+
+def process_future_tag(task):
+    future_tag = re.search(future_regex, task["nm"], re.IGNORECASE)
+    
+    if future_tag:  # ... is not None
         return True
     else:
         return False

@@ -37,7 +37,9 @@ def basic_scheduler(task_list, today_duration=8 * 60, with_today=True):
             break
             
         if (task["est"] <= duration_remaining) \
-                and (not task["today"] and not task["completed"]):
+                and not task["completed"] \
+                and not task["future"] \
+                and not task["today"]:
             final_tasks.append(task)
             duration_remaining -= task["est"]
             
@@ -101,8 +103,10 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining):
         
         # If the task has not been completed and it is not for today and
         # there is enough time to complete the task today
-        if not task_item["completed"] and not task_item["today"] \
-                and duration_remaining >= task_item["est"]:
+        if (task_item["est"] <= duration_remaining) \
+                and not task_item["completed"] \
+                and not task_item["future"] \
+                and not task_item["today"]:
             today_tasks += [task_item]
             duration_remaining -= task_item["est"]
 
