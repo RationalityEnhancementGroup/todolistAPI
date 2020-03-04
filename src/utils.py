@@ -362,15 +362,26 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
     # Convert deadline into datetime object
     deadline_datetime = datetime.strptime(deadline, "%Y-%m-%d %H:%M")
     td = deadline_datetime - current_time
-    
-    # Convert difference between deadlines into minutes
-    # (ignoring remaining seconds)
-    deadline_value = today_minutes + \
-                     ((td.days - 1) * typical_minutes) + td.seconds // 60
-    deadline_value += 300  # Toronto time zone  # TODO: Make this flexible!
+
+    # Check whether today's day time is after deadline's day time
+    if current_time.hour > deadline_datetime.hour:
+        days_after_today = max(0, td.days + 1)
+    elif current_time.hour < deadline_datetime.hour:
+        days_after_today = max(0, td.days)
+    else:
+        if current_time.minute >= deadline_datetime.minute:
+            days_after_today = max(0, td.days + 1)
+        else:
+            days_after_today = max(0, td.days)
+        
+    # Calculate deadline value
+    if days_after_today == 0:
+        deadline_value = min(today_minutes, td.seconds // 60)
+    else:
+        deadline_value = today_minutes + (days_after_today * typical_minutes)
 
     # Check whether it is in the future
-    if deadline_value <= 0:
+    if deadline_datetime < current_time:
         raise Exception(f"Deadline not in the future!")
 
     return deadline_value, deadline_datetime
