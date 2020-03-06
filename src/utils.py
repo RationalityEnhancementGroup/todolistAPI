@@ -272,29 +272,23 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
         # Extract goal information
         goal["code"] = re.search(goal_code_regex, goal["nm"], re.IGNORECASE)[1]
         goal_deadline = re.search(deadline_regex, goal["nm"], re.IGNORECASE)
-        
-        # If no deadline has been provided --> Misc goal
+
+        # Process goal deadline and check whether the value is valid
+        try:
+            goal["deadline"], goal["deadline_datetime"] = \
+                process_deadline(goal_deadline, today_minutes,
+                                 typical_minutes, time_zone, default_deadline)
+        except Exception as error:
+            raise Exception(f"Goal {goal['nm']}: {str(error)}")
+
+        # If the goal code is not a digit --> misc goal
         if goal["code"][0] not in digits+"^":
-            try:
-                goal["deadline"], goal["deadline_datetime"] = \
-                    process_deadline(goal_deadline, today_minutes,
-                                     typical_minutes, time_zone, default_deadline)
-            except Exception as error:
-                raise Exception(f"Goal {goal['nm']}: {str(error)}")
             if "_CSC209" in goal["nm"]:
                 goal["code"] = "💻"
             else:
                 goal["code"] = "&"
             misc_goals += [goal]
         else:
-            # Process goal deadline and check whether the value is valid
-            try:
-                goal["deadline"], goal["deadline_datetime"] = \
-                    process_deadline(goal_deadline, today_minutes,
-                                     typical_minutes, time_zone, default_deadline)
-            except Exception as error:
-                raise Exception(f"Goal {goal['nm']}: {str(error)}")
-
             real_goals += [goal]
             
         for task in goal["ch"]:
