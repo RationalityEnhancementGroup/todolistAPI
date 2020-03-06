@@ -15,7 +15,7 @@ def basic_scheduler(task_list, today_duration=8 * 60, with_today=True):
         for task in task_list:
             
             # If the task has not been completed and it marked for today
-            if not task["completed"] and task["today"]:
+            if not task["completed"] and (task["daily"] or task["today"]):
     
                 # If there is enough time to schedule the task
                 if task["est"] <= duration_remaining:
@@ -23,7 +23,7 @@ def basic_scheduler(task_list, today_duration=8 * 60, with_today=True):
                     duration_remaining -= task["est"]
                 else:
                     overwork_minutes += task["est"]
-    
+
     overwork_minutes -= duration_remaining
     if overwork_minutes > 0:
         raise Exception(generate_overwork_error_message(overwork_minutes))
@@ -37,9 +37,8 @@ def basic_scheduler(task_list, today_duration=8 * 60, with_today=True):
             break
             
         if (task["est"] <= duration_remaining) \
-                and not task["completed"] \
-                and not task["future"] \
-                and not task["today"]:
+                and not (task["completed"] or task["daily"] or
+                         task["future"] or task["today"]):
             final_tasks.append(task)
             duration_remaining -= task["est"]
             
@@ -61,8 +60,8 @@ def deadline_scheduler(task_list, deadline_window=1, today_duration=8 * 60,
 def generate_overwork_error_message(overwork_minutes):
     return f"You have scheduled {overwork_minutes} additional minutes of " \
            f"work for today. Please change your HOURS_TODAY value in the " \
-           f"WorkFlowy tree or reduce the amount of work by removing #today " \
-           f"for some of the tasks."
+           f"WorkFlowy tree or reduce the amount of work by removing #daily " \
+           f"or #today for some of the tasks."
 
 
 def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining):
@@ -78,7 +77,8 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining):
         task_item["val"] = task.get_reward()
         
         # If the task has not been completed and it is marked for today
-        if not task_item["completed"] and task_item["today"]:
+        if not task_item["completed"] and \
+                (task_item["daily"] or task_item["today"]):
     
             # If there is enough time to schedule the task
             if duration_remaining >= task_item["est"]:
@@ -104,9 +104,8 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining):
         # If the task has not been completed and it is not for today and
         # there is enough time to complete the task today
         if (task_item["est"] <= duration_remaining) \
-                and not task_item["completed"] \
-                and not task_item["future"] \
-                and not task_item["today"]:
+                and not (task_item["completed"] or task_item["daily"] or
+                         task_item["future"] or task_item["today"]):
             today_tasks += [task_item]
             duration_remaining -= task_item["est"]
 
