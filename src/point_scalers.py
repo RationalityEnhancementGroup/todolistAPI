@@ -22,7 +22,7 @@ import numpy as np
 #             max_value * (self.pseudo_rewards[trans] - minimum) / (ptp)
 
 
-def utility_scaling(task_list, scale_type="mean_value",
+def utility_scaling(task_list, scale_type="no_scaling",
                     scale_min=None, scale_max=None):
     min_value = float("inf")
     max_value = -float("inf")
@@ -58,7 +58,9 @@ def utility_scaling(task_list, scale_type="mean_value",
             task.set_reward((scale_max + scale_min) / 2)
         else:
             task_reward = task.get_reward()
-            if scale_type == "min_max":
+            if scale_type == "no_scaling":
+                pass
+            elif scale_type == "min_max":
                 task_reward = (task_reward - min_value) / (max_value - min_value) \
                               * (scale_max - scale_min) + scale_min
             elif scale_type == "mean_value":

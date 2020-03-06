@@ -426,20 +426,22 @@ class PostResource(RESTResource):
                         cherrypy.response.status = 403
                         return json.dumps(status)
 
-                    utility_inputs = {'scale_min': None, 'scale_max': None}
-                    if len(parameters) >= 3:
-                        utility_inputs['scale_min'] = float(parameters[1])
-                        utility_inputs['scale_max'] = float(parameters[2])
+                    utility_inputs = {
+                        'scale_type': "no_scaling",
+                        'scale_min': None,
+                        'scale_max': None
+                    }
+
+                    if len(parameters) >= 4:
+                        utility_inputs['scale_type'] = parameters[1]
+                        utility_inputs['scale_min'] = float(parameters[2])
+                        utility_inputs['scale_max'] = float(parameters[3])
                         
                         if utility_inputs["scale_min"] == float("inf"):
                             utility_inputs["scale_min"] = None
                         if utility_inputs["scale_max"] == float("inf"):
                             utility_inputs["scale_max"] = None
 
-                    # Use function default, if not in URL
-                    if len(parameters) >= 4:
-                        utility_inputs['scaling_fn'] = parameters[3]
-                        
                     solver_fn = run_dp_algorithm
                     if method == "greedy":
                         solver_fn = run_greedy_algorithm
