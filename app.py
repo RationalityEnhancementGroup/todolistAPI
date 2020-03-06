@@ -79,6 +79,11 @@ class PostResource(RESTResource):
                 default_duration = vpath[2]  # This needs to be in minutes
                 default_deadline = vpath[3]  # This needs to be in days
                 allowed_task_time = vpath[4]
+                min_sum_of_goal_values = vpath[5]
+                max_sum_of_goal_values = vpath[6]
+                min_goal_value_per_goal_duration = vpath[7]
+                max_goal_value_per_goal_duration = vpath[8]
+                
                 exp_identifier = vpath[-4]
                 user_key = vpath[-2]
                 api_method = vpath[-1]
@@ -90,11 +95,11 @@ class PostResource(RESTResource):
                     round_param = 2
                 else:
                     round_param = 0
-                
+                    
                 # Additional parameters (the order of URL input matters!)
                 # Casting to other data types is done in the functions that use
                 # these parameters
-                parameters = [item for item in vpath[5:-4]]
+                parameters = [item for item in vpath[9:-4]]
 
                 log_dict.update({
                     "api_method": api_method,
@@ -108,6 +113,13 @@ class PostResource(RESTResource):
                     "time_zone": time_zone,
                     "user_key": user_key,
                     
+                    "min_sum_of_goal_values": min_sum_of_goal_values,
+                    "max_sum_of_goal_values": max_sum_of_goal_values,
+                    "min_goal_value_per_goal_duration":
+                        min_goal_value_per_goal_duration,
+                    "max_goal_value_per_goal_duration":
+                        max_goal_value_per_goal_duration,
+                    
                     # Must be provided on each store (if needed)
                     "lm": None,
                     "mixing_parameter": None,
@@ -115,13 +127,33 @@ class PostResource(RESTResource):
                     "timestamp": None,
                     "user_id": None,
                 })
-                
+
                 # Get allowed task time | Default URL value: 'inf'
                 try:
                     allowed_task_time = float(allowed_task_time)
                     log_dict["allowed_task_time"] = allowed_task_time
                 except:
-                    status = "There was an issue with the API input (allowed time parameter.) Please contact us at reg.experiments@tuebingen.mpg.de."
+                    status = "There was an issue with the API input (allowed time parameter). Please contact us at reg.experiments@tuebingen.mpg.de."
+                    store_log(db.request_log, log_dict, status=status)
+                    cherrypy.response.status = 403
+                    return json.dumps(status)
+                
+                try:
+                    min_sum_of_goal_values = float(min_sum_of_goal_values)
+                    max_sum_of_goal_values = float(max_sum_of_goal_values)
+                    min_goal_value_per_goal_duration = \
+                        float(min_goal_value_per_goal_duration)
+                    max_goal_value_per_goal_duration = \
+                        float(max_goal_value_per_goal_duration)
+                    
+                    log_dict["min_sum_of_goal_values"] = min_sum_of_goal_values
+                    log_dict["max_sum_of_goal_values"] = max_sum_of_goal_values
+                    log_dict["min_goal_value_per_goal_duration"] = \
+                        min_goal_value_per_goal_duration,
+                    log_dict["max_goal_value_per_goal_duration"] = \
+                        max_goal_value_per_goal_duration,
+                except:
+                    status = "There was an issue with the API input (goal-value limits). Please contact us at reg.experiments@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
@@ -270,6 +302,10 @@ class PostResource(RESTResource):
                         parse_tree(projects, current_intentions,
                                    today_minutes, typical_minutes,
                                    default_deadline=int(default_deadline),
+                                   min_sum_of_goal_values=min_sum_of_goal_values,
+                                   max_sum_of_goal_values=max_sum_of_goal_values,
+                                   min_goal_value_per_goal_duration=min_goal_value_per_goal_duration,
+                                   max_goal_value_per_goal_duration=max_goal_value_per_goal_duration,
                                    time_zone=time_zone)
                 except Exception as error:
                     status = str(error)

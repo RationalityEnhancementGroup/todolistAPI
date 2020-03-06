@@ -317,7 +317,9 @@ def parse_hours(time_string):
     
 
 def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
-               default_deadline, time_zone):
+               default_deadline, min_sum_of_goal_values,
+               max_sum_of_goal_values, min_goal_value_per_goal_duration,
+               max_goal_value_per_goal_duration, time_zone):
     """
     This function reads in a flattened project tree and parses fields like goal
     code, total value, duration and deadline
@@ -328,6 +330,9 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
     # Initialize lists of real and miscellaneous goals
     real_goals = []
     misc_goals = []
+    
+    # Initialize sum of goal values
+    sum_of_goal_values = 0
     
     for goal in projects:
         
@@ -400,9 +405,33 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
         # Process goal value and check whether the value is valid
         try:
             goal["value"] = process_goal_value(goal)
+            sum_of_goal_values += goal["value"]
         except Exception as error:
             raise Exception(f"Goal {goal['nm']}: {str(error)}")
-    
+
+        # Check goal value per duration
+        value_per_duration = goal["value"] / goal["est"]
+        if min_goal_value_per_goal_duration != float('inf') and \
+                max_goal_value_per_goal_duration != float('inf') and not \
+                min_goal_value_per_goal_duration <= value_per_duration <= max_goal_value_per_goal_duration:
+            # TODO: Val, please check this. (Jugoslav)
+            raise Exception(f"Goal {goal['nm']} has value per duration of "
+                            f"{value_per_duration:.2f} and it should be in the "
+                            f"range between {min_goal_value_per_goal_duration:.2f} "
+                            f"and {max_goal_value_per_goal_duration:.2f}."
+                            f"Please change your goal values.")
+
+    # Check goal value per duration
+    if min_sum_of_goal_values != float('inf') and \
+            max_sum_of_goal_values != float('inf') and not \
+            min_sum_of_goal_values <= sum_of_goal_values <= max_sum_of_goal_values:
+        # TODO: Val, please check this. (Jugoslav)
+        raise Exception(f"Your goals have total values of {sum_of_goal_values} "
+                        f"and this value should be in the range between "
+                        f"{min_sum_of_goal_values:.2f} and "
+                        f"{max_sum_of_goal_values:.2f}. "
+                        f"Please change your goal values.")
+
     return real_goals, misc_goals
 
 
