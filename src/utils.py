@@ -140,7 +140,6 @@ def get_leaf_intentions(projects):
             # If the task has no children tasks (i.e. it is a leaf node)
             if "ch" not in task.keys() or len(task["ch"]) == 0:
                 tasks.append(task)
-                print(task["nm"])
             else:
                 item_queue.extend(task["ch"])
         
