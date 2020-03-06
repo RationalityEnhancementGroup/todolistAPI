@@ -394,6 +394,11 @@ class PostResource(RESTResource):
                     if len(parameters) >= 3:
                         utility_inputs['scale_min'] = float(parameters[1])
                         utility_inputs['scale_max'] = float(parameters[2])
+                        
+                        if utility_inputs["scale_min"] == float("inf"):
+                            utility_inputs["scale_min"] = None
+                        if utility_inputs["scale_max"] == float("inf"):
+                            utility_inputs["scale_max"] = None
 
                     # Use function default, if not in URL
                     if len(parameters) >= 4:
