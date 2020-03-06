@@ -179,7 +179,8 @@ class PostResource(RESTResource):
 
                 # New calculation + Save updated, user id, and skeleton
                 try:
-                    projects = flatten_intentions(jsonData["projects"])
+                    # projects = flatten_intentions(jsonData["projects"])
+                    projects = get_leaf_intentions(jsonData["projects"])
                     log_dict["tree"] = create_projects_to_save(projects)
                 except:
                     status = "Something is wrong with your inputted goals and tasks. Please take a look at your Workflowy inputs and then try again."
