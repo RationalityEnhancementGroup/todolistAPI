@@ -1,6 +1,7 @@
 import cherrypy
 import re
 
+from collections import deque
 from copy import deepcopy
 from datetime import datetime, timedelta
 from math import ceil
@@ -41,6 +42,35 @@ def are_there_tree_differences(old_tree, new_tree):
         return False
     else:
         return True
+
+
+def calculate_daily_tasks_time_est(projects, allowed_task_time,
+                                   default_duration):
+    # Initialize total daily tasks time estimation
+    daily_tasks_time_est = 0
+    
+    for goal in projects:
+        # Initialize goal time estimation
+        goal["est"] = 0
+        
+        for task in goal["ch"]:
+            # Process time estimation for a task
+            try:
+                task["est"] = \
+                    process_time_est(task["nm"], allowed_task_time,
+                                     default_duration)
+            except Exception as error:
+                raise Exception(f"Task {task['nm']}: {str(error)}")
+            
+            # Update goal time estimation
+            goal["est"] += task["est"]
+            
+            task["daily"] = process_tagged_item("daily", task)
+            
+            if task["daily"]:
+                daily_tasks_time_est += task["est"]
+    
+    return daily_tasks_time_est
 
 
 def clean_output(task_list, round_param):
@@ -95,6 +125,27 @@ def flatten_intentions(projects):
             if "ch" in task:
                 goal["ch"].extend(task["ch"])
                 del task["ch"]
+    return projects
+
+
+def get_leaf_intentions(projects):
+    for goal in projects:
+        tasks = []
+        
+        item_queue = deque(goal["ch"])
+        
+        while len(item_queue) > 0:
+            task = item_queue.popleft()
+
+            # If the task has no children tasks (i.e. it is a leaf node)
+            if "ch" not in task.keys() or len(task["ch"]) == 0:
+                tasks.append(task)
+                print(task["nm"])
+            else:
+                item_queue.extend(task["ch"])
+        
+        goal["ch"] = tasks
+    
     return projects
 
 
@@ -202,33 +253,6 @@ def parse_error_info(error):
 def parse_hours(time_string):
     return int(re.search(total_value_regex, time_string, re.IGNORECASE)[1])
     
-
-def calculate_daily_tasks_time_est(projects, allowed_task_time, default_duration):
-    # Initialize total daily tasks time estimation
-    daily_tasks_time_est = 0
-    
-    for goal in projects:
-        # Initialize goal time estimation
-        goal["est"] = 0
-    
-        for task in goal["ch"]:
-            # Process time estimation for a task
-            try:
-                task["est"] = \
-                    process_time_est(task["nm"], allowed_task_time, default_duration)
-            except Exception as error:
-                raise Exception(f"Task {task['nm']}: {str(error)}")
-    
-            # Update goal time estimation
-            goal["est"] += task["est"]
-    
-            task["daily"] = process_tagged_item("daily", task)
-
-            if task["daily"]:
-                daily_tasks_time_est += task["est"]
-                
-    return daily_tasks_time_est
-
 
 def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
                default_deadline, time_zone):
