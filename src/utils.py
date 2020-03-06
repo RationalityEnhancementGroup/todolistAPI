@@ -16,6 +16,16 @@ time_est_regex = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?))
 total_value_regex = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
 
 DEADLINE_YEAR_LIMIT = 2100
+TAGS = ["future", "daily", "today"]
+WEEKDAYS = {
+    1: "Monday",
+    2: "Tuesday",
+    3: "Wednesday",
+    4: "Thursday",
+    5: "Friday",
+    6: "Saturday",
+    7: "Sunday"
+}
 
 
 def are_there_tree_differences(old_tree, new_tree):
@@ -79,6 +89,55 @@ def clean_output(task_list, round_param):
     Outputs list of tasks for today with fields:
         id, nm, lm, parentId, pcp, est, val (=reward)
     """
+    def get_human_readable_name(task):
+        task_name = task["nm"]
+        
+        # Remove deadline
+        task_name = re.sub(deadline_regex, "", task_name, re.IGNORECASE)
+        
+        # Remove time estimation
+        task_name = re.sub(time_est_regex, "", task_name, re.IGNORECASE)
+        
+        # Remove tags
+        for tag in TAGS:
+            tag_regex = get_tag_regex(tag)
+            task_name = re.sub(tag_regex, "", task_name, re.IGNORECASE)
+            
+        task_name = task_name.strip()
+        
+        # Append time information
+        hours, minutes = task["est"] // 60, task["est"] % 60
+        
+        task_name += " (takes about "
+        if hours > 0:
+            if hours == 1:
+                task_name += f"1 hour"
+            else:
+                task_name += f"{hours} hours"
+        if minutes > 0:
+            if hours > 0:
+                task_name += " and "
+            if minutes == 1:
+                task_name += f"1 minute"
+            else:
+                task_name += f"{minutes} minutes"
+        
+        if task["deadline_datetime"] is not None:
+            task_name += ", due on "
+            
+            td = task["deadline_datetime"] - datetime.utcnow()
+            if td.days < 7:
+                weekday = task["deadline_datetime"].weekday()
+                task_name += WEEKDAYS[weekday]
+            else:
+                task_name += str(task["deadline_datetime"])[:-3]
+        else:
+            task_name += ", no due date"
+            
+        task_name += ")"
+        
+        return task_name
+        
     keys_needed = ["id", "nm", "lm", "parentId", "pcp", "est", "val"]
     
     # for now only look at first dictionary
@@ -86,17 +145,17 @@ def clean_output(task_list, round_param):
     extra_keys = list(current_keys - set(keys_needed))
     missing_keys = list(set(keys_needed) - current_keys)
     
-    for extra_key in extra_keys:
-        for task in task_list:
+    for task in task_list:
+        task["nm"] = get_human_readable_name(task)
+    
+        for extra_key in extra_keys:
             if extra_key in task:
                 del task[extra_key]
     
-    for missing_key in missing_keys:
-        for task in task_list:
+        for missing_key in missing_keys:
             if missing_key not in task:
                 task[missing_key] = None
     
-    for task in task_list:
         task["val"] = round(task["val"], round_param)
     
     return task_list
@@ -146,6 +205,10 @@ def get_leaf_intentions(projects):
         goal["ch"] = tasks
     
     return projects
+
+
+def get_tag_regex(tag):
+    return fr"#{tag}(?:\b|)"
 
 
 def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
@@ -439,7 +502,7 @@ def process_goal_value(goal):
 
 
 def process_tagged_item(tag, task):
-    tag_regex = fr"#{tag}(?:\b|)"
+    tag_regex = get_tag_regex(tag)
     tag_present = re.search(tag_regex, task["nm"], re.IGNORECASE)
     
     if tag_present:  # ... is not None
