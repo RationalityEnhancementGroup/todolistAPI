@@ -66,6 +66,7 @@ Important: The order of all the parameters provided in the URL matters!
     - `mixing_parameter`:
         - Basically, it represents a level of mixing tasks from different goals. That is, the level rigidity/flexibility of a user to work on different goals in a (relatively) short time period. 
         - It is a value between 0 (included; represents rigidity/no mixing) and 1 (excluded; represents flexibility complete mixing).
+    - `scale_type` (optional): It represents the method by which points are scaled. If no scaling to be used, the inputting this parameter (and the `scale_min` and `scale_max` parameters) should be omitted.
     - `scale_min` (optional): It represents the lower interval bound, which scales the proposed task values to the provided interval. If `inf`, then the lower interval bound is not set.
     - `scale_max` (optional): It represents the higher interval bound, which scales the proposed task values to the provided interval. If `inf`, then the upper interval bound is not set.
 
