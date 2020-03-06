@@ -190,7 +190,7 @@ class PostResource(RESTResource):
                     
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
-
+                
                 # Parse today hours
                 try:
                     today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
@@ -234,7 +234,25 @@ class PostResource(RESTResource):
                 # Convert typical and today hours into minutes
                 typical_minutes = typical_hours * 60
                 today_minutes = today_hours * 60
+
+                # Get information about daily tasks time estimation
+                daily_tasks_time_est = calculate_daily_tasks_time_est(
+                    projects, allowed_task_time, int(default_duration))
                 
+                # Subtract daily tasks time estimation from typical working hours
+                typical_minutes -= daily_tasks_time_est
+                log_dict["typical_daily_minutes"] = typical_minutes
+
+                if typical_minutes < 0:
+                    # TODO: Val, please check this. (Jugoslav)
+                    status = f"You have {-typical_minutes} more minutes assigned on a typical day. Please increase your typical working hours or remove some of the #daily tasks. "
+    
+                    # Store error in DB
+                    store_log(db.request_log, log_dict, status=status)
+    
+                    cherrypy.response.status = 403
+                    return json.dumps(status + CONTACT)
+
                 # Subtract time estimation of current intentions from available time
                 for task_id in current_intentions.keys():
                     today_minutes -= current_intentions[task_id]["est"]
@@ -244,9 +262,7 @@ class PostResource(RESTResource):
                 try:
                     real_goals, misc_goals = \
                         parse_tree(projects, current_intentions,
-                                   allowed_task_time,
                                    today_minutes, typical_minutes,
-                                   default_duration=int(default_duration),
                                    default_deadline=int(default_deadline),
                                    time_zone=time_zone)
                 except Exception as error:
@@ -543,10 +559,8 @@ class Root(object):
 
 
 if __name__ == '__main__':
-    uri = "mongodb://ai4productivity:ai4productivity@127.0.0.1/ai4productivity"
-    client = MongoClient(uri)
-    db = client["ai4productivity"]
-    collection = db["ai4productivity"]
+    conn = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
+    db = conn.heroku_g6l4lr9d
     
     conf = {
         '/':       {

@@ -12,8 +12,6 @@ from todolistMDP.to_do_list import Goal, Task
 deadline_regex = r"DUE:\s*([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
 goal_code_regex = r"#CG(\d+|&|_|\^)"
 time_est_regex = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
-today_regex = r"#today(?:\b|)"
-future_regex = r"#future(?:\b|)"
 total_value_regex = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
 
 DEADLINE_YEAR_LIMIT = 2100
@@ -204,9 +202,36 @@ def parse_error_info(error):
 def parse_hours(time_string):
     return int(re.search(total_value_regex, time_string, re.IGNORECASE)[1])
     
+
+def calculate_daily_tasks_time_est(projects, allowed_task_time, default_duration):
+    # Initialize total daily tasks time estimation
+    daily_tasks_time_est = 0
     
-def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
-               typical_minutes, default_duration, default_deadline, time_zone):
+    for goal in projects:
+        # Initialize goal time estimation
+        goal["est"] = 0
+    
+        for task in goal["ch"]:
+            # Process time estimation for a task
+            try:
+                task["est"] = \
+                    process_time_est(task["nm"], allowed_task_time, default_duration)
+            except Exception as error:
+                raise Exception(f"Task {task['nm']}: {str(error)}")
+    
+            # Update goal time estimation
+            goal["est"] += task["est"]
+    
+            task["daily"] = process_tagged_item("daily", task)
+
+            if task["daily"]:
+                daily_tasks_time_est += task["est"]
+                
+    return daily_tasks_time_est
+
+
+def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
+               default_deadline, time_zone):
     """
     This function reads in a flattened project tree and parses fields like goal
     code, total value, duration and deadline
@@ -214,13 +239,12 @@ def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
     def get_wf_task_id(task_name):
         return task_name.split("-")[-1]
     
+    # Initialize lists of real and miscellaneous goals
     real_goals = []
     misc_goals = []
-
+    
     for goal in projects:
-        # Initialize goal time estimation
-        goal["est"] = 0
-
+        
         # Extract goal information
         goal["code"] = re.search(goal_code_regex, goal["nm"], re.IGNORECASE)[1]
         goal_deadline = re.search(deadline_regex, goal["nm"], re.IGNORECASE)
@@ -281,20 +305,12 @@ def parse_tree(projects, current_intentions, allowed_task_time, today_minutes,
             else:
                 task["completed"] = False
     
-            # Process time estimation for a task
-            try:
-                task["est"] = \
-                    process_time_est(task["nm"], allowed_task_time, default_duration)
-            except Exception as error:
-                raise Exception(f"Task {task['nm']}: {str(error)}")
-            
-            # Update goal time estimation
-            goal["est"] += task["est"]
+            # Check whether a task has been marked to be completed in the future
+            task["future"] = process_tagged_item("future", task)
             
             # Check whether a task has been marked to be completed today
-            task["today"] = process_today_tag(task)
-            task["future"] = process_future_tag(task)
-    
+            task["today"] = process_tagged_item("today", task)
+            
             task["parentId"] = goal["id"]
             task["pcp"] = False  # TODO: Not sure what this field is...
             
@@ -405,7 +421,18 @@ def process_goal_value(goal):
     return goal_value
 
 
-def process_time_est(task_name, allowed_task_time=float('inf'), default_duration=None):
+def process_tagged_item(tag, task):
+    tag_regex = fr"#{tag}(?:\b|)"
+    tag_present = re.search(tag_regex, task["nm"], re.IGNORECASE)
+    
+    if tag_present:  # ... is not None
+        return True
+    else:
+        return False
+
+
+def process_time_est(task_name, allowed_task_time=float('inf'),
+                     default_duration=None):
     try:
         time_est = re.search(time_est_regex, task_name, re.IGNORECASE)[0]
     except:
@@ -442,24 +469,6 @@ def process_time_est(task_name, allowed_task_time=float('inf'), default_duration
     duration = int(ceil(duration))
     
     return duration
-
-
-def process_today_tag(task):
-    today_tag = re.search(today_regex, task["nm"], re.IGNORECASE)
-    
-    if today_tag:  # ... is not None
-        return True
-    else:
-        return False
-
-
-def process_future_tag(task):
-    future_tag = re.search(future_regex, task["nm"], re.IGNORECASE)
-    
-    if future_tag:  # ... is not None
-        return True
-    else:
-        return False
 
 
 def separate_tasks_with_deadlines(goals):
