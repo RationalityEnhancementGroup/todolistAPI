@@ -251,7 +251,7 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
             task_goal["parentId"] = task["parentId"]
             
             task_goal["value"] *= task["est"] / misc_goal["est"]
-            task_goal["value"] = ceil(task_goal["value"])
+            task_goal["value"] = task_goal["value"]
             
             task_goal['ch'] = [task]
 

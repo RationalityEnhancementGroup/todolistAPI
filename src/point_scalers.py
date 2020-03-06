@@ -53,7 +53,6 @@ def utility_scaling(task_list, scale_type="mean_value",
     if scale_max is None:
         scale_max = max_value
         
-
     for task in task_list:
         if min_value == max_value:
             task.set_reward((scale_max + scale_min) / 2)
