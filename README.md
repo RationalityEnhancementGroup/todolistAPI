@@ -42,6 +42,10 @@ Compulsory parameters (`compulsoryParameters`) are:
 - `default_duration`: Default task time estimation (in minutes) to fill in if it is not provided by the user.
 - `default_deadline`: Default deadline (number of days, starting from today) to fill in if it is not provided by the user.
 - `allowed_task_time`: Time-estimation restriction for tasks, so that users do not enter long time estimations. If no restriction to impose is necessary, then the input should be `inf`.
+- `min_sum_of_goal_values`: Lower interval bound on the sum of goal values. 
+- `max_sum_of_goal_values`: Upper interval bound on the sum of goal values.
+- `min_goal_value_per_goal_duration`: Lower interval bound on the ratio between a goal value and its duration (in minutes).
+- `max_goal_value_per_goal_duration`: Upper interval bound on the ratio between a goal value and its duration (in minutes).
 - `round_param`: If `cite`, then all points will be rounded on 2 decimals. For any other input, the points will be rounded to the closest integer.
 - `user_key`: User ID according to <i><u>Complice or WorkFlowy?</u></i>
 - `api_method`: Type of request
@@ -62,8 +66,8 @@ Important: The order of all the parameters provided in the URL matters!
     - `mixing_parameter`:
         - Basically, it represents a level of mixing tasks from different goals. That is, the level rigidity/flexibility of a user to work on different goals in a (relatively) short time period. 
         - It is a value between 0 (included; represents rigidity/no mixing) and 1 (excluded; represents flexibility complete mixing).
-    - `scale_min` (optional): It represents the lower interval bound, which scales the proposed task values to the provided interval.
-    - `scale_max` (optional): It represents the higher interval bound, which scales the proposed task values to the provided interval.
+    - `scale_min` (optional): It represents the lower interval bound, which scales the proposed task values to the provided interval. If `inf`, then the lower interval bound is not set.
+    - `scale_max` (optional): It represents the higher interval bound, which scales the proposed task values to the provided interval. If `inf`, then the upper interval bound is not set.
 
 - URL example: `http://127.0.0.1:6789/api/dp/mdp/30/14/inf/0/5/10/cite/tree/u123/getTasksForToday`
 
