@@ -49,6 +49,7 @@ Compulsory parameters (`compulsoryParameters`) are:
 - `min_goal_value_per_goal_duration`: Lower interval bound on the ratio between a goal value and its duration (in minutes).
 - `max_goal_value_per_goal_duration`: Upper interval bound on the ratio between a goal value and its duration (in minutes).
 - `<additionalParameters>`: (Differ for each method. Described in their own section.)
+- `points_per_hour`: if 'true'-valued (`true`, `t`, `1`), we assign points per hour. otherwise, we assign points for task completion.
 - `roundParameter`: The number of decimals to round to. For input of 0, the points will be rounded to the closest integer.
 - `userID`: Unique user identification code.
 - `functionName`: Type of request.
