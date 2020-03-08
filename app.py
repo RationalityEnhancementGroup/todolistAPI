@@ -84,31 +84,44 @@ class PostResource(RESTResource):
                 min_goal_value_per_goal_duration = vpath[7]
                 max_goal_value_per_goal_duration = vpath[8]
                 
-                exp_identifier = vpath[-4]
+                points_per_hour = vpath[-5]
+                rounding = vpath[-4]
                 user_key = vpath[-2]
                 api_method = vpath[-1]
                 
                 # JSON tree parameters
                 time_zone = int(jsonData["timezoneOffsetMinutes"])
 
-                if "cite" in exp_identifier:
-                    round_param = 2
-                else:
-                    round_param = 0
-                    
+                #last two input parameters
+                try:
+                    round_param = int(rounding)
+                except:
+                    status = "There was an issue with the API input (rounding parameter). Please contact us at reg.experiments@tuebingen.mpg.de."
+                    store_log(db.request_log, log_dict, status=status)
+                    cherrypy.response.status = 403
+                    return json.dumps(status)
+                
+                try:
+                    points_per_hour = (points_per_hour.lower() in ["true", "1", "t", "yes"])
+                except:
+                    status = "There was an issue with the API input (point per hour vs completion parameter). Please contact us at reg.experiments@tuebingen.mpg.de."
+                    store_log(db.request_log, log_dict, status=status)
+                    cherrypy.response.status = 403
+                    return json.dumps(status)
+
                 # Additional parameters (the order of URL input matters!)
                 # Casting to other data types is done in the functions that use
                 # these parameters
-                parameters = [item for item in vpath[9:-4]]
+                parameters = [item for item in vpath[9:-5]]
 
                 log_dict.update({
                     "api_method": api_method,
                     "allowed_task_time": allowed_task_time,
                     "duration": str(datetime.now() - log_dict["start_time"]),
-                    "exp_identifier": exp_identifier,
                     "method": method,
                     "parameters": parameters,
                     "round_param": round_param,
+                    "points_per_hour": points_per_hour,
                     "scheduler": scheduler,
                     "time_zone": time_zone,
                     "user_key": user_key,
