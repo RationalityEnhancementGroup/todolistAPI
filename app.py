@@ -84,18 +84,15 @@ class PostResource(RESTResource):
                 min_goal_value_per_goal_duration = vpath[7]
                 max_goal_value_per_goal_duration = vpath[8]
                 
-                exp_identifier = vpath[-4]
+                rounding = vpath[-4]
                 user_key = vpath[-2]
                 api_method = vpath[-1]
                 
                 # JSON tree parameters
                 time_zone = int(jsonData["timezoneOffsetMinutes"])
 
-                if "cite" in exp_identifier:
-                    round_param = 2
-                else:
-                    round_param = 0
-                    
+                round_param = int(rounding)
+                
                 # Additional parameters (the order of URL input matters!)
                 # Casting to other data types is done in the functions that use
                 # these parameters
@@ -105,7 +102,6 @@ class PostResource(RESTResource):
                     "api_method": api_method,
                     "allowed_task_time": allowed_task_time,
                     "duration": str(datetime.now() - log_dict["start_time"]),
-                    "exp_identifier": exp_identifier,
                     "method": method,
                     "parameters": parameters,
                     "round_param": round_param,
