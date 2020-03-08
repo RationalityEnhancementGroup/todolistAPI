@@ -462,7 +462,7 @@ class PostResource(RESTResource):
                         cherrypy.response.status = 403
                         if to_ctx_mgr.state == to_ctx_mgr.TIMED_OUT:
 
-                            error = "The API took too long retrieving your Workflowy information, please try again."
+                            error = "The API took too long processing your Workflowy information, please try again. Long processing times can arise from too many or very late deadlines -- if you can, you might want to reduce these."
             
                         return json.dumps(str(error) + " " + CONTACT)
                 
