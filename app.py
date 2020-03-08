@@ -91,7 +91,14 @@ class PostResource(RESTResource):
                 # JSON tree parameters
                 time_zone = int(jsonData["timezoneOffsetMinutes"])
 
-                round_param = int(rounding)
+                #last two input parameters
+                try:
+                    round_param = int(rounding)
+                except:
+                    status = "There was an issue with the API input (rounding parameter). Please contact us at reg.experiments@tuebingen.mpg.de."
+                    store_log(db.request_log, log_dict, status=status)
+                    cherrypy.response.status = 403
+                    return json.dumps(status)
                 
                 # Additional parameters (the order of URL input matters!)
                 # Casting to other data types is done in the functions that use
