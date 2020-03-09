@@ -83,7 +83,7 @@ def calculate_daily_tasks_time_est(projects, allowed_task_time,
     return daily_tasks_time_est
 
 
-def clean_output(task_list, round_param):
+def clean_output(task_list, round_param, points_per_hour):
     """
     Input is list of tasks
     Outputs list of tasks for today with fields:
@@ -156,7 +156,10 @@ def clean_output(task_list, round_param):
             if missing_key not in task:
                 task[missing_key] = None
     
-        task["val"] = round(task["val"], round_param)
+        if points_per_hour:
+            task["val"] = str(round(task["val"], round_param))+'/h'
+        else:
+            task["val"] = round(task["val"], round_param)
     
     return task_list
 
