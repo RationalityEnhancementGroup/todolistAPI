@@ -475,6 +475,7 @@ class PostResource(RESTResource):
                                 scaling_inputs=utility_inputs,
                                 day_duration=today_minutes,
                                 mixing_parameter=mixing_parameter,
+                                time_zone=time_zone,
                                 verbose=False
                             )
                     except Exception as error:
@@ -505,8 +506,9 @@ class PostResource(RESTResource):
                 # Schedule tasks for today
                 if scheduler == "basic":
                     try:
-                        final_tasks = basic_scheduler(
-                            task_list, today_duration=today_minutes)
+                        final_tasks = \
+                            basic_scheduler(task_list, time_zone=time_zone,
+                                            today_duration=today_minutes)
                     except Exception as error:
                         status = str(error) + ' '
     
@@ -518,8 +520,9 @@ class PostResource(RESTResource):
 
                 elif scheduler == "deadline":
                     try:
-                        final_tasks = deadline_scheduler(
-                            task_list, today_duration=today_minutes)
+                        final_tasks = \
+                            deadline_scheduler(task_list, time_zone=time_zone,
+                                               today_duration=today_minutes)
                     except Exception as error:
                         status = str(error) + ' '
 
