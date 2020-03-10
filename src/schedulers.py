@@ -127,9 +127,10 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
         
         # If the task has not been completed and it is not for today and
         # there is enough time to complete the task today
+        # TODO: Fix this...
         if (task_item["est"] <= duration_remaining) and not \
                 (task_item["completed"] or task_item["future"]) and not \
-                check_weekday_assignment(task_item, time_zone=time_zone) and \
+                check_weekday_assignment(task_item, time_zone=time_zone) and not \
                 check_date_assignment(task_item, time_zone):
             today_tasks += [task_item]
             duration_remaining -= task_item["est"]
