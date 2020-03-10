@@ -166,7 +166,7 @@ class Node:
                 Information for children nodes.
             """
             return {
-                "id": node.get_id(),
+                "id": str(node.get_id()),
                 "nm": node.get_nm(),
                 "lm": node.get_lm(),
                 "ch": [
