@@ -74,7 +74,8 @@ def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
     
     # Schedule tasks for today
     today_tasks = schedule_tasks_for_today(projects, ordered_tasks,
-                                           duration_remaining=day_duration)
+                                           duration_remaining=day_duration,
+                                           time_zone=params['time_zone'])
 
     return today_tasks  # List of tasks from projects
 
