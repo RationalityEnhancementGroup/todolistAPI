@@ -1,0 +1,38 @@
+[
+    {
+        "id": "gm-t1",
+        "nm": "&) Register for exams ~~25min #today DUE:2020-03-05",
+        "lm": 0,
+        "est": 25,
+        "parentId": "gm",
+        "pcp": false,
+        "val": 6.71
+    },
+    {
+        "id": "g1-t1-t2",
+        "nm": "1) Solve the exercises ~~4h #today",
+        "lm": 0,
+        "est": 240,
+        "parentId": "g1",
+        "pcp": false,
+        "val": 8.71
+    },
+    {
+        "id": "g1-t1-t1",
+        "nm": "1) Meet with the exercise partner at the library ~~10min #today",
+        "lm": 0,
+        "est": 10,
+        "parentId": "g1",
+        "pcp": false,
+        "val": 6.77
+    },
+    {
+        "id": "gm-t3",
+        "nm": "&) Choose courses for the next semester ~~2.5h",
+        "lm": 0,
+        "est": 150,
+        "parentId": "gm",
+        "pcp": false,
+        "val": 6.84
+    }
+]
