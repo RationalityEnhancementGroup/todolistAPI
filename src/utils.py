@@ -10,13 +10,13 @@ from string import digits
 
 from todolistMDP.to_do_list import Goal, Task
 
-deadline_regex = r"DUE:\s*([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
+date_regex = r"([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
+deadline_regex = fr"DUE:\s*{date_regex}"
 goal_code_regex = r"#CG(\d+|&|_|\^)"
 time_est_regex = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
 total_value_regex = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
 
 DEADLINE_YEAR_LIMIT = 2100
-TAGS = ["future", "daily", "today"]
 WEEKDAYS = {
     1: "Monday",
     2: "Tuesday",
@@ -26,6 +26,9 @@ WEEKDAYS = {
     6: "Saturday",
     7: "Sunday"
 }
+TAGS = ["future", "daily", "today", "weekdays", "weekends"] + \
+       [weekday.lower() + r"(s)" for weekday in WEEKDAYS.values()] + \
+       [weekday.lower() for weekday in WEEKDAYS.values()]
 
 
 def are_there_tree_differences(old_tree, new_tree):
@@ -44,7 +47,8 @@ def are_there_tree_differences(old_tree, new_tree):
             final_dict[goal["id"]] = (goal["deadline_datetime"], goal["value"])
             for task in goal["ch"]:
                 final_dict[task["id"]] = \
-                    (task["deadline_datetime"], task["est"])
+                    (task["day_datetime"], task["deadline_datetime"],
+                     task["est"], task["task_days"])
         return final_dict
 
     if len(set(create_tree_dict(old_tree).items()) ^
@@ -79,6 +83,8 @@ def calculate_daily_tasks_time_est(projects, allowed_task_time,
             
             if task["daily"]:
                 daily_tasks_time_est += task["est"]
+                
+    # TODO: Subtract time for specific weekdays, specific dates, weekends...
     
     return daily_tasks_time_est
 
@@ -91,6 +97,9 @@ def clean_output(task_list, round_param):
     """
     def get_human_readable_name(task):
         task_name = task["nm"]
+        
+        # Remove #date regex
+        task_name = re.sub(fr"#\s*{date_regex}", "", task_name, re.IGNORECASE)
         
         # Remove deadline
         task_name = re.sub(deadline_regex, "", task_name, re.IGNORECASE)
@@ -389,6 +398,12 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
                 task["completed"] = True
             else:
                 task["completed"] = False
+                
+            # Check whether weekday preferences are given
+            task['task_days'] = process_task_days(task)
+
+            # Check whether a specific date is given
+            task['day_datetime'] = process_working_date(task)
     
             # Check whether a task has been marked to be completed in the future
             task["future"] = process_tagged_item("future", task)
@@ -435,6 +450,47 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
     return real_goals, misc_goals
 
 
+def date_str_to_datetime(date):
+    # Remove empty spaces at the beginning and the end of the string
+    date = date[0].strip()
+
+    # Remove "DUE:\s*"
+    date = re.sub(r"DUE:\s*", "", date, re.IGNORECASE)
+
+    # Remove "#\s*"
+    date = re.sub(r"#\s*", "", date, re.IGNORECASE)
+
+    # Split date and time
+    date_args = re.split(r"\s+", date)
+    
+    if len(date_args) >= 1:
+        # Parse date
+        try:
+            year, month, day = re.split(r"[\-\.\\\/]+", date_args[0])
+        except:
+            raise Exception(f"Invalid deadline date!")
+        
+        if int(year) >= DEADLINE_YEAR_LIMIT:
+            raise Exception(f"Deadline too far in the future!")
+        
+        if len(date_args) == 2:
+            # Parse time
+            try:
+                hours, minutes = re.split(r"[\-\:\;\.\,]+", date_args[1])
+            except:
+                raise Exception(f"Invalid deadline time!")
+        
+        else:
+            hours, minutes = '23', '59'  # End of the day
+        
+        date = f"{year}-{month}-{day} {hours}:{minutes}"
+    
+    # Convert deadline into datetime object
+    date_datetime = datetime.strptime(date, "%Y-%m-%d %H:%M")
+    
+    return date_datetime
+
+
 def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
                      default_deadline=None):
     # Set starting time to the UTC time at the moment
@@ -454,40 +510,8 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
                           re.IGNORECASE)
         else:
             raise Exception("Invalid or no deadline provided!")
-
-    # Remove empty spaces at the beginning and the end of the string
-    deadline = deadline[0].strip()
     
-    # Remove "DUE:\s*"
-    deadline = re.sub(r"DUE:\s*", "", deadline, re.IGNORECASE)
-    
-    # Split date and time
-    deadline_args = re.split(r"\s+", deadline)
-    
-    if len(deadline_args) >= 1:
-        # Parse date
-        try:
-            year, month, day = re.split(r"[\-\.\\\/]+", deadline_args[0])
-        except:
-            raise Exception(f"Invalid deadline date!")
-        
-        if int(year) >= DEADLINE_YEAR_LIMIT:
-            raise Exception(f"Deadline too far in the future!")
-    
-        if len(deadline_args) == 2:
-            # Parse time
-            try:
-                hours, minutes = re.split(r"[\-\:\;\.\,]+", deadline_args[1])
-            except:
-                raise Exception(f"Invalid deadline time!")
-            
-        else:
-            hours, minutes = '23', '59'  # End of the day
-    
-        deadline = f"{year}-{month}-{day} {hours}:{minutes}"
-        
-    # Convert deadline into datetime object
-    deadline_datetime = datetime.strptime(deadline, "%Y-%m-%d %H:%M")
+    deadline_datetime = date_str_to_datetime(deadline)
     td = deadline_datetime - current_time
 
     # Check whether today's day time is after deadline's day time
@@ -532,7 +556,7 @@ def process_goal_value(goal):
 
 def process_tagged_item(tag, task):
     tag_regex = get_tag_regex(tag)
-    tag_present = re.search(tag_regex, task["nm"], re.IGNORECASE)
+    tag_present = re.search(tag_regex, task["nm"].lower(), re.IGNORECASE)
     
     if tag_present:  # ... is not None
         return True
@@ -578,6 +602,45 @@ def process_time_est(task_name, allowed_task_time=float('inf'),
     duration = int(ceil(duration))
     
     return duration
+
+
+def process_task_days(task):
+    weekdays = [False for _ in range(7)]  # Monday (0) to Sunday (6)
+    
+    # Check individual weekdays
+    for day_idx, day in enumerate(WEEKDAYS.values()):
+        if process_tagged_item(day.lower(), task):
+            weekdays[day_idx] = True
+        if process_tagged_item(day.lower() + 's', task):
+            weekdays[day_idx] = True
+            
+    # Check #weekdays
+    if process_tagged_item('weekdays', task):
+        for day_idx in [0, 1, 2, 3, 4]:  # Monday to Friday
+            weekdays[day_idx] = True
+
+    # Check #weekends
+    if process_tagged_item('weekends', task):
+        for day_idx in [5, 6]:  # Saturday and Sunday
+            weekdays[day_idx] = True
+
+    return weekdays
+
+
+def process_working_date(task):
+    date_datetime = None
+    
+    # Standardize input
+    task_name = task['nm'].lower()
+    
+    # Search for #<date>
+    date = re.search(fr"#\s*{date_regex}", task_name, re.IGNORECASE)
+    
+    # If #<date> is found
+    if date:
+        date_datetime = date_str_to_datetime(date)
+    
+    return date_datetime
 
 
 def separate_tasks_with_deadlines(goals):
