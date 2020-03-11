@@ -241,7 +241,7 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
     latest_deadline += total_misc_time_est + extra_time
     
     # Decompose misc goals into goals for each task of the goals
-    misc_tasks = []
+    misc_tasks = deque()
     for misc_goal in misc_goals:
         
         # Assign deadline and value for misc goal
@@ -249,7 +249,14 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
             misc_goal['deadline'] = latest_deadline
 
         for task in misc_goal['ch']:
-            task_goal = deepcopy(misc_goal)
+            
+            # Initialize task goal
+            task_goal = dict()
+            
+            for key in misc_goal.keys():
+                # Copy everything except children nodes
+                if key != 'ch':
+                    task_goal[key] = misc_goal[key]
 
             if task["deadline"]:
                 task_goal["deadline"] = task["deadline"]
@@ -267,7 +274,10 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
             
             task_goal['ch'] = [task]
 
-            misc_tasks += [task_goal]
+            # misc_tasks += [task_goal]
+            misc_tasks.append(task_goal)
+
+    misc_tasks = list(misc_tasks)
     
     return misc_tasks
 
