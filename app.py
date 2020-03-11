@@ -259,6 +259,7 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
                 
+                # Parse typical hours
                 try:
                     typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
                     log_dict["typical_hours"] = typical_hours
@@ -269,6 +270,7 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
 
+                # Check whether typical hours is in the pre-defined range
                 if not (0 < typical_hours <= 24):
                     store_log(db.request_log, log_dict,
                               status="Invalid typical hours value.")
@@ -278,6 +280,7 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status)
                 
+                # Check whether today hours is in the pre-defined range
                 # 0 is an allowed value in case users want to skip a day
                 if not (0 <= today_hours <= 24):
                     store_log(db.request_log, log_dict,
@@ -299,7 +302,8 @@ class PostResource(RESTResource):
                 # Subtract daily tasks time estimation from typical working hours
                 typical_minutes -= daily_tasks_time_est
                 log_dict["typical_daily_minutes"] = typical_minutes
-
+                
+                # Check whether users have assigned more tasks than their time allows.
                 if typical_minutes < 0:
                     # TODO: Val, please check this. (Jugoslav)
                     status = f"You have {-typical_minutes} more minutes assigned on a typical day. Please increase your typical working hours or remove some of the #daily tasks. "
