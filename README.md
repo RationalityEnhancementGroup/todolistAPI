@@ -59,6 +59,8 @@ Compulsory parameters (`compulsoryParameters`) are:
 The additional parameters are dependent on the method that has been used. They are described in the following (sub-)sections. 
 Important: The order of all the parameters provided in the URL matters!
 
+You can use our URL generator to get the general URL to post to, before the last three parameters (userID, tree, and function): [https://aqueous-hollows-34193.herokuapp.com/static/urlgenerator.html](https://aqueous-hollows-34193.herokuapp.com/static/urlgenerator.html) Please submit a Github issue if you encounter any problems with this generator.
+
 ### Constant point-assignment point-assignment method (`const`)
 - Additional parameters
   - `default_task_value`: Constant value of points to be assigned to each task.
