@@ -101,7 +101,3 @@ Important: The order of all the parameters provided in the URL matters!
 ## Required Python Packages
 
 All the required Python packages are listed in the `requirements.txt` file.
-
-## Contact
-
-If you encounter any errors, please contact us at <b>reg \<dot> experiments \<at> tuebingen \<dot> mpg \<dot> de</b>.
