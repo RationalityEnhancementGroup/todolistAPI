@@ -26,7 +26,7 @@ The general URL for local testing looks like this:
 `http://127.0.0.1:6789/api/<compulsoryParameters>/<additionalParameters>/<roundParameter>/tree/<userID>/<functionName>`
 
 The general URL for testing the server online (on Heroku) looks like this
-`http://<HerokuAppCode>.herokuapp.com/api/<compulsoryParameters>/<additionalParameters>/<roundParameter>/tree/<userID>/<functionName>`
+`http://<HerokuAppCode>.herokuapp.com/api/<compulsoryParameters>/<additionalParameters>/<points_per_hour>/<roundParameter>/tree/<userID>/<functionName>`
 
 Compulsory parameters (`compulsoryParameters`) are:
 - `method`: Method by which points are assigned
@@ -58,6 +58,8 @@ Compulsory parameters (`compulsoryParameters`) are:
 
 The additional parameters are dependent on the method that has been used. They are described in the following (sub-)sections. 
 Important: The order of all the parameters provided in the URL matters!
+
+You can use our URL generator to get the general URL to post to, before the last three parameters (userID, tree, and function): [https://aqueous-hollows-34193.herokuapp.com/static/urlgenerator.html](https://aqueous-hollows-34193.herokuapp.com/static/urlgenerator.html) Please submit a Github issue if you encounter any problems with this generator.
 
 ### Constant point-assignment point-assignment method (`const`)
 - Additional parameters
@@ -101,7 +103,3 @@ Important: The order of all the parameters provided in the URL matters!
 ## Required Python Packages
 
 All the required Python packages are listed in the `requirements.txt` file.
-
-## Contact
-
-If you encounter any errors, please contact us at <b>reg \<dot> experiments \<at> tuebingen \<dot> mpg \<dot> de</b>.
