@@ -76,7 +76,7 @@ class PostResource(RESTResource):
                 # Compulsory parameters
                 method = vpath[0]
                 scheduler = vpath[1]
-                default_duration = vpath[2]  # This needs to be in minutes
+                default_time_est = vpath[2]  # This needs to be in minutes
                 default_deadline = vpath[3]  # This needs to be in days
                 allowed_task_time = vpath[4]
                 min_sum_of_goal_values = vpath[5]
@@ -122,6 +122,8 @@ class PostResource(RESTResource):
 
                 log_dict.update({
                     "api_method": api_method,
+                    "default_time_est": default_time_est,
+                    "default_deadline": default_deadline,
                     "allowed_task_time": allowed_task_time,
                     "duration": str(datetime.now() - log_dict["start_time"]),
                     "method": method,
@@ -146,6 +148,26 @@ class PostResource(RESTResource):
                     "timestamp": None,
                     "user_id": None,
                 })
+                
+                # Parse default time estimation (in minutes)
+                try:
+                    default_time_est = int(default_time_est)
+                    log_dict["default_time_est"] = default_time_est
+                except:
+                    status = "There was an issue with the API input (default time estimation). Please contact us at reg.experiments@tuebingen.mpg.de."
+                    store_log(db.request_log, log_dict, status=status)
+                    cherrypy.response.status = 403
+                    return json.dumps(status)
+
+                # Parse default deadline (in days)
+                try:
+                    default_deadline = int(default_deadline)
+                    log_dict["default_deadline"] = default_deadline
+                except:
+                    status = "There was an issue with the API input (default deadline). Please contact us at reg.experiments@tuebingen.mpg.de."
+                    store_log(db.request_log, log_dict, status=status)
+                    cherrypy.response.status = 403
+                    return json.dumps(status)
 
                 # Get allowed task time | Default URL value: 'inf'
                 try:
@@ -214,7 +236,8 @@ class PostResource(RESTResource):
                 # Parse current intentions
                 try:
                     current_intentions = parse_current_intentions_list(
-                        jsonData["currentIntentionsList"], default_duration=default_duration)
+                        jsonData["currentIntentionsList"],
+                        default_time_est=default_time_est)
                 except:
                     status = "An error related to the current intentions has occurred."
                     
@@ -297,7 +320,7 @@ class PostResource(RESTResource):
 
                 # Get information about daily tasks time estimation
                 daily_tasks_time_est = calculate_daily_tasks_time_est(
-                    projects, allowed_task_time, int(default_duration))
+                    projects, allowed_task_time, default_time_est)
                 
                 # Subtract daily tasks time estimation from typical working hours
                 typical_minutes -= daily_tasks_time_est
@@ -324,7 +347,7 @@ class PostResource(RESTResource):
                     real_goals, misc_goals = \
                         parse_tree(projects, current_intentions,
                                    today_minutes, typical_minutes,
-                                   default_deadline=int(default_deadline),
+                                   default_deadline=default_deadline,
                                    min_sum_of_goal_values=min_sum_of_goal_values,
                                    max_sum_of_goal_values=max_sum_of_goal_values,
                                    min_goal_value_per_goal_duration=min_goal_value_per_goal_duration,
@@ -500,7 +523,7 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
-        
+                
                 # Update values in the tree
                 log_dict["tree"] = create_projects_to_save(projects)
                 
