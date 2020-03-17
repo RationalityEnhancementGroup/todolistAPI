@@ -58,7 +58,7 @@ def are_there_tree_differences(old_tree, new_tree):
 
 
 def calculate_daily_tasks_time_est(projects, allowed_task_time,
-                                   default_duration):
+                                   default_time_est):
     # Initialize total daily tasks time estimation
     daily_tasks_time_est = 0
     
@@ -71,7 +71,7 @@ def calculate_daily_tasks_time_est(projects, allowed_task_time,
             try:
                 task["est"] = \
                     process_time_est(task["nm"], allowed_task_time,
-                                     default_duration)
+                                     default_time_est)
             except Exception as error:
                 raise Exception(f"Task {task['nm']}: {str(error)}")
             
@@ -299,7 +299,7 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
     return list(misc_tasks)
 
 
-def parse_current_intentions_list(current_intentions, default_duration=None):
+def parse_current_intentions_list(current_intentions, default_time_est=None):
     """
     Extracts necessary information from CompliceX's current intentions list.
     
@@ -329,7 +329,7 @@ def parse_current_intentions_list(current_intentions, default_duration=None):
         # Get necessary information
         task_dict["id"] = get_wf_task_id(task["t"])
         task_dict["d"] = task["d"] if "d" in task.keys() else False
-        task_dict["est"] = process_time_est(task["t"], default_duration=default_duration)
+        task_dict["est"] = process_time_est(task["t"], default_time_est=default_time_est)
         task_dict["vd"] = task["vd"]
         
         # Add current task to the dictionary of all parsed current intentions
@@ -595,12 +595,12 @@ def process_tagged_item(tag, task):
 
 
 def process_time_est(task_name, allowed_task_time=float('inf'),
-                     default_duration=None):
+                     default_time_est=None):
     try:
         time_est = re.search(time_est_regex, task_name, re.IGNORECASE)[0]
     except:
-        if default_duration is not None:
-            time_est = "~~"+str(default_duration)+"min"
+        if default_time_est is not None:
+            time_est = "~~" + str(default_time_est) + "min"
         else:
             raise Exception("No time estimation or invalid time estimation provided!")
 
