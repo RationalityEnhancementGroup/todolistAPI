@@ -5,7 +5,6 @@ from collections import deque
 from copy import deepcopy
 from datetime import datetime, timedelta
 from math import ceil
-from pprint import pprint
 from string import digits
 
 from todolistMDP.to_do_list import Goal, Task
@@ -224,12 +223,29 @@ def get_tag_regex(tag):
 
 
 def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
+    """
+    Converts misc-goal tasks into goals for themselves. That is, each task is a
+    goal for itself consisting of only one task (itself).
+    
+    Args:
+        real_goals: [Goal] representing real goals
+        misc_goals: [{node}] representing misc goals
+        extra_time: Additional (in minutes) time that shifts the deadline
+
+    Returns:
+        [Task]
+    """
+    
+    # Sort goals
     real_goals.sort()
+    
+    # Get latest deadline of real goals
     latest_deadline = real_goals[-1].get_latest_deadline_time()
     
     # Update latest deadline
     total_misc_time_est = 0
     
+    # Calculate misc goal time estimation & total misc-goal time estimation
     for misc_goal in misc_goals:
         misc_goal["est"] = 0
         
@@ -237,7 +253,9 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
             misc_goal["est"] += misc_task["est"]
             
         total_misc_time_est += misc_goal["est"]
-    
+
+    # Add fictive deadline for misc goals, i.e. move latest deadline for
+    # <total misc-goal time estimation> + <extra time> minutes in the future.
     latest_deadline += total_misc_time_est + extra_time
     
     # Decompose misc goals into goals for each task of the goals
@@ -248,12 +266,14 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
         if (misc_goal["deadline"]) is None:
             misc_goal['deadline'] = latest_deadline
 
+        # Create a goal for each misc-goal task
         for task in misc_goal['ch']:
             
             # Initialize task goal
             task_goal = dict()
             
             for key in misc_goal.keys():
+                
                 # Copy everything except children nodes
                 if key != 'ch':
                     task_goal[key] = misc_goal[key]
@@ -268,18 +288,15 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
             task_goal['id'] = task['id']
             task_goal['nm'] = task['nm']
             task_goal["parentId"] = task["parentId"]
-            
-            task_goal["value"] *= task["est"] / misc_goal["est"]
-            task_goal["value"] = task_goal["value"]
-            
-            task_goal['ch'] = [task]
 
-            # misc_tasks += [task_goal]
+            # Calculate linear/fractional task value w.r.t. misc goal value
+            task_goal["value"] *= task["est"] / misc_goal["est"]
+            
+            task_goal["ch"] = [task]
+
             misc_tasks.append(task_goal)
 
-    misc_tasks = list(misc_tasks)
-    
-    return misc_tasks
+    return list(misc_tasks)
 
 
 def parse_current_intentions_list(current_intentions, default_duration=None):
