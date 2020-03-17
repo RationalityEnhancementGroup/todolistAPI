@@ -57,10 +57,10 @@ def are_there_tree_differences(old_tree, new_tree):
         return True
 
 
-def calculate_daily_tasks_time_est(projects, allowed_task_time,
-                                   default_time_est):
-    # Initialize total daily tasks time estimation
-    daily_tasks_time_est = 0
+def calculate_repetitive_tasks_time_est(projects, allowed_task_time,
+                                       default_time_est):
+    # Initialize total daily tasks time estimation for each weekday
+    weekday_tasks_time_est = [0 for _ in range(7)]
     
     for goal in projects:
         # Initialize goal time estimation
@@ -77,15 +77,23 @@ def calculate_daily_tasks_time_est(projects, allowed_task_time,
             
             # Update goal time estimation
             goal["est"] += task["est"]
-            
+
+            # Check whether weekday preferences are given
+            task["task_days"], task["repetitive_task_days"] = \
+                process_task_days(task)
+
+            # Check whether it is a daily task
             task["daily"] = process_tagged_item("daily", task)
             
             if task["daily"]:
-                daily_tasks_time_est += task["est"]
-                
-    # TODO: Subtract time for specific weekdays, specific dates, weekends...
-    
-    return daily_tasks_time_est
+                for weekday in range(len(task["repetitive_task_days"])):
+                    task["repetitive_task_days"][weekday] = True
+
+            # Subtract time
+            for weekday in range(len(task["repetitive_task_days"])):
+                weekday_tasks_time_est[weekday] -= task["est"]
+            
+    return weekday_tasks_time_est
 
 
 def clean_output(task_list, round_param, points_per_hour):
@@ -187,6 +195,47 @@ def create_projects_to_save(projects):
             except:
                 pass
     return projects_to_save
+
+
+def date_str_to_datetime(date):
+    # Remove empty spaces at the beginning and the end of the string
+    date = date[0].strip()
+    
+    # Remove "DUE:\s*"
+    date = re.sub(r"DUE:\s*", "", date, re.IGNORECASE)
+    
+    # Remove "#\s*"
+    date = re.sub(r"#\s*", "", date, re.IGNORECASE)
+    
+    # Split date and time
+    date_args = re.split(r"\s+", date)
+    
+    if len(date_args) >= 1:
+        # Parse date
+        try:
+            year, month, day = re.split(r"[\-\.\\\/]+", date_args[0])
+        except:
+            raise Exception(f"Invalid deadline date!")
+        
+        if int(year) >= DEADLINE_YEAR_LIMIT:
+            raise Exception(f"Deadline too far in the future!")
+        
+        if len(date_args) == 2:
+            # Parse time
+            try:
+                hours, minutes = re.split(r"[\-\:\;\.\,]+", date_args[1])
+            except:
+                raise Exception(f"Invalid deadline time!")
+        
+        else:
+            hours, minutes = '23', '59'  # End of the day
+        
+        date = f"{year}-{month}-{day} {hours}:{minutes}"
+    
+    # Convert deadline into datetime object
+    date_datetime = datetime.strptime(date, "%Y-%m-%d %H:%M")
+    
+    return date_datetime
 
 
 def flatten_intentions(projects):
@@ -429,9 +478,6 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             else:
                 task["completed"] = False
                 
-            # Check whether weekday preferences are given
-            task['task_days'] = process_task_days(task)
-
             # Check whether a specific date is given
             task['day_datetime'] = process_working_date(task)
     
@@ -480,47 +526,6 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
     return real_goals, misc_goals
 
 
-def date_str_to_datetime(date):
-    # Remove empty spaces at the beginning and the end of the string
-    date = date[0].strip()
-
-    # Remove "DUE:\s*"
-    date = re.sub(r"DUE:\s*", "", date, re.IGNORECASE)
-
-    # Remove "#\s*"
-    date = re.sub(r"#\s*", "", date, re.IGNORECASE)
-
-    # Split date and time
-    date_args = re.split(r"\s+", date)
-    
-    if len(date_args) >= 1:
-        # Parse date
-        try:
-            year, month, day = re.split(r"[\-\.\\\/]+", date_args[0])
-        except:
-            raise Exception(f"Invalid deadline date!")
-        
-        if int(year) >= DEADLINE_YEAR_LIMIT:
-            raise Exception(f"Deadline too far in the future!")
-        
-        if len(date_args) == 2:
-            # Parse time
-            try:
-                hours, minutes = re.split(r"[\-\:\;\.\,]+", date_args[1])
-            except:
-                raise Exception(f"Invalid deadline time!")
-        
-        else:
-            hours, minutes = '23', '59'  # End of the day
-        
-        date = f"{year}-{month}-{day} {hours}:{minutes}"
-    
-    # Convert deadline into datetime object
-    date_datetime = datetime.strptime(date, "%Y-%m-%d %H:%M")
-    
-    return date_datetime
-
-
 def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
                      default_deadline=None):
     # Set starting time to the UTC time at the moment
@@ -544,22 +549,35 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
     deadline_datetime = date_str_to_datetime(deadline)
     td = deadline_datetime - current_time
 
-    # Check whether today's day time is after deadline's day time
-    if current_time.hour > deadline_datetime.hour:
-        days_after_today = max(0, td.days + 1)
-    elif current_time.hour < deadline_datetime.hour:
-        days_after_today = max(0, td.days)
-    else:
-        if current_time.minute >= deadline_datetime.minute:
-            days_after_today = max(0, td.days + 1)
-        else:
-            days_after_today = max(0, td.days)
+    # Calculate the number of days until the deadline
+    days_after_today = deadline_datetime.date() - current_time.date()
+    
+    # Calculate the number of weeks until the deadline
+    weeks_after_today = days_after_today.days // 7
+    
+    # Get information on the weekdays of the current day and the deadline day
+    current_weekday = current_time.weekday()
+    
+    # Initialize number of minutes after today's day
+    minutes_after_today = 0
+    
+    # Add available time w.r.t. number of weeks until deadline
+    for day_idx in range(7):
+        minutes_after_today += typical_minutes[day_idx] * weeks_after_today
         
+    # Add available time w.r.t. remainder days
+    for day in range(days_after_today.days % 7):
+        weekday = (current_weekday + day + 1) % 7
+        minutes_after_today += typical_minutes[weekday]
+
+    # Calculate how much time is left today & update today's minutes
+    end_of_the_day = datetime(current_time.year, current_time.month,
+                              current_time.day, 23, 59, 59)
+    minutes_left_today = (end_of_the_day - current_time).seconds // 60
+    today_minutes = min(today_minutes, minutes_left_today)
+    
     # Calculate deadline value
-    if days_after_today == 0:
-        deadline_value = min(today_minutes, td.seconds // 60)
-    else:
-        deadline_value = today_minutes + (days_after_today * typical_minutes)
+    deadline_value = today_minutes + minutes_after_today
 
     # Check whether it is in the future
     if deadline_datetime < current_time:
@@ -636,6 +654,7 @@ def process_time_est(task_name, allowed_task_time=float('inf'),
 
 def process_task_days(task):
     weekdays = [False for _ in range(7)]  # Monday (0) to Sunday (6)
+    repetitive_weekdays = [False for _ in range(7)]  # Monday (0) to Sunday (6)
     
     # Check individual weekdays
     for day_idx, day in enumerate(WEEKDAYS.values()):
@@ -643,18 +662,21 @@ def process_task_days(task):
             weekdays[day_idx] = True
         if process_tagged_item(day.lower() + 's', task):
             weekdays[day_idx] = True
+            repetitive_weekdays[day_idx] = True
             
     # Check #weekdays
     if process_tagged_item('weekdays', task):
         for day_idx in [0, 1, 2, 3, 4]:  # Monday to Friday
             weekdays[day_idx] = True
+            repetitive_weekdays[day_idx] = True
 
     # Check #weekends
     if process_tagged_item('weekends', task):
         for day_idx in [5, 6]:  # Saturday and Sunday
             weekdays[day_idx] = True
+            repetitive_weekdays[day_idx] = True
 
-    return weekdays
+    return weekdays, repetitive_weekdays
 
 
 def process_working_date(task):

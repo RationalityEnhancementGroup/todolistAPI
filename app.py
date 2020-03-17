@@ -314,28 +314,36 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status)
                 
-                # Convert typical and today hours into minutes
-                typical_minutes = typical_hours * 60
+                # Convert today hours into minutes
                 today_minutes = today_hours * 60
 
+                # Convert typical hours into typical minutes for each weekday
+                typical_minutes = [typical_hours * 60 for _ in range(7)]
+
                 # Get information about daily tasks time estimation
-                daily_tasks_time_est = calculate_daily_tasks_time_est(
+                daily_tasks_time_est = calculate_repetitive_tasks_time_est(
                     projects, allowed_task_time, default_time_est)
                 
                 # Subtract daily tasks time estimation from typical working hours
-                typical_minutes -= daily_tasks_time_est
+                for weekday in range(len(typical_minutes)):
+                    typical_minutes[weekday] -= daily_tasks_time_est[weekday]
                 log_dict["typical_daily_minutes"] = typical_minutes
                 
                 # Check whether users have assigned more tasks than their time allows.
-                if typical_minutes < 0:
-                    # TODO: Val, please check this. (Jugoslav)
-                    status = f"You have {-typical_minutes} more minutes assigned on a typical day. Please increase your typical working hours or remove some of the #daily tasks. "
-    
-                    # Store error in DB
-                    store_log(db.request_log, log_dict, status=status)
-    
-                    cherrypy.response.status = 403
-                    return json.dumps(status + CONTACT)
+                for weekday in range(len(typical_minutes)):
+                    if typical_minutes[weekday] < 0:
+                        # TODO: Val, please check this. (Jugoslav)
+                        # TODO: Change the error message once we introduce weekdays in WorkFlowy
+                        status = f"You have {-typical_minutes[weekday]} more " \
+                                 f"minutes assigned on a typical day. Please " \
+                                 f"increase your typical working hours or " \
+                                 f"remove some of the #daily tasks. "
+        
+                        # Store error in DB
+                        store_log(db.request_log, log_dict, status=status)
+        
+                        cherrypy.response.status = 403
+                        return json.dumps(status + CONTACT)
 
                 # Subtract time estimation of current intentions from available time
                 for task_id in current_intentions.keys():
