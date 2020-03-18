@@ -18,9 +18,7 @@ def basic_scheduler(task_list, time_zone=0, today_duration=8 * 60,
         for task in task_list:
             
             # If the task has not been completed and it marked for today
-            if not (task["completed"] or task["future"]) and \
-                    (check_weekday_assignment(task, time_zone=time_zone) or
-                     check_date_assignment(task, time_zone=time_zone)):
+            if check_priority_scheduling(task, time_zone=time_zone):
                 
                 # If there is enough time to schedule the task
                 if task["est"] <= duration_remaining:
@@ -41,10 +39,8 @@ def basic_scheduler(task_list, time_zone=0, today_duration=8 * 60,
         if duration_remaining == 0:
             break
         
-        if (task["est"] <= duration_remaining) and not \
-                (task["completed"] or task["future"]) and not \
-                check_weekday_assignment(task, time_zone=time_zone) and \
-                check_date_assignment(task, time_zone=time_zone):
+        if check_additional_scheduling(task, duration_remaining,
+                                       time_zone=time_zone):
             final_tasks.append(task)
             duration_remaining -= task["est"]
     
@@ -55,15 +51,40 @@ def check_date_assignment(task, time_zone=0):
     current_day = datetime.utcnow() + timedelta(minutes=time_zone)
     
     if task['day_datetime'] is None:
-        return False
+        return None
     
     return task['day_datetime'].date() == current_day.date()
 
 
-def check_weekday_assignment(task, time_zone=0):
+def check_additional_scheduling(task, duration_remaining, time_zone=0):
+    return (task["est"] <= duration_remaining) and not \
+        (task["completed"] or task["future"]) and \
+        check_date_assignment(task, time_zone=time_zone) is None and \
+        check_today_assignment(task, time_zone=time_zone) is None
+
+
+def check_priority_scheduling(task, time_zone=0):
+    return not (task["completed"] or task["future"]) and \
+           (check_date_assignment(task, time_zone=time_zone) or
+            check_today_assignment(task, time_zone=time_zone))
+
+
+def check_today_assignment(task, time_zone=0):
     current_day = datetime.utcnow() + timedelta(minutes=time_zone)
     current_weekday = current_day.weekday()
     
+    # Check whether there are weekday preferences
+    weekday_assignment = False
+    for day_idx in range(len(task["task_days"])):
+        if task["task_days"][day_idx]:
+            weekday_assignment = True
+            break
+            
+    # If there are no weekday preferences
+    if not weekday_assignment:
+        return None
+    
+    # Check whether the task has to be scheduled today
     return task["daily"] or task["today"] or task["task_days"][current_weekday]
 
 
@@ -100,9 +121,7 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
         task_item["val"] = task.get_reward()
         
         # If the task has not been completed and it is marked for today
-        if not (task_item["completed"] or task_item['future']) and \
-                (check_weekday_assignment(task_item, time_zone) or
-                 check_date_assignment(task_item, time_zone)):
+        if check_priority_scheduling(task_item, time_zone=time_zone):
             
             # If there is enough time to schedule the task
             if duration_remaining >= task_item["est"]:
@@ -110,7 +129,7 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
                 duration_remaining -= task_item["est"]
             else:
                 overwork_minutes += task_item["est"]
-    
+
     overwork_minutes -= duration_remaining
     if overwork_minutes > 0:
         raise Exception(generate_overwork_error_message(overwork_minutes))
@@ -127,11 +146,8 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
         
         # If the task has not been completed and it is not for today and
         # there is enough time to complete the task today
-        # TODO: Fix this...
-        if (task_item["est"] <= duration_remaining) and not \
-                (task_item["completed"] or task_item["future"]) and not \
-                check_weekday_assignment(task_item, time_zone=time_zone) and not \
-                check_date_assignment(task_item, time_zone):
+        if check_additional_scheduling(task_item, duration_remaining,
+                                       time_zone=time_zone):
             today_tasks += [task_item]
             duration_remaining -= task_item["est"]
     
