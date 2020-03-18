@@ -585,7 +585,8 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
 
     # Check whether it is in the future
     if deadline_datetime < current_time:
-        raise Exception(f"Deadline not in the future!")
+        raise Exception(f"Deadline not in the future! Please check your "
+                        f"deadline and your time zone.")
 
     return deadline_value, deadline_datetime
 
