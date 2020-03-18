@@ -31,15 +31,15 @@ The general URL for testing the server online (on Heroku) looks like this
 Compulsory parameters (`compulsoryParameters`) are:
 - `method`: Method by which points are assigned
     - `constant`: Constant point assignment
+    - `dp`: Calculates optimal points by using a dynamic programming algorithm [Reference](http://www.cs.mun.ca/~kol/courses/2711-f13/dynprog.pdf) [pages: 5-8]
+    - `greedy`: Calculates optimal points by using the a greedy algorithm to solve the problem. 
     - `length`: Length heuristics
     - `random`: Random point assignment from a standard normal distribution
-    - `dp`: Calculates optimal points by using a dynamic programming algorithm [Reference](http://www.cs.mun.ca/~kol/courses/2711-f13/dynprog.pdf) [pages: 5-8]
-    - `old-report`: Calculates optimal points by using the backward induction algorithm [Find reference!]() to solve the problem. 
 - `scheduler`: Procedure by which tasks are scheduled
     - Schedulers for `constant`, `length` and `random` point-assignment methods:
         - `basic`: Basic scheduler
         - `deadline`: Deadline scheduler
-    - Schedulers for `dp` and `old-report` point-assignment methods:
+    - Schedulers for `dp` and `greedy` point-assignment methods:
         - `mdp`: <i><u>Not used, but still necessary to have it as a URL input.</u></i>
 - `default_duration`: Default task time estimation (in minutes) to fill in if it is not provided by the user.
 - `default_deadline`: Default deadline (number of days, starting from today) to fill in if it is not provided by the user.
