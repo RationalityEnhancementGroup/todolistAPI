@@ -285,11 +285,15 @@ def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
         [Task]
     """
     
-    # Sort goals
-    real_goals.sort()
+    # Initialize latest deadline to 0 (in case no real goals are provided)
+    latest_deadline = 0
     
-    # Get latest deadline of real goals
-    latest_deadline = real_goals[-1].get_latest_deadline_time()
+    if len(real_goals) > 0:
+        # Sort goals
+        real_goals.sort()
+        
+        # Get latest deadline of real goals
+        latest_deadline = real_goals[-1].get_latest_deadline_time()
     
     # Update latest deadline
     total_misc_time_est = 0
