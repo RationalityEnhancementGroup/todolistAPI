@@ -386,14 +386,12 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
         
         hours = re.search(HOURS_REGEX, task["t"], re.IGNORECASE)
         if hours is not None:
-            print(hours)
             hours = hours[0].strip()
             hours = int(hours.split(" ")[0].strip())
             task_dict["est"] += hours * 60
 
         minutes = re.search(MINUTES_REGEX, task["t"], re.IGNORECASE)
         if minutes is not None:
-            print(minutes)
             minutes = minutes[0].strip()
             minutes = int(minutes.split(" ")[0].strip())
             task_dict["est"] += minutes
