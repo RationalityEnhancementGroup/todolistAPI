@@ -9,13 +9,13 @@ from string import digits
 
 from todolistMDP.to_do_list import Goal, Task
 
-date_regex = r"([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
-deadline_regex = fr"DUE:\s*{date_regex}"
-goal_code_regex = r"#CG(\d+|&|_|\^)"
-hours_regex = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:hour)s?\)?(?:|[^\da-z.]|$)"
-minutes_regex = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:minute)s?\)?(?:|[^\da-z.]|$)"
-time_est_regex = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
-total_value_regex = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
+DATE_REGEX = r"([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
+DEADLINE_REGEX = fr"DUE:\s*{DATE_REGEX}"
+GOAL_CODE_REGEX = r"#CG(\d+|&|_|\^)"
+HOURS_REGEX = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:hour)s?\)?(?:|[^\da-z.]|$)"
+MINUTES_REGEX = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:minute)s?\)?(?:|[^\da-z.]|$)"
+TIME_EST_REGEX = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
+TOTAL_VALUE_REGEX = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
 
 DEADLINE_YEAR_LIMIT = 2100
 WEEKDAYS = {
@@ -108,13 +108,13 @@ def clean_output(task_list, round_param, points_per_hour):
         task_name = task["nm"]
         
         # Remove #date regex
-        task_name = re.sub(fr"#\s*{date_regex}", "", task_name, re.IGNORECASE)
+        task_name = re.sub(fr"#\s*{DATE_REGEX}", "", task_name, re.IGNORECASE)
         
         # Remove deadline
-        task_name = re.sub(deadline_regex, "", task_name, re.IGNORECASE)
+        task_name = re.sub(DEADLINE_REGEX, "", task_name, re.IGNORECASE)
         
         # Remove time estimation
-        task_name = re.sub(time_est_regex, "", task_name, re.IGNORECASE)
+        task_name = re.sub(TIME_EST_REGEX, "", task_name, re.IGNORECASE)
         
         # Remove tags
         for tag in TAGS:
@@ -384,14 +384,14 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
         # Get time estimation
         task_dict["est"] = 0
         
-        hours = re.search(hours_regex, task["t"], re.IGNORECASE)
+        hours = re.search(HOURS_REGEX, task["t"], re.IGNORECASE)
         if hours is not None:
             print(hours)
             hours = hours[0].strip()
             hours = int(hours.split(" ")[0].strip())
             task_dict["est"] += hours * 60
 
-        minutes = re.search(minutes_regex, task["t"], re.IGNORECASE)
+        minutes = re.search(MINUTES_REGEX, task["t"], re.IGNORECASE)
         if minutes is not None:
             print(minutes)
             minutes = minutes[0].strip()
@@ -423,7 +423,7 @@ def parse_error_info(error):
 
 
 def parse_hours(time_string):
-    return int(re.search(total_value_regex, time_string, re.IGNORECASE)[1])
+    return int(re.search(TOTAL_VALUE_REGEX, time_string, re.IGNORECASE)[1])
     
 
 def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
@@ -447,8 +447,8 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
     for goal in projects:
         
         # Extract goal information
-        goal["code"] = re.search(goal_code_regex, goal["nm"], re.IGNORECASE)[1]
-        goal_deadline = re.search(deadline_regex, goal["nm"], re.IGNORECASE)
+        goal["code"] = re.search(GOAL_CODE_REGEX, goal["nm"], re.IGNORECASE)[1]
+        goal_deadline = re.search(DEADLINE_REGEX, goal["nm"], re.IGNORECASE)
 
         # Process goal deadline and check whether the value is valid
         try:
@@ -474,7 +474,7 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             task_id = get_wf_task_id(task["id"])
             
             # Get task deadline (if provided)
-            task_deadline = re.search(deadline_regex, task["nm"], re.IGNORECASE)
+            task_deadline = re.search(DEADLINE_REGEX, task["nm"], re.IGNORECASE)
             
             if task_deadline:
                 try:
@@ -562,7 +562,7 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
             default_deadline_datetime = \
                 timedelta(days=int(default_deadline))
             deadline = \
-                re.search(deadline_regex, "DUE:" +
+                re.search(DEADLINE_REGEX, "DUE:" +
                           (current_time + default_deadline_datetime).strftime("%Y-%m-%d"),
                           re.IGNORECASE)
         else:
@@ -610,7 +610,7 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
 
 
 def process_goal_value(goal):
-    goal_value = re.search(total_value_regex, goal["nm"], re.IGNORECASE)
+    goal_value = re.search(TOTAL_VALUE_REGEX, goal["nm"], re.IGNORECASE)
     
     if goal_value is None:
         raise Exception("No value provided!")
@@ -638,7 +638,7 @@ def process_tagged_item(tag, task):
 def process_time_est(task_name, allowed_task_time=float('inf'),
                      default_time_est=None):
     try:
-        time_est = re.search(time_est_regex, task_name, re.IGNORECASE)[0]
+        time_est = re.search(TIME_EST_REGEX, task_name, re.IGNORECASE)[0]
     except:
         if default_time_est is not None:
             time_est = "~~" + str(default_time_est) + "min"
@@ -709,7 +709,7 @@ def process_working_date(task):
     task_name = task['nm'].lower()
     
     # Search for #<date>
-    date = re.search(fr"#\s*{date_regex}", task_name, re.IGNORECASE)
+    date = re.search(fr"#\s*{DATE_REGEX}", task_name, re.IGNORECASE)
     
     # If #<date> is found
     if date:
