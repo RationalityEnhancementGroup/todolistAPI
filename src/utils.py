@@ -15,7 +15,7 @@ GOAL_CODE_REGEX = r"#CG(\d+|&|_|\^)"
 HOURS_REGEX = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:hour)s?\)?(?:|[^\da-z.]|$)"
 MINUTES_REGEX = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:minute)s?\)?(?:|[^\da-z.]|$)"
 TIME_EST_REGEX = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
-TOTAL_VALUE_REGEX = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
+TOTAL_VALUE_REGEX = r"(?:^||>)\(?==\s*((-|)\d+)\)?(?:|\b|$)"
 
 DEADLINE_YEAR_LIMIT = 2100
 WEEKDAYS = {
