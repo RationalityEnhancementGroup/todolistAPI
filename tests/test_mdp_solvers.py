@@ -3,6 +3,7 @@ Tests for the algorithms that solve the to-do list MDP.
 The test cases are provided in the todolistMDP/test_cases.py file.
 """
 
+import pytest
 from todolistMDP.mdp_solvers import *
 from todolistMDP.test_cases import *
 from todolistMDP.to_do_list import *
