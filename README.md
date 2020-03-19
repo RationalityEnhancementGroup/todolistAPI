@@ -102,4 +102,10 @@ You can use our URL generator to get the general URL to post to, before the last
   
 ## Required Python Packages
 
-All the required Python packages are listed in the `requirements.txt` file.
+All required Python packages are listed in the `requirements.txt` file.
+
+## Acknowledgements
+
+This project uses code from:
+- The Pacman Projects [http://ai.berkeley.edu]
+- [todolistMDP by Andrew Tan](https://github.com/andrewztan/todolistMDP)
