@@ -427,7 +427,7 @@ class PostResource(RESTResource):
                 # DP method
                 elif method == "dp" or method == "greedy":
                     # Get mixing parameter | Default URL value: 0
-                    mixing_parameter = float('0.' + parameters[0])
+                    mixing_parameter = float(parameters[0])
                     
                     # Store the value of the mixing parameter in the log dict
                     log_dict['mixing_parameter'] = mixing_parameter
