@@ -12,6 +12,8 @@ from todolistMDP.to_do_list import Goal, Task
 date_regex = r"([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
 deadline_regex = fr"DUE:\s*{date_regex}"
 goal_code_regex = r"#CG(\d+|&|_|\^)"
+hours_regex = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:hour)s?\)?(?:|[^\da-z.]|$)"
+minutes_regex = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:minute)s?\)?(?:|[^\da-z.]|$)"
 time_est_regex = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
 total_value_regex = r"(?:^||>)\(?==\s*(\d+)\)?(?:|\b|$)"
 
@@ -379,10 +381,26 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
     for task in current_intentions:
         task_dict = dict()
         
-        # Get necessary information
+        # Get time estimation
+        task_dict["est"] = 0
+        
+        hours = re.search(hours_regex, task["t"], re.IGNORECASE)
+        if hours is not None:
+            print(hours)
+            hours = hours[0].strip()
+            hours = int(hours.split(" ")[0].strip())
+            task_dict["est"] += hours * 60
+
+        minutes = re.search(minutes_regex, task["t"], re.IGNORECASE)
+        if minutes is not None:
+            print(minutes)
+            minutes = minutes[0].strip()
+            minutes = int(minutes.split(" ")[0].strip())
+            task_dict["est"] += minutes
+        
+        # Get other necessary information
         task_dict["id"] = get_wf_task_id(task["t"])
         task_dict["d"] = task["d"] if "d" in task.keys() else False
-        task_dict["est"] = process_time_est(task["t"], default_time_est=default_time_est)
         task_dict["vd"] = task["vd"]
         
         # Add current task to the dictionary of all parsed current intentions
