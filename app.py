@@ -620,43 +620,9 @@ class PostResource(RESTResource):
                 return json.dumps(status + " " + CONTACT)
 
 
-class ExperimentPostResource(RESTResource):
-    
-    @cherrypy.tools.json_out()
-    def handle_POST(self, jsonData, *vpath, **params):
-        query = {'data.0.subject': jsonData[0]["subject"]}
-        if db.tiny_experiment.find(query).count() > 0:
-            newvalues = { "$set": {"data":      jsonData,
-                                   "timestamp": datetime.now()}}
-            db.tiny_experiment.update_one(query, newvalues)
-        else:
-            db.tiny_experiment.insert_one({"data":      jsonData,
-                                           "timestamp": datetime.now()})
-        cherrypy.response.status = 204
-        return None
-
-
-class SurveyPostResource(RESTResource):
-
-    @cherrypy.tools.json_out()
-    def handle_POST(self, jsonData, *vpath, **params):
-        query = {'data.0.url_variables.userid':
-                     jsonData[0]["url_variables"]["userid"]}
-        if db.tiny_survey.find(query).count() > 0:
-            newvalues = { "$set": {"data":      jsonData,
-                                   "timestamp": datetime.now()}}
-            db.tiny_survey.update_one(query, newvalues)
-        else:
-            db.tiny_survey.insert_one({"data":      jsonData,
-                                       "timestamp": datetime.now()})
-        cherrypy.response.status = 204
-        return None
-
 
 class Root(object):
     api = PostResource()
-    experiment_data = ExperimentPostResource()
-    survey_data = SurveyPostResource()
     
     @cherrypy.expose
     def index(self):
@@ -677,7 +643,7 @@ if __name__ == '__main__':
             'tools.staticdir.on':    True,
             'tools.staticdir.dir':   os.path.join(
                 os.path.dirname(os.path.abspath(__file__)), 'static'),
-            'tools.staticdir.index': 'instructions/experiment_instructions.html'
+            'tools.staticdir.index': 'urlgenerator.html'
         }
     }
     
