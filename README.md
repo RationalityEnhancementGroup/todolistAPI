@@ -1,4 +1,4 @@
-This is the server for our future Complice experiments with Workflowy task lists.
+This is the code for an API which, given a task list, assigns values to tasks and schedules them. This will be used in future CompliceX experiments with Workflowy task lists.
 
 # Local usage
 
