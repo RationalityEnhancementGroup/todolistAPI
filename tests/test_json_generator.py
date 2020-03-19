@@ -1,3 +1,4 @@
+import pytest
 from json_generator.nodes import *
 from json_generator.value_generator import *
 from json_generator.utils import *
