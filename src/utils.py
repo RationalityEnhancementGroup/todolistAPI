@@ -13,6 +13,7 @@ DATE_REGEX = r"([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+(
 DEADLINE_REGEX = fr"DUE:\s*{DATE_REGEX}"
 GOAL_CODES = r"(\d+|&|_|\^)"
 HOURS_REGEX = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:hour)s?\)?(?:|[^\da-z.]|$)"
+HTML_REGEX = r"<(\/|)(b|i|u)>"
 INPUT_GOAL_CODE_REGEX = fr"#CG{GOAL_CODES}"
 MINUTES_REGEX = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:minute)s?\)?(?:|[^\da-z.]|$)"
 OUTPUT_GOAL_CODE_REGEX = fr"{GOAL_CODES}\)"
@@ -20,6 +21,7 @@ TIME_EST_REGEX = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?))
 TOTAL_VALUE_REGEX = r"(?:^||>)\(?==\s*((-|)\d+)\)?(?:|\b|$)"
 
 DEADLINE_YEAR_LIMIT = 2100
+LARGE_NUMBER = 1000000
 WEEKDAYS = {
     1: "Monday",
     2: "Tuesday",
@@ -67,10 +69,21 @@ def calculate_repetitive_tasks_time_est(projects, allowed_task_time,
     weekday_tasks_time_est = [0 for _ in range(7)]
     
     for goal in projects:
+    
+        # Remove formatting / HTML formatting
+        goal["nm"] = re.sub(HTML_REGEX, "", goal["nm"],
+                            count=LARGE_NUMBER, flags=re.IGNORECASE)
+    
         # Initialize goal time estimation
         goal["est"] = 0
         
         for task in goal["ch"]:
+    
+            # Remove formatting / HTML tags
+            task["nm"] = re.sub(HTML_REGEX, "", task["nm"],
+                                count=LARGE_NUMBER, flags=re.IGNORECASE)
+            print(task["nm"])
+
             # Process time estimation for a task
             try:
                 task["est"] = \
