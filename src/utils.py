@@ -404,7 +404,7 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
         # Get other necessary information
         task_dict["id"] = get_wf_task_id(task["t"])
         task_dict["d"] = task["d"] if "d" in task.keys() else False
-        task_dict["vd"] = task["vd"]
+        task_dict["vd"] = task["vd"] if "vd" in task.keys() else None
         
         # Add current task to the dictionary of all parsed current intentions
         current_intentions_dict[task_dict["id"]] = task_dict
