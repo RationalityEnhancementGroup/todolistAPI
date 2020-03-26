@@ -589,7 +589,13 @@ class PostResource(RESTResource):
                         cherrypy.response.status = 403
                         return json.dumps(status + " " + CONTACT)
                     try:
-                        final_tasks = clean_output(final_tasks, round_param, points_per_hour)
+                        final_tasks = clean_output(final_tasks, round_param,
+                                                   points_per_hour)
+                    except NameError as error:
+                        store_log(db.request_log, log_dict,
+                                  status="Task has no name!")
+                        cherrypy.response.status = 403
+                        return json.dumps(str(error) + " " + CONTACT)
                     except:
                         status = "Error while preparing final output."
                         store_log(db.request_log, log_dict, status=status)

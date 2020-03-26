@@ -11,9 +11,11 @@ from todolistMDP.to_do_list import Goal, Task
 
 DATE_REGEX = r"([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
 DEADLINE_REGEX = fr"DUE:\s*{DATE_REGEX}"
-GOAL_CODE_REGEX = r"#CG(\d+|&|_|\^)"
+GOAL_CODES = r"(\d+|&|_|\^)"
 HOURS_REGEX = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:hour)s?\)?(?:|[^\da-z.]|$)"
+INPUT_GOAL_CODE_REGEX = fr"#CG{GOAL_CODES}"
 MINUTES_REGEX = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:minute)s?\)?(?:|[^\da-z.]|$)"
+OUTPUT_GOAL_CODE_REGEX = fr"{GOAL_CODES}\)"
 TIME_EST_REGEX = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
 TOTAL_VALUE_REGEX = r"(?:^||>)\(?==\s*((-|)\d+)\)?(?:|\b|$)"
 
@@ -122,6 +124,9 @@ def clean_output(task_list, round_param, points_per_hour):
             task_name = re.sub(tag_regex, "", task_name, re.IGNORECASE)
             
         task_name = task_name.strip()
+        
+        if len(re.sub(OUTPUT_GOAL_CODE_REGEX, "", task_name).strip()) == 0:
+            raise NameError(f"Task {task['nm']} has no name!")
         
         # Append time information
         hours, minutes = task["est"] // 60, task["est"] % 60
@@ -445,7 +450,8 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
     for goal in projects:
         
         # Extract goal information
-        goal["code"] = re.search(GOAL_CODE_REGEX, goal["nm"], re.IGNORECASE)[1]
+        goal["code"] = re.search(INPUT_GOAL_CODE_REGEX, goal["nm"],
+                                 re.IGNORECASE)[1]
         goal_deadline = re.search(DEADLINE_REGEX, goal["nm"], re.IGNORECASE)
 
         # Process goal deadline and check whether the value is valid
