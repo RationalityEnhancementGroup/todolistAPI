@@ -81,11 +81,11 @@ class Node:
             00000000-0000-0000-0000-{12x:hex_number}
         """
         return '-'.join([
-            random.choices(HEX_DIGITS, k=8),
-            random.choices(HEX_DIGITS, k=4),
-            random.choices(HEX_DIGITS, k=4),
-            random.choices(HEX_DIGITS, k=4),
-            random.choices(HEX_DIGITS, k=12)
+            ''.join(random.choices(HEX_DIGITS, k=8)),
+            ''.join(random.choices(HEX_DIGITS, k=4)),
+            ''.join(random.choices(HEX_DIGITS, k=4)),
+            ''.join(random.choices(HEX_DIGITS, k=4)),
+            ''.join(random.choices(HEX_DIGITS, k=12))
         ])
     
     @staticmethod
