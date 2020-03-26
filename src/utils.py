@@ -402,18 +402,25 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
         # Get time estimation
         task_dict["est"] = 0
         
-        hours = re.search(HOURS_REGEX, task["t"], re.IGNORECASE)
-        if hours is not None:
-            hours = hours[0].strip()
-            hours = int(hours.split(" ")[0].strip())
-            task_dict["est"] += hours * 60
-
-        minutes = re.search(MINUTES_REGEX, task["t"], re.IGNORECASE)
-        if minutes is not None:
-            minutes = minutes[0].strip()
-            minutes = int(minutes.split(" ")[0].strip())
-            task_dict["est"] += minutes
+        # Check whether current intention has been "neverminded"
+        task_dict["nvm"] = False
+        if "nvm" in task.keys():
+            task_dict["nvm"] = task["nvm"]
         
+        # If current intention is still active
+        if not task_dict["nvm"]:
+            hours = re.search(HOURS_REGEX, task["t"], re.IGNORECASE)
+            if hours is not None:
+                hours = hours[0].strip()
+                hours = int(hours.split(" ")[0].strip())
+                task_dict["est"] += hours * 60
+    
+            minutes = re.search(MINUTES_REGEX, task["t"], re.IGNORECASE)
+            if minutes is not None:
+                minutes = minutes[0].strip()
+                minutes = int(minutes.split(" ")[0].strip())
+                task_dict["est"] += minutes
+                
         # Get other necessary information
         task_dict["id"] = get_wf_task_id(task["t"])
         task_dict["d"] = task["d"] if "d" in task.keys() else False
