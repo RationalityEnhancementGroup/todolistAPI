@@ -82,7 +82,6 @@ def calculate_repetitive_tasks_time_est(projects, allowed_task_time,
             # Remove formatting / HTML tags
             task["nm"] = re.sub(HTML_REGEX, "", task["nm"],
                                 count=LARGE_NUMBER, flags=re.IGNORECASE)
-            print(task["nm"])
 
             # Process time estimation for a task
             try:
