@@ -636,7 +636,7 @@ def process_goal_value(goal):
     goal_value = re.search(TOTAL_VALUE_REGEX, goal["nm"], re.IGNORECASE)
     
     if goal_value is None:
-        raise Exception("No value provided!")
+        raise Exception("No value or invalid value provided!")
     
     # Parse value
     goal_value = int(goal_value[1])
