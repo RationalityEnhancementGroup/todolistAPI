@@ -310,20 +310,20 @@ class PostResource(RESTResource):
                 log_dict["typical_daily_minutes"] = typical_minutes
                 
                 # Check whether users have assigned more tasks than their time allows.
-                for weekday in range(len(typical_minutes)):
-                    if typical_minutes[weekday] < 0:
-                        # TODO: Val, please check this. (Jugoslav)
-                        # TODO: Change the error message once we introduce weekdays in WorkFlowy
-                        status = f"You have {-typical_minutes[weekday]} more " \
-                                 f"minutes assigned on a typical day. Please " \
-                                 f"increase your typical working hours or " \
-                                 f"remove some of the #daily tasks. "
-        
-                        # Store error in DB
-                        store_log(db.request_log, log_dict, status=status)
-        
-                        cherrypy.response.status = 403
-                        return json.dumps(status + CONTACT)
+                # for weekday in range(len(typical_minutes)):
+                #     if typical_minutes[weekday] < 0:
+                #         # TODO: Val, please check this. (Jugoslav)
+                #         # TODO: Change the error message once we introduce weekdays in WorkFlowy
+                #         status = f"You have {-typical_minutes[weekday]} more " \
+                #                  f"minutes assigned on a typical day. Please " \
+                #                  f"increase your typical working hours or " \
+                #                  f"remove some of the #daily tasks. "
+                #
+                #         # Store error in DB
+                #         store_log(db.request_log, log_dict, status=status)
+                #
+                #         cherrypy.response.status = 403
+                #         return json.dumps(status + CONTACT)
 
                 # Subtract time estimation of current intentions from available time
                 for task_id in current_intentions.keys():
@@ -569,7 +569,13 @@ class PostResource(RESTResource):
                         cherrypy.response.status = 403
                         return json.dumps(status + " " + CONTACT)
                     try:
-                        final_tasks = clean_output(final_tasks, round_param, points_per_hour)
+                        final_tasks = clean_output(final_tasks, round_param,
+                                                   points_per_hour)
+                    except NameError as error:
+                        store_log(db.request_log, log_dict,
+                                  status="Task has no name!")
+                        cherrypy.response.status = 403
+                        return json.dumps(str(error) + " " + CONTACT)
                     except:
                         status = "Error while preparing final output."
                         store_log(db.request_log, log_dict, status=status)
@@ -598,7 +604,6 @@ class PostResource(RESTResource):
                 
                 cherrypy.response.status = 403
                 return json.dumps(status + " " + CONTACT)
-
 
 
 class Root(object):

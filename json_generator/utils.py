@@ -21,5 +21,5 @@ def map_nodes(node_id_dict, nodes):
         else:
             node_id_dict[node.id] = node
             for ch in node.ch:
-                map_nodes(ch)
+                map_nodes(node_id_dict, ch)
     return

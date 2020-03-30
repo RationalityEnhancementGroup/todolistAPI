@@ -11,13 +11,17 @@ from todolistMDP.to_do_list import Goal, Task
 
 DATE_REGEX = r"([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
 DEADLINE_REGEX = fr"DUE:\s*{DATE_REGEX}"
-GOAL_CODE_REGEX = r"#CG(\d+|&|_|\^)"
+GOAL_CODES = r"(\d+|&|_|\^)"
 HOURS_REGEX = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:hour)s?\)?(?:|[^\da-z.]|$)"
+HTML_REGEX = r"<(\/|)(b|i|u)>"
+INPUT_GOAL_CODE_REGEX = fr"#CG{GOAL_CODES}"
 MINUTES_REGEX = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:minute)s?\)?(?:|[^\da-z.]|$)"
+OUTPUT_GOAL_CODE_REGEX = fr"{GOAL_CODES}\)"
 TIME_EST_REGEX = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
 TOTAL_VALUE_REGEX = r"(?:^||>)\(?==\s*((-|)\d+)\)?(?:|\b|$)"
 
 DEADLINE_YEAR_LIMIT = 2100
+LARGE_NUMBER = 1000000
 WEEKDAYS = {
     1: "Monday",
     2: "Tuesday",
@@ -65,10 +69,20 @@ def calculate_repetitive_tasks_time_est(projects, allowed_task_time,
     weekday_tasks_time_est = [0 for _ in range(7)]
     
     for goal in projects:
+    
+        # Remove formatting / HTML formatting
+        goal["nm"] = re.sub(HTML_REGEX, "", goal["nm"],
+                            count=LARGE_NUMBER, flags=re.IGNORECASE)
+    
         # Initialize goal time estimation
         goal["est"] = 0
         
         for task in goal["ch"]:
+    
+            # Remove formatting / HTML tags
+            task["nm"] = re.sub(HTML_REGEX, "", task["nm"],
+                                count=LARGE_NUMBER, flags=re.IGNORECASE)
+
             # Process time estimation for a task
             try:
                 task["est"] = \
@@ -122,6 +136,9 @@ def clean_output(task_list, round_param, points_per_hour):
             task_name = re.sub(tag_regex, "", task_name, re.IGNORECASE)
             
         task_name = task_name.strip()
+        
+        if len(re.sub(OUTPUT_GOAL_CODE_REGEX, "", task_name).strip()) == 0:
+            raise NameError(f"Task {task['nm']} has no name!")
         
         # Append time information
         hours, minutes = task["est"] // 60, task["est"] % 60
@@ -384,22 +401,29 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
         # Get time estimation
         task_dict["est"] = 0
         
-        hours = re.search(HOURS_REGEX, task["t"], re.IGNORECASE)
-        if hours is not None:
-            hours = hours[0].strip()
-            hours = int(hours.split(" ")[0].strip())
-            task_dict["est"] += hours * 60
-
-        minutes = re.search(MINUTES_REGEX, task["t"], re.IGNORECASE)
-        if minutes is not None:
-            minutes = minutes[0].strip()
-            minutes = int(minutes.split(" ")[0].strip())
-            task_dict["est"] += minutes
+        # Check whether current intention has been "neverminded"
+        task_dict["nvm"] = False
+        if "nvm" in task.keys():
+            task_dict["nvm"] = task["nvm"]
         
+        # If current intention is still active
+        if not task_dict["nvm"]:
+            hours = re.search(HOURS_REGEX, task["t"], re.IGNORECASE)
+            if hours is not None:
+                hours = hours[0].strip()
+                hours = int(hours.split(" ")[0].strip())
+                task_dict["est"] += hours * 60
+    
+            minutes = re.search(MINUTES_REGEX, task["t"], re.IGNORECASE)
+            if minutes is not None:
+                minutes = minutes[0].strip()
+                minutes = int(minutes.split(" ")[0].strip())
+                task_dict["est"] += minutes
+                
         # Get other necessary information
         task_dict["id"] = get_wf_task_id(task["t"])
         task_dict["d"] = task["d"] if "d" in task.keys() else False
-        task_dict["vd"] = task["vd"]
+        task_dict["vd"] = task["vd"] if "vd" in task.keys() else None
         
         # Add current task to the dictionary of all parsed current intentions
         current_intentions_dict[task_dict["id"]] = task_dict
@@ -445,7 +469,8 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
     for goal in projects:
         
         # Extract goal information
-        goal["code"] = re.search(GOAL_CODE_REGEX, goal["nm"], re.IGNORECASE)[1]
+        goal["code"] = re.search(INPUT_GOAL_CODE_REGEX, goal["nm"],
+                                 re.IGNORECASE)[1]
         goal_deadline = re.search(DEADLINE_REGEX, goal["nm"], re.IGNORECASE)
 
         # Process goal deadline and check whether the value is valid
