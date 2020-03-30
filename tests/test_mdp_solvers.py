@@ -116,36 +116,36 @@ def test_multiple_test_cases(test_cases, algorithm,
         try:
             if algorithm == run_dp_algorithm or \
                     algorithm == run_greedy_algorithm:
-                tasks_list = run_algorithm(to_do_list, algorithm_fn=algorithm,
-                                           mixing_parameter=mixing_parameter,
-                                           verbose=verbose)
+                run_algorithm(to_do_list,
+                              algorithm_fn=algorithm,
+                              mixing_parameter=mixing_parameter,
+                              verbose=verbose)
             else:
                 print_policy = False or verbose
                 print_pseudo_rewards = False or verbose
                 print_values = False or verbose
                 
-                tasks_list = solve(to_do_list, algorithm,
-                                   print_policy=print_policy,
-                                   print_pseudo_rewards=print_pseudo_rewards,
-                                   print_values=print_values)
+                solve(to_do_list, algorithm,
+                      print_policy=print_policy,
+                      print_pseudo_rewards=print_pseudo_rewards,
+                      print_values=print_values)
             
             print(f'Running the algorithm took '
                   f'{time.time() - start_time:.4f} seconds!')
         except Exception as error:
             print(str(error))
-            tasks_list = None
         
         print()
         
-        return tasks_list
+    return None
 
 
 # Set of goals to use
-goals = generate_deterministic_test(num_goals=10000, num_tasks=1)
+# goals = generate_deterministic_test(num_goals=1000, num_tasks=10)
 
 # Generate to-do list MDP
-s_time = time.time()  # Start timer
-to_do_list = ToDoList(goals, start_time=0)
+# s_time = time.time()  # Start timer
+# to_do_list = ToDoList(goals, start_time=0)
 
 # ===== Backward induction =====
 """
@@ -179,16 +179,42 @@ to_do_list = ToDoList(goals, start_time=0)
 # mdp = solve(to_do_list, value_iteration)
 
 # ===== DP / Greedy algorithm =====
-start_time = time.time()
+# start_time = time.time()
+#
+# tasks_list = run_algorithm(to_do_list,
+#                            algorithm_fn=run_greedy_algorithm,
+#                            mixing_parameter=0.0, verbose=False)
+# print(f'Running the algorithm took '
+#       f'{time.time() - start_time:.4f} seconds!')
 
-tasks_list = run_algorithm(to_do_list,
-                           algorithm_fn=run_greedy_algorithm,
-                           mixing_parameter=0.0, verbose=False)
-print(f'Running the algorithm took '
-      f'{time.time() - start_time:.4f} seconds!')
+# test_multiple_test_cases(deterministic_tests, run_greedy_algorithm, verbose=True)
 
 # current_time = 0
 # for task in tasks_list:
 #     print(f'Current time: {current_time}')
 #     print(task)
 #     current_time += task.get_time_est()
+
+for num_goals in [1000]:
+    for mixing_parameter in [0.0, 0.1, 0.25, 0.5, 0.75, 0.90, 0.99]:
+        print(f"Goals: {num_goals} | "
+              f"Mixing parameter {mixing_parameter}")
+
+        goals = generate_deterministic_test(num_goals=num_goals, num_tasks=1)
+        to_do_list = ToDoList(goals, start_time=0)
+
+        run_algorithm(to_do_list, algorithm_fn=run_greedy_algorithm,
+                      mixing_parameter=mixing_parameter, verbose=False)
+
+        print()
+
+# ===== Comparison ====
+# for num_tasks in range(1, 5):
+#     print(f"Num tasks: {4 * num_tasks}")
+#     start_time = time.time()
+#     goals = generate_deterministic_test(num_goals=4, num_tasks=num_tasks)
+#     to_do_list = ToDoList(goals, start_time=0)
+#     run_algorithm(to_do_list, algorithm_fn=run_greedy_algorithm,
+#                   mixing_parameter=0, verbose=False)
+#     print(f'Running the algorithm took '
+#           f'{time.time() - start_time:.4f} seconds!')
