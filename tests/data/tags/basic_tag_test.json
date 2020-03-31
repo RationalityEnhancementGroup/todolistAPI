@@ -87,7 +87,7 @@
                 },
                 {
                     "id": "15",
-                    "nm": "Weekend task ~~1min #weekend",
+                    "nm": "Weekend task ~~1min #weekends",
                     "lm": 1585659498720,
                     "ch": []
                 },
@@ -136,6 +136,12 @@
                 {
                     "id": "23",
                     "nm": "Future (not scheduled!) ~~1min #future",
+                    "lm": 1585659498720,
+                    "ch": []
+                },
+                {
+                    "id": "24",
+                    "nm": "Task without tag ~~1min",
                     "lm": 1585659498720,
                     "ch": []
                 }
