@@ -1,38 +1,38 @@
 [
     {
         "id": "gm-t1",
-        "nm": "&) Register for exams ~~25min #today DUE:2020-03-05",
+        "nm": "&) Register for exams (takes about 25 minutes, due on 2030-03-05 23:59)",
         "lm": 0,
         "est": 25,
         "parentId": "gm",
         "pcp": false,
-        "val": 6.71
+        "val": 14.0
     },
     {
-        "id": "g1-t1-t2",
-        "nm": "1) Solve the exercises ~~4h #today",
+        "id": "g2-t1",
+        "nm": "2) Read the proposed paper (takes about 4 hours, no due date)",
         "lm": 0,
         "est": 240,
-        "parentId": "g1",
+        "parentId": "g2",
         "pcp": false,
-        "val": 8.71
+        "val": 170.0
     },
     {
         "id": "g1-t1-t1",
-        "nm": "1) Meet with the exercise partner at the library ~~10min #today",
+        "nm": "1) Meet with the exercise partner at the library (takes about 10 minutes, no due date)",
         "lm": 0,
         "est": 10,
         "parentId": "g1",
         "pcp": false,
-        "val": 6.77
+        "val": 32.0
     },
     {
-        "id": "gm-t3",
-        "nm": "&) Choose courses for the next semester ~~2.5h",
+        "id": "g1-t1-t2",
+        "nm": "1) Solve the exercises (takes about 4 hours, no due date)",
         "lm": 0,
-        "est": 150,
-        "parentId": "gm",
+        "est": 240,
+        "parentId": "g1",
         "pcp": false,
-        "val": 6.84
+        "val": 768.0
     }
 ]
