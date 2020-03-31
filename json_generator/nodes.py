@@ -6,17 +6,10 @@ HEX_DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
               'a', 'b', 'c', 'd', 'e', 'f']
 NODE_COUNTER = 0
 
-DEFAULT_DEADLINE = 'YYYY-MM-DD'
-DEFAULT_POINTS = 0
-DEFAULT_PROB_SUCCESS = 1.0
-DEFAULT_TIME_EST = 1
-
 
 class Node:
-    
-    def __init__(self, id, deadline=DEFAULT_DEADLINE, parent=None,
-                 points=DEFAULT_POINTS, prob_success=DEFAULT_PROB_SUCCESS,
-                 time_est=DEFAULT_TIME_EST):
+    def __init__(self, id, deadline=None, parent=None, points=None,
+                 prob_success=None, time_est=None):
         """
         Initializes a new node with the provided parameters.
         
@@ -88,11 +81,11 @@ class Node:
             00000000-0000-0000-0000-{12x:hex_number}
         """
         return '-'.join([
-            random.choices(HEX_DIGITS, k=8),
-            random.choices(HEX_DIGITS, k=4),
-            random.choices(HEX_DIGITS, k=4),
-            random.choices(HEX_DIGITS, k=4),
-            random.choices(HEX_DIGITS, k=12)
+            ''.join(random.choices(HEX_DIGITS, k=8)),
+            ''.join(random.choices(HEX_DIGITS, k=4)),
+            ''.join(random.choices(HEX_DIGITS, k=4)),
+            ''.join(random.choices(HEX_DIGITS, k=4)),
+            ''.join(random.choices(HEX_DIGITS, k=12))
         ])
     
     @staticmethod
@@ -173,9 +166,10 @@ class Node:
                 Information for children nodes.
             """
             return {
-                "id": node.get_id(),
+                "id": str(node.get_id()),
                 "nm": node.get_nm(),
                 "lm": node.get_lm(),
+                "parentId": str(node.get_parent().get_id()),
                 "ch": [
                     get_dict(ch) for ch in node.get_ch()
                 ]
@@ -205,18 +199,21 @@ class Node:
             
         # If it is a task node
         if self.depth >= 2:
-            self.nm = f'#T{self.id}'
+            self.nm = f'Item {self.id}'
 
         # Append other information to the name of the node
-        self.nm += f' =={self.points} ~~{self.time_est}min DUE:{self.deadline}'
+        if self.points is not None:
+            self.nm += f' =={self.points}'
+        if self.time_est is not None:
+            self.nm += f' ~~{self.time_est}min'
+        if self.deadline is not None:
+            self.nm += f' DUE: {self.deadline}'
 
         return self.nm
 
     def generate_nodes(self, deadlines=None, points=None, prob_success=None,
-                       time_est=None, deadline_val=DEFAULT_DEADLINE,
-                       point_val=DEFAULT_POINTS,
-                       prob_success_val=DEFAULT_POINTS,
-                       time_est_val=DEFAULT_TIME_EST):
+                       time_est=None, deadline_val=None, point_val=None,
+                       prob_success_val=None, time_est_val=None, num_nodes=1):
         """
         Generate new nodes with the provided parameters as children of this
         node. It is mandatory to provide list of points or list of time
@@ -237,15 +234,10 @@ class Node:
         """
         global NODE_COUNTER
         
-        # Check whether points or time estimations are provided as input
-        if points is None and time_est is None:
-            print('ERROR: You have to provide points or time estimations!')
-        assert points is None or time_est is None
-        
         if points is None:
-            points = [point_val for _ in range(len(time_est))]
+            points = [point_val for _ in range(num_nodes)]
         if time_est is None:
-            time_est = [time_est_val for _ in range(len(points))]
+            time_est = [time_est_val for _ in range(num_nodes)]
 
         num_nodes = len(time_est)
         

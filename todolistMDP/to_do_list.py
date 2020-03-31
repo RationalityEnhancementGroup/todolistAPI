@@ -971,7 +971,7 @@ class MDPGraph:
         print('Done!')
         
         end = time.time()
-        print(f'Time elapsed: {end - start} seconds.\n')
+        print(f'Time elapsed: {end - start:.4f} seconds.\n')
         
     def dfs(self):
         visited_states = {}

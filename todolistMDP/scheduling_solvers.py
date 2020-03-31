@@ -1,6 +1,8 @@
 import cherrypy
 import numpy as np
+import time
 
+from collections import deque
 from functools import reduce
 from math import gcd
 from tqdm import tqdm
@@ -27,10 +29,11 @@ def compute_mixing_values(attainable_goals, mixing_parameter):
     
     # Calculate distance between two consecutive goals
     for idx in range(len(attainable_goals) - 1):
-        mixing_values[idx] = attainable_goals[idx + 1].get_latest_deadline_time() \
-                             - attainable_goals[idx].get_latest_deadline_time()
+        mixing_values[idx] = \
+            attainable_goals[idx + 1].get_latest_deadline_time() \
+            - attainable_goals[idx].get_latest_deadline_time()
         
-    # Transform values s.t. the longest distance has value == mixing_parameter
+    # Transform values s.t. the shortest distance has value == mixing_parameter
     mixing_values = (max_deadline - mixing_values) / max_deadline \
                     * mixing_parameter
     
@@ -153,7 +156,6 @@ def get_attainable_goals_dp(goals, dp):
             
             attainable_goals = [goals[goal_idx]] + attainable_goals
         
-        attainable_goals.sort()
         current_time_est = 0
         for goal in attainable_goals:
             goal_reward = goal.get_reward(current_time_est)
@@ -209,34 +211,46 @@ def get_ordered_task_list(attainable_goals, mixing_time, mixing_values):
     Returns:
         Ordered list of tasks.
     """
-    ordered_task_list = \
-        list(attainable_goals[-1].get_uncompleted_tasks())
-
+    # Get all uncompleted tasks from the last goal
+    ordered_tasks = attainable_goals[-1].get_uncompleted_tasks()
+    
+    # Initialize ordered task queue
+    ordered_tasks_q = deque(ordered_tasks)
+    
     for goal_idx in tqdm(reversed(range(len(attainable_goals)-1))):
-        batch_tasks = \
-            list(attainable_goals[goal_idx].get_uncompleted_tasks())
+    
+        # Initialize other task queue (Tasks that do not fit in available time)
+        other_tasks_q = deque()
+        
+        # Get available time and mixing parameter for the current goal
         available_time = mixing_time[goal_idx]
         mixing_parameter = mixing_values[goal_idx]
-        
-        if available_time > 0:
-            
-            # TODO: Another mixing/acceptance parameter can be included here...
-            for task in ordered_task_list:
-                task_time = task.get_time_est()
-                
-                if task_time <= available_time:
-                    batch_tasks += [task]
-                    ordered_task_list.remove(task)
-                    available_time -= task_time
-                
-                if available_time == 0:
-                    break
-            
-            batch_tasks = shuffle(batch_tasks, mixing_parameter)
-        
-        ordered_task_list = batch_tasks + ordered_task_list
 
-    return ordered_task_list
+        # Get all uncompleted tasks from the current goal
+        batch_tasks = attainable_goals[goal_idx].get_uncompleted_tasks()
+        
+        # Put all uncompleted tasks from the current goal in a queue
+        batch_tasks_q = deque(batch_tasks)
+        
+        while available_time > 0 and len(ordered_tasks_q) > 0:
+            task = ordered_tasks_q.popleft()
+            task_time = task.get_time_est()
+
+            if task_time <= available_time:
+                batch_tasks_q.append(task)
+                available_time -= task_time
+            else:
+                other_tasks_q.append(task)
+
+        # Mix tasks w.r.t. to the mixing parameter
+        batch_tasks_q = shuffle(batch_tasks_q, mixing_parameter)
+
+        # Append other tasks
+        batch_tasks_q.extend(other_tasks_q)
+        
+        ordered_tasks_q = batch_tasks_q
+
+    return ordered_tasks_q
 
 
 def print_optimal_solution(goals, dp):
@@ -305,27 +319,21 @@ def scale_time(goals, scale, up=True):
     return goals
 
 
-def shuffle(tasks_list, mixing_parameter=0.0):
-    shuffled_list = []
+def shuffle(tasks_q, mixing_parameter=0.0):
+    shuffled_q = deque()
 
-    # TODO: Take time estimation into account (?!)
-
-    idx = 0
-    while len(tasks_list) > 0:
-        idx %= len(tasks_list)
+    while len(tasks_q) > 0:
+        task = tasks_q.popleft()
         
         if np.random.uniform() >= mixing_parameter:
+            # Add task to the shuffled tasks queue
+            shuffled_q.append(task)
             
-            # Add task to the shuffled tasks list
-            shuffled_list += [tasks_list[idx]]
-            
-            # Remove task from the set of unshuffled tasks
-            tasks_list = tasks_list[:idx] + tasks_list[idx+1:]
-
         else:
-            idx += 1
+            # Put task to the back of the queue for the next iteration
+            tasks_q.append(task)
         
-    return shuffled_list
+    return shuffled_q
 
 
 def run_dp_algorithm(goals, verbose=False):

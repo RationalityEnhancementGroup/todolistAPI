@@ -53,7 +53,7 @@ def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
     real_goals = tree_to_old_structure(real_goals)
     
     # Assign deadlines to the misc goals & Separate tasks with deadlines
-    misc_goals = misc_tasks_to_goals(real_goals, misc_goals)
+    # misc_goals = misc_tasks_to_goals(real_goals, misc_goals)
     
     # Convert misc goals from JSON to Goal class objects
     # Note: The day duration for the misc tasks are implicitly while making
@@ -74,7 +74,8 @@ def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
     
     # Schedule tasks for today
     today_tasks = schedule_tasks_for_today(projects, ordered_tasks,
-                                           duration_remaining=day_duration)
+                                           duration_remaining=day_duration,
+                                           time_zone=params['time_zone'])
 
     return today_tasks  # List of tasks from projects
 

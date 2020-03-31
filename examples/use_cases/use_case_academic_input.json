@@ -1,0 +1,139 @@
+{
+    "currentIntentionsList": [
+        {
+            "_c": "_",
+            "_id": "gm-t1",
+            "d": true,
+            "t": "Read exam regulations ~~1h $wf:code123",
+            "vd": 10
+        }
+    ],
+    "projects": [
+        {
+            "id": "g1",
+            "nm": "#CG1_Mathematics ==2000 DUE:2030-04-10",
+            "lm": 0,
+            "ch": [
+                {
+                    "id": "g1-t1",
+                    "nm": "Complete weekly assignment ~~5h DUE:2030-03-31 12:00",
+                    "lm": 0,
+                    "ch": [
+                        {
+                            "id": "g1-t1-t1",
+                            "nm": "Meet with the exercise partner at the library ~~10min #today",
+                            "lm": 0
+                        },
+                        {
+                            "id": "g1-t1-t2",
+                            "nm": "Solve the exercises ~~4h #today",
+                            "lm": 0
+                        },
+                        {
+                            "id": "g1-t1-t3",
+                            "nm": "Write down the solutions in LaTeX ~~2h",
+                            "lm": 0
+                        },
+                        {
+                            "id": "g1-t1-t4",
+                            "nm": "Send the solutions to the TA for evaluation ~~15min",
+                            "lm": 0
+                        }
+
+                    ]
+                },
+                {
+                    "id": "g1-t2",
+                    "nm": "Prepare for the next lecture ~~4h DUE:2030-02-27 14:00",
+                    "lm": 0,
+                    "ch": [
+                        {
+                            "id": "g1-t2-t1",
+                            "nm": "Read lecture notes on \"Probability\" ~~1h",
+                            "lm": 0
+                        },
+                        {
+                            "id": "g1-t2-t2",
+                            "nm": "Solve exercises in the book ~~2h",
+                            "lm": 0
+                        },
+                        {
+                            "id": "g1-t2-t3",
+                            "nm": "Write a document on what you have learned ~~1h",
+                            "lm": 0
+                        }
+                    ]
+                }
+
+            ]
+        },
+        {
+            "id": "g2",
+            "nm": "#CG2_RNN_Seminar ==500 DUE:2030-03-03",
+            "lm": 0,
+            "ch": [
+                {
+                    "id": "g2-t1",
+                    "nm": "Read the proposed paper ~~4h #today",
+                    "lm": 0
+                },
+                {
+                    "id": "g2-t2",
+                    "nm": "Compose slides for the presentation ~~2.5h",
+                    "lm": 0,
+                    "ch": [
+                        {
+                            "id": "g2-t2-t1",
+                            "nm": "Send the presentation to the professor ~~15min",
+                            "lm": 0
+                        }
+                    ]
+                },
+                {
+                    "id": "g2-t3",
+                    "nm": "Write a summary paper ~~6h",
+                    "lm": 0
+                },
+                {
+                    "id": "g2-t4",
+                    "nm": "Review papers of 3 other participants in the seminar ~~1.5h",
+                    "lm": 0
+                }
+            ]
+        },
+        {
+            "id": "gm",
+            "nm": "#CG_Misc ==100 DUE:2030-03-30",
+            "lm": 0,
+            "ch": [
+                {
+                    "id": "gm-t1",
+                    "nm": "Register for exams ~~25min #today DUE:2030-03-05",
+                    "lm": 0
+                },
+                {
+                    "id": "gm-t2",
+                    "nm": "Choose courses for the next semester ~~2.5h",
+                    "lm": 0
+                }
+            ]
+        }
+    ],
+    "timezoneOffsetMinutes": 60,
+    "today_hours": [
+        {
+            "id": "_",
+            "nm": "#HOURS_TODAY ==8",
+            "lm": 0
+        }
+    ],
+    "typical_hours": [
+        {
+            "id": "_",
+            "nm": "#HOURS_TYPICAL ==8",
+            "lm": 0
+        }
+    ],
+    "updated": 0,
+    "userkey": "__test__"
+}

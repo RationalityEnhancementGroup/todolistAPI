@@ -22,7 +22,7 @@ import numpy as np
 #             max_value * (self.pseudo_rewards[trans] - minimum) / (ptp)
 
 
-def utility_scaling(task_list, scale_type="mean_value",
+def utility_scaling(task_list, scale_type="no_scaling",
                     scale_min=None, scale_max=None):
     min_value = float("inf")
     max_value = -float("inf")
@@ -53,19 +53,21 @@ def utility_scaling(task_list, scale_type="mean_value",
     if scale_max is None:
         scale_max = max_value
         
-
-    for task in task_list:
-        if min_value == max_value:
-            task.set_reward((scale_max + scale_min) / 2)
-        else:
-            task_reward = task.get_reward()
-            if scale_type == "min_max":
-                task_reward = (task_reward - min_value) / (max_value - min_value) \
-                              * (scale_max - scale_min) + scale_min
-            elif scale_type == "mean_value":
-                task_reward = (task_reward - mean_reward) / (max_value - min_value) \
-                              * (scale_max - scale_min) / 2 \
-                              + ((scale_max + scale_min) / 2)
+    if scale_type == "no_scaling":
+        pass
+    else:
+        for task in task_list:
+            if min_value == max_value:
+                task.set_reward((scale_max + scale_min) / 2)
             else:
-                raise Exception("Scaling method not implemented!")
-            task.set_reward(task_reward)
+                task_reward = task.get_reward()  
+                if scale_type == "min_max":
+                    task_reward = (task_reward - min_value) / (max_value - min_value) \
+                                  * (scale_max - scale_min) + scale_min
+                elif scale_type == "mean_value":
+                    task_reward = (task_reward - mean_reward) / (max_value - min_value) \
+                                  * (scale_max - scale_min) / 2 \
+                                  + ((scale_max + scale_min) / 2)
+                else:
+                    raise Exception("Scaling method not implemented!")
+                task.set_reward(task_reward)
