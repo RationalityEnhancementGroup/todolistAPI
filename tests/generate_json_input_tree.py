@@ -46,6 +46,9 @@ for n_goals in N_GOALS:
             0: ROOT_NODE
         }
         
+        # Set root ID to be none
+        ROOT_NODE.id = "None"
+        
         # Generate goals
         new_nodes = node_id_dict[0].generate_nodes(num_nodes=n_goals,
                                                    point_val=n_tasks,

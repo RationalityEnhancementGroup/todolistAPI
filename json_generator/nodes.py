@@ -169,6 +169,7 @@ class Node:
                 "id": str(node.get_id()),
                 "nm": node.get_nm(),
                 "lm": node.get_lm(),
+                "parentId": str(node.get_parent().get_id()),
                 "ch": [
                     get_dict(ch) for ch in node.get_ch()
                 ]
