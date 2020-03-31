@@ -169,6 +169,7 @@ class Node:
                 "id": str(node.get_id()),
                 "nm": node.get_nm(),
                 "lm": node.get_lm(),
+                "parentId": str(node.get_parent().get_id()),
                 "ch": [
                     get_dict(ch) for ch in node.get_ch()
                 ]
@@ -198,7 +199,7 @@ class Node:
             
         # If it is a task node
         if self.depth >= 2:
-            self.nm = f'#T{self.id}'
+            self.nm = f'Item {self.id}'
 
         # Append other information to the name of the node
         if self.points is not None:
