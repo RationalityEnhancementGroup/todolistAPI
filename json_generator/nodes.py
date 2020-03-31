@@ -198,7 +198,7 @@ class Node:
             
         # If it is a task node
         if self.depth >= 2:
-            self.nm = f'#T{self.id}'
+            self.nm = f'Item {self.id}'
 
         # Append other information to the name of the node
         if self.points is not None:
