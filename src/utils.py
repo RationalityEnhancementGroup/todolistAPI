@@ -551,7 +551,6 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
         if min_goal_value_per_goal_duration != float('inf') and \
                 max_goal_value_per_goal_duration != float('inf') and not \
                 min_goal_value_per_goal_duration <= value_per_duration <= max_goal_value_per_goal_duration:
-            # TODO: Val, please check this. (Jugoslav)
             raise Exception(f"Goal {goal['nm']} has value per duration of "
                             f"{value_per_duration:.2f} and it should be in the "
                             f"range between {min_goal_value_per_goal_duration:.2f} "
@@ -562,7 +561,6 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
     if min_sum_of_goal_values != float('inf') and \
             max_sum_of_goal_values != float('inf') and not \
             min_sum_of_goal_values <= sum_of_goal_values <= max_sum_of_goal_values:
-        # TODO: Val, please check this. (Jugoslav)
         raise Exception(f"Your goals have total values of {sum_of_goal_values} "
                         f"and this value should be in the range between "
                         f"{min_sum_of_goal_values:.2f} and "
