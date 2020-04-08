@@ -312,7 +312,6 @@ class PostResource(RESTResource):
                 # Check whether users have assigned more tasks than their time allows.
                 # for weekday in range(len(typical_minutes)):
                 #     if typical_minutes[weekday] < 0:
-                #         # TODO: Val, please check this. (Jugoslav)
                 #         # TODO: Change the error message once we introduce weekdays in WorkFlowy
                 #         status = f"You have {-typical_minutes[weekday]} more " \
                 #                  f"minutes assigned on a typical day. Please " \

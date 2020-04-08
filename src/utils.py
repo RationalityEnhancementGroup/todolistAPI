@@ -166,8 +166,6 @@ def clean_output(task_list, round_param, points_per_hour):
                 task_name += WEEKDAYS[weekday]
             else:
                 task_name += str(task["deadline_datetime"])[:-3]
-        else:
-            task_name += ", no due date"
             
         task_name += ")"
         
@@ -182,7 +180,12 @@ def clean_output(task_list, round_param, points_per_hour):
     
     for task in task_list:
         task["nm"] = get_human_readable_name(task)
-    
+        
+        if points_per_hour:
+            task["val"] = str(round(task["pph"], round_param))+'/h'
+        else:
+            task["val"] = round(task["val"], round_param)
+
         for extra_key in extra_keys:
             if extra_key in task:
                 del task[extra_key]
@@ -190,12 +193,7 @@ def clean_output(task_list, round_param, points_per_hour):
         for missing_key in missing_keys:
             if missing_key not in task:
                 task[missing_key] = None
-    
-        if points_per_hour:
-            task["val"] = str(round(task["val"], round_param))+'/h'
-        else:
-            task["val"] = round(task["val"], round_param)
-    
+
     return task_list
 
 
@@ -481,6 +479,13 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
         except Exception as error:
             raise Exception(f"Goal {goal['nm']}: {str(error)}")
 
+        # Process goal value and check whether the value is valid
+        try:
+            goal["value"] = process_goal_value(goal)
+            sum_of_goal_values += goal["value"]
+        except Exception as error:
+            raise Exception(f"Goal {goal['nm']}: {str(error)}")
+        
         # If the goal code is not a digit --> misc goal
         if goal["code"][0] not in digits+"^":
             if "_CSC209" in goal["nm"]:
@@ -538,19 +543,14 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             # Append goal's name to task's name
             task["nm"] = goal["code"] + ") " + task["nm"]
             
-        # Process goal value and check whether the value is valid
-        try:
-            goal["value"] = process_goal_value(goal)
-            sum_of_goal_values += goal["value"]
-        except Exception as error:
-            raise Exception(f"Goal {goal['nm']}: {str(error)}")
-
+            # Assign points per hour
+            task["pph"] = goal["value"] / goal["est"]
+            
         # Check goal value per duration
         value_per_duration = goal["value"] / goal["est"]
         if min_goal_value_per_goal_duration != float('inf') and \
                 max_goal_value_per_goal_duration != float('inf') and not \
                 min_goal_value_per_goal_duration <= value_per_duration <= max_goal_value_per_goal_duration:
-            # TODO: Val, please check this. (Jugoslav)
             raise Exception(f"Goal {goal['nm']} has value per duration of "
                             f"{value_per_duration:.2f} and it should be in the "
                             f"range between {min_goal_value_per_goal_duration:.2f} "
@@ -561,7 +561,6 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
     if min_sum_of_goal_values != float('inf') and \
             max_sum_of_goal_values != float('inf') and not \
             min_sum_of_goal_values <= sum_of_goal_values <= max_sum_of_goal_values:
-        # TODO: Val, please check this. (Jugoslav)
         raise Exception(f"Your goals have total values of {sum_of_goal_values} "
                         f"and this value should be in the range between "
                         f"{min_sum_of_goal_values:.2f} and "
