@@ -166,8 +166,6 @@ def clean_output(task_list, round_param, points_per_hour):
                 task_name += WEEKDAYS[weekday]
             else:
                 task_name += str(task["deadline_datetime"])[:-3]
-        else:
-            task_name += ", no due date"
             
         task_name += ")"
         
