@@ -180,7 +180,12 @@ def clean_output(task_list, round_param, points_per_hour):
     
     for task in task_list:
         task["nm"] = get_human_readable_name(task)
-    
+        
+        if points_per_hour:
+            task["val"] = str(round(task["pph"], round_param))+'/h'
+        else:
+            task["val"] = round(task["val"], round_param)
+
         for extra_key in extra_keys:
             if extra_key in task:
                 del task[extra_key]
@@ -188,12 +193,7 @@ def clean_output(task_list, round_param, points_per_hour):
         for missing_key in missing_keys:
             if missing_key not in task:
                 task[missing_key] = None
-    
-        if points_per_hour:
-            task["val"] = str(round(task["val"], round_param))+'/h'
-        else:
-            task["val"] = round(task["val"], round_param)
-    
+
     return task_list
 
 
@@ -479,6 +479,13 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
         except Exception as error:
             raise Exception(f"Goal {goal['nm']}: {str(error)}")
 
+        # Process goal value and check whether the value is valid
+        try:
+            goal["value"] = process_goal_value(goal)
+            sum_of_goal_values += goal["value"]
+        except Exception as error:
+            raise Exception(f"Goal {goal['nm']}: {str(error)}")
+        
         # If the goal code is not a digit --> misc goal
         if goal["code"][0] not in digits+"^":
             if "_CSC209" in goal["nm"]:
@@ -536,13 +543,9 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             # Append goal's name to task's name
             task["nm"] = goal["code"] + ") " + task["nm"]
             
-        # Process goal value and check whether the value is valid
-        try:
-            goal["value"] = process_goal_value(goal)
-            sum_of_goal_values += goal["value"]
-        except Exception as error:
-            raise Exception(f"Goal {goal['nm']}: {str(error)}")
-
+            # Assign points per hour
+            task["pph"] = goal["value"] / goal["est"]
+            
         # Check goal value per duration
         value_per_duration = goal["value"] / goal["est"]
         if min_goal_value_per_goal_duration != float('inf') and \
