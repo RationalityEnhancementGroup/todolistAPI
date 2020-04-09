@@ -40,7 +40,7 @@ def compute_mixing_values(attainable_goals, mixing_parameter):
     return mixing_values
 
 
-def compute_optimal_values(goals):
+def compute_optimal_values(goals, verbose=False):
     """
     Computes the maximum reward that can be attained by meeting the deadlines
     of the provided goals.
@@ -59,6 +59,10 @@ def compute_optimal_values(goals):
     
     # Initialize dynamic programming table
     dp = np.zeros(shape=(n + 1, d + 1))
+    
+    if verbose:
+        print('===== DP table shape =====')
+        print(dp.shape, "\n")
     
     # Compute the optimal values
     for i in tqdm(range(1, n + 1)):
@@ -360,11 +364,9 @@ def run_dp_algorithm(goals, verbose=False):
     # Scale down time
     if gcd_scale > 1:
         goals = scale_time(goals, gcd_scale, up=False)
-    else:
-        goals = goals
 
     # Compute optimal values
-    dp = compute_optimal_values(goals)
+    dp = compute_optimal_values(goals, verbose)
 
     # Generate ordered lists of attainable and unattainable goals
     attainable_goals = get_attainable_goals_dp(goals, dp)
@@ -376,7 +378,6 @@ def run_dp_algorithm(goals, verbose=False):
     # Whether to print the optimal solution
     if verbose:
         print('===== DP table =====')
-        print(f"Shape: {dp.shape}", end="\n\n")
         print(dp, '\n')
     
     return attainable_goals
