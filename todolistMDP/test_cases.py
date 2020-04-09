@@ -12,6 +12,36 @@ WEEK_TO_MINS = 7 * DAY_TO_MINS
 MONTH_TO_MINS = 30 * DAY_TO_MINS
 YEAR_TO_MINS = 365 * DAY_TO_MINS
 
+
+def deadline_to_minutes(minutes=0, hours=0, days=0, weeks=0, months=0, years=0,
+                        workload_hours=24):
+    def hours_to_minutes(hours):
+        return hours * 60
+    
+    def days_to_minutes(days, workload_hours):
+        return hours_to_minutes(days * workload_hours)
+    
+    def weeks_to_minutes(weeks, workload_hours):
+        return days_to_minutes(weeks * 7, workload_hours)
+    
+    def months_to_minutes(months, workload_hours):
+        # We take a month to have 30 days for simplicity
+        return days_to_minutes(months * 30, workload_hours)
+    
+    def years_to_minutes(years, workload_hours):
+        return days_to_minutes(years * 365, workload_hours)
+    
+    minutes_to_deadline = (
+        minutes + hours_to_minutes(hours) +
+        days_to_minutes(days, workload_hours) +
+        weeks_to_minutes(weeks, workload_hours) +
+        months_to_minutes(months, workload_hours) +
+        years_to_minutes(years, workload_hours)
+    )
+    
+    return minutes_to_deadline
+    
+
 # ===== Deterministic benchmark =====
 d_bm = [
     Goal(description="Goal A",
