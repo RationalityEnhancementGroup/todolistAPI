@@ -106,8 +106,9 @@ def calculate_repetitive_tasks_time_est(projects, allowed_task_time,
                     task["repetitive_task_days"][weekday] = True
 
             # Subtract time
-            for weekday in range(len(task["repetitive_task_days"])):
-                weekday_tasks_time_est[weekday] -= task["est"]
+            for weekday, repetitive in enumerate(task["repetitive_task_days"]):
+                if repetitive:
+                    weekday_tasks_time_est[weekday] -= task["est"]
             
     return weekday_tasks_time_est
 
@@ -572,6 +573,9 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
 
 def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
                      default_deadline=None):
+    def time_delta_to_minutes(time_delta):
+        return time_delta.days * 24 * 60 + time_delta.seconds // 60
+    
     # Set starting time to the UTC time at the moment
     current_time = datetime.utcnow()
     
@@ -591,13 +595,14 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
             raise Exception("Invalid or no deadline provided!")
     
     deadline_datetime = date_str_to_datetime(deadline)
-    td = deadline_datetime - current_time
+    time_delta = deadline_datetime - current_time
+    regular_deadline_minutes = time_delta_to_minutes(time_delta)
 
     # Calculate the number of days until the deadline
-    days_after_today = deadline_datetime.date() - current_time.date()
+    days_after_today = (deadline_datetime.date() - current_time.date()).days
     
     # Calculate the number of weeks until the deadline
-    weeks_after_today = days_after_today.days // 7
+    weeks_after_today = days_after_today // 7
     
     # Get information on the weekdays of the current day and the deadline day
     current_weekday = current_time.weekday()
@@ -610,7 +615,7 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
         minutes_after_today += typical_minutes[day_idx] * weeks_after_today
         
     # Add available time w.r.t. remainder days
-    for day in range(days_after_today.days % 7):
+    for day in range(days_after_today % 7):
         weekday = (current_weekday + day + 1) % 7
         minutes_after_today += typical_minutes[weekday]
 
@@ -618,7 +623,8 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
     end_of_the_day = datetime(current_time.year, current_time.month,
                               current_time.day, 23, 59, 59)
     minutes_left_today = (end_of_the_day - current_time).seconds // 60
-    today_minutes = min(today_minutes, minutes_left_today)
+    today_minutes = min(today_minutes, minutes_left_today,
+                        regular_deadline_minutes)
     
     # Calculate deadline value
     deadline_value = today_minutes + minutes_after_today
