@@ -408,7 +408,13 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
         Returns:
             Task ID
         """
-        return task_name.split("$wf:")[-1]
+        split = task_name.split("$wf:")
+        
+        # If there is a WorkFlowy ID included in the intention name
+        if len(split) > 1:
+            return split[-1]  # Return the WorkFlowy ID
+        else:
+            return "__no_wf_id__"  # Return dummy WorkFlowy ID
 
     # Dictionary of all parsed current intentions
     current_intentions_dict = dict()
@@ -444,7 +450,8 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
         task_dict["vd"] = task["vd"] if "vd" in task.keys() else None
         
         # Add current task to the dictionary of all parsed current intentions
-        current_intentions_dict[task_dict["id"]] = task_dict
+        current_intentions_dict.setdefault(task_dict["id"], [])
+        current_intentions_dict[task_dict["id"]].append(task_dict)
         
     return current_intentions_dict
 
