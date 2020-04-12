@@ -585,7 +585,7 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             task["nm"] = goal["code"] + ") " + task["nm"]
             
             # Assign points per hour
-            task["pph"] = goal["value"] / goal["est"]
+            task["pph"] = goal["value"] / goal["est"] * 60
 
         # Set latest start time
         goal["latest_start_time"] = \
