@@ -1,6 +1,4 @@
-import cherrypy
 import numpy as np
-import time
 
 from collections import deque
 from functools import reduce
@@ -13,7 +11,7 @@ def compute_gcd(goals):
     times = []
     
     for goal in goals:
-        times.append(goal.get_latest_deadline_time())
+        times.append(goal.get_effective_deadline())
         times.append(goal.get_uncompleted_time_est())
         
     gcd_scale = reduce(gcd, times)
@@ -25,13 +23,13 @@ def compute_mixing_values(attainable_goals, mixing_parameter):
     mixing_values = np.zeros(len(attainable_goals))
     
     # Get value of the latest deadline
-    max_deadline = attainable_goals[-1].get_latest_deadline_time()
+    max_deadline = attainable_goals[-1].get_effective_deadline()
     
     # Calculate distance between two consecutive goals
     for idx in range(len(attainable_goals) - 1):
         mixing_values[idx] = \
-            attainable_goals[idx + 1].get_latest_deadline_time() \
-            - attainable_goals[idx].get_latest_deadline_time()
+            attainable_goals[idx + 1].get_effective_deadline() \
+            - attainable_goals[idx].get_effective_deadline()
         
     # Transform values s.t. the shortest distance has value == mixing_parameter
     mixing_values = (max_deadline - mixing_values) / max_deadline \
@@ -66,20 +64,33 @@ def compute_optimal_values(goals, total_uncompleted_time_est, verbose=False):
     if verbose:
         print('===== DP table shape =====')
         print(dp.shape, "\n")
-    
+        
+        print('===== Goals =====')
+        for goal in goals:
+            print(f"{goal.get_description()} "
+                  # f"| Latest start: {goal.latest_start_time} "
+                  f"| Est deadline: {goal.get_effective_deadline()}")
+        print()
+
     # Compute the optimal values
     for i in tqdm(range(1, n + 1)):
+        
+        # Set goal index
+        goal_idx = i - 1
+
+        # Set estimated deadline of the current goal
+        curr_est_deadline = goals[goal_idx].get_effective_deadline()
+        
         for t in range(d + 1):
-            goal_idx = i - 1
             
             # Get the latest possible time that we can schedule goal i
-            t_ = min(t, goals[goal_idx].get_latest_deadline_time()) \
+            t_ = min(t, curr_est_deadline) \
                 - goals[goal_idx].get_uncompleted_time_est()
             
             if t_ < 0:
                 dp[i, t] = dp[i - 1, t]
             else:
-                d_i = goals[goal_idx].get_latest_deadline_time()
+                d_i = goals[goal_idx].get_effective_deadline()
                 dp[i, t] = max(dp[i - 1, t],
                                goals[goal_idx].get_reward(d_i) + dp[i - 1, t_])
                 
@@ -103,25 +114,31 @@ def compute_simple_mixing_time(attainable_goals):
          can be completed)
     """
     n = len(attainable_goals)  # Number of attainable goals
-    mixing_time = np.zeros(shape=n, dtype=np.int32)
     last_0_idx = 0  # The time when 0 was encountered
-    
+    mixing_time = np.zeros(shape=n, dtype=np.int32)
+
+    # Initialize current time
     current_time_est = 0
+    
     for goal_idx in range(n):
+        
+        # Get next goal from the sorted list of goals
         goal = attainable_goals[goal_idx]
         
-        goal_latest_deadline = goal.get_latest_deadline_time()
+        # Move to the end of the current goal
         current_time_est += goal.get_uncompleted_time_est()
         
-        mixing_time[goal_idx] = goal_latest_deadline - current_time_est
+        # Calculate time difference between two goal deadlines
+        mixing_time[goal_idx] = goal.get_effective_deadline() - current_time_est
         
+        # Store last goal index for which no mixing time is available
         if mixing_time[goal_idx] == 0:
             last_0_idx = goal_idx
         
     return mixing_time, last_0_idx
 
 
-def get_attainable_goals_dp(goals, dp, total_uncompleted_time_est):
+def get_attainable_goals_dp(goals, dp):
     """
     Returns a list of attainable goals. If at least one goal is not attainable,
     it throws an error.
@@ -129,8 +146,6 @@ def get_attainable_goals_dp(goals, dp, total_uncompleted_time_est):
     Args:
         goals: [Goal]
         dp: Dynamic programming table
-        total_uncompleted_time_est: Total uncompleted time estimate for all
-                                    tasks in the to-do list.
 
     Returns:
         Sorted list of attainable goals accompanied with their earliest starting
@@ -139,7 +154,7 @@ def get_attainable_goals_dp(goals, dp, total_uncompleted_time_est):
     """
     # Initialize parameters
     i = len(goals)  # Number of goals
-    t = total_uncompleted_time_est  # Set horizon
+    t = dp.shape[1] - 1  # Set horizon
     
     if t < 0:
         raise Exception("All goals have a negative deadline value!")
@@ -156,14 +171,14 @@ def get_attainable_goals_dp(goals, dp, total_uncompleted_time_est):
             if (len(goals[goal_idx].get_uncompleted_tasks()) > 0 and
                 goals[goal_idx].get_reward(t) >= 0):
                 raise Exception(
-                    f"Goal \"{goals[goal_idx].get_description()}\" "
-                    f"is unattainable!")
+                    f'Goal "{goals[goal_idx].get_description()}" '
+                    f'is unattainable!')
             elif goals[goal_idx].get_reward(t) < 0:
                 raise Exception(
-                    f"Goal \"{goals[goal_idx].get_description()}\" "
-                    f"has a negative reward value!")
+                    f'Goal "{goals[goal_idx].get_description()}" '
+                    f'has a negative reward value!')
         else:
-            t_ = min(t, goals[goal_idx].get_latest_deadline_time()) \
+            t_ = min(t, goals[goal_idx].effective_deadline) \
                  - goals[goal_idx].get_uncompleted_time_est()
             i -= 1
             t = t_
@@ -174,7 +189,7 @@ def get_attainable_goals_dp(goals, dp, total_uncompleted_time_est):
         for goal in attainable_goals:
             goal_reward = goal.get_reward(current_time_est)
             
-            for task in goal.get_tasks():
+            for task in goal.get_all_tasks():
                 task.set_reward(goal_reward)
                 
             current_time_est += goal.get_uncompleted_time_est()
@@ -199,13 +214,11 @@ def get_attainable_goals_greedy(goals):
     attainable_goals = []
     
     for goal in tqdm(goals):
-        if (current_time + goal.get_total_time_est() <=
-                goal.get_latest_deadline_time()):
+        if current_time + goal.get_total_time_est() <= goal.get_effective_deadline():
             attainable_goals += [goal]
             current_time += goal.get_total_time_est()
         else:
-            raise Exception(f"Goal \"{goal.get_description()}\" "
-                            f"is unattainable!")
+            raise Exception(f'Goal "{goal.get_description()}" is unattainable')
         
     return attainable_goals
     
@@ -290,12 +303,12 @@ def print_optimal_solution(goals, dp):
             print_opt(i-1, t)
             print(f'Unattainable goal {goal_idx}!')
         else:
-            t_ = min(t, goals[goal_idx].get_latest_deadline_time()) \
+            t_ = min(t, goals[goal_idx].get_effective_deadline()) \
                  - goals[goal_idx].get_uncompleted_time_est()
             print_opt(i-1, t_)
             print(f'Attainable goal {goal_idx}!')
     
-    latest_time = dp.shape[1]  # Get the last point on the time axis
+    latest_time = dp.shape[1] - 1
     
     print_opt(len(goals), latest_time)
     print()
@@ -303,27 +316,38 @@ def print_optimal_solution(goals, dp):
     return
 
 
-def scale_time(goals, scale, up=True):
+def scale_time(goals, scale, is_up=True):
     if scale > 1:
         
         for goal in goals:
-            rewards = goal.get_reward_dict()
+            # Initialize new rewards dictionary
             new_rewards = dict()
             
+            # Get reward for the latest deadline (assumption: 1 deadline/reward)
+            reward = goal.get_reward(goal.get_latest_deadline_time())
+
+            # Scale latest start time & uncompleted task time estimate
+            goal.scale_est_deadline(scale, up=is_up)
+            goal.scale_uncompleted_time_est(scale, up=is_up)
+            
+            # Set reward for the latest estimated deadline
+            new_rewards[goal.effective_deadline] = reward
+            
+            # TODO: Extend to multiple deadlines and rewards!
             # Scale down goal deadline times
-            for deadline, reward in rewards.items():
-                
-                # Scaling up
-                if up:
-                    deadline = deadline * scale
-                    goal.scale_uncompleted_task_time(scale, up=True)
-                    
-                # Scaling down
-                else:
-                    deadline = deadline // scale
-                    goal.scale_uncompleted_task_time(scale, up=False)
-                    
-                new_rewards[deadline] = reward
+            # rewards = goal.get_reward_dict()
+            #
+            # for deadline, reward in rewards.items():
+            #
+            #     # Scaling up
+            #     if is_up:
+            #         deadline = deadline * scale
+            #
+            #     # Scaling down
+            #     else:
+            #         deadline = deadline // scale
+            #
+            #     new_rewards[deadline] = reward
             
             # Replace old rewards dictionary
             goal.set_rewards_dict(new_rewards)
@@ -368,10 +392,16 @@ def run_dp_algorithm(goals, verbose=False):
     """
     # Compute GCD value
     gcd_scale = compute_gcd(goals)
+    
+    # gcd_scale = 1  # TODO: Remove!
+    
+    if verbose:
+        print('===== GCD =====')
+        print(gcd_scale, '\n')
 
     # Scale down time
     if gcd_scale > 1:
-        goals = scale_time(goals, gcd_scale, up=False)
+        goals = scale_time(goals, gcd_scale, is_up=False)
 
     # Compute total uncompleted time estimate
     total_uncompleted_time_estimate = \
@@ -381,12 +411,11 @@ def run_dp_algorithm(goals, verbose=False):
     dp = compute_optimal_values(goals, total_uncompleted_time_estimate, verbose)
 
     # Generate ordered lists of attainable and unattainable goals
-    attainable_goals = get_attainable_goals_dp(goals, dp,
-                                               total_uncompleted_time_estimate)
+    attainable_goals = get_attainable_goals_dp(goals, dp)
 
     # Scale up time
     if gcd_scale > 1:
-        attainable_goals = scale_time(attainable_goals, gcd_scale, up=True)
+        attainable_goals = scale_time(attainable_goals, gcd_scale, is_up=True)
 
     return attainable_goals
 
@@ -410,7 +439,7 @@ def run_greedy_algorithm(goals, verbose=False):
     return get_attainable_goals_greedy(goals)
 
 
-def run_algorithm(to_do_list, algorithm_fn, mixing_parameter=0.0, verbose=False):
+def run_algorithm(to_do_list, algorithm_fn, mixing_parameter=.0, verbose=False):
     # Get list of goals
     goals = to_do_list.get_goals()
     
@@ -435,17 +464,15 @@ def run_algorithm(to_do_list, algorithm_fn, mixing_parameter=0.0, verbose=False)
         else:
             for goal in attainable_goals:
                 print(goal)
-        print()
-    
+
         print('===== Mixing time =====')
         print(mixing_time, '\n')
-    
+
         print('===== Goal-mixing values =====')
         print(mixing_values, '\n')
-    
+
         print('===== Ordered task list =====')
         for task in ordered_task_list:
             print(task)
-        print()
 
     return ordered_task_list
