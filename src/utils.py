@@ -23,13 +23,13 @@ TOTAL_VALUE_REGEX = r"(?:^||>)\(?==\s*((-|)\d+)\)?(?:|\b|$)"
 DEADLINE_YEAR_LIMIT = 2100
 LARGE_NUMBER = 1000000
 WEEKDAYS = {
-    1: "Monday",
-    2: "Tuesday",
-    3: "Wednesday",
-    4: "Thursday",
-    5: "Friday",
-    6: "Saturday",
-    7: "Sunday"
+    0: "Monday",
+    1: "Tuesday",
+    2: "Wednesday",
+    3: "Thursday",
+    4: "Friday",
+    5: "Saturday",
+    6: "Sunday"
 }
 TAGS = ["future", "daily", "today", "weekdays", "weekends"] + \
        [weekday.lower() + r"(s)" for weekday in WEEKDAYS.values()] + \
