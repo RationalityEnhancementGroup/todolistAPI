@@ -518,7 +518,7 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
         
         # If the goal code is not a digit --> misc goal
         if goal["code"][0] not in digits+"^":
-            if "_CSC209" in goal["nm"]:
+            if ("_CS" in goal["nm"]):
                 goal["code"] = "💻"
             else:
                 goal["code"] = "&"
