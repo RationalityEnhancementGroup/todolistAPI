@@ -301,7 +301,7 @@ class PostResource(RESTResource):
                 typical_minutes = [typical_hours * 60 for _ in range(7)]
 
                 # Get information about daily tasks time estimation
-                daily_tasks_time_est = calculate_repetitive_tasks_time_est(
+                daily_tasks_time_est = parse_scheduling_tags(
                     projects, allowed_task_time, default_time_est)
                 
                 # Subtract daily tasks time estimation from typical working hours
@@ -327,7 +327,8 @@ class PostResource(RESTResource):
                 # Subtract time estimation of current intentions from available time
                 for tasks in current_intentions.values():
                     for task in tasks:
-                        today_minutes -= task["est"]
+                        if not task["d"] and not task["nvm"]:
+                            today_minutes -= task["est"]
 
                 # TODO: If it is necessary, check whether today_minutes > 0
                 

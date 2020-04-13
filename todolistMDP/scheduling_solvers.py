@@ -19,6 +19,42 @@ def compute_gcd(goals):
     return gcd_scale
 
 
+def compute_mixing_time(attainable_goals):
+    """
+    Computes mixing time between two consecutive (by deadline) attainable goals.
+
+    Args:
+        attainable_goals: List of attainable goals
+
+    Returns:
+        (mixing-time list, index of last 0 value - goal after which misc tasks
+         can be completed)
+    """
+    n = len(attainable_goals)  # Number of attainable goals
+    last_0_idx = 0  # The time when 0 was encountered
+    mixing_time = np.zeros(shape=n, dtype=np.int32)
+    
+    # Initialize current time
+    current_time_est = 0
+    
+    for goal_idx in range(n):
+        
+        # Get next goal from the sorted list of goals
+        goal = attainable_goals[goal_idx]
+        
+        # Move to the end of the current goal
+        current_time_est += goal.get_uncompleted_time_est()
+        
+        # Calculate time difference between two goal deadlines
+        mixing_time[goal_idx] = goal.get_effective_deadline() - current_time_est
+        
+        # Store last goal index for which no mixing time is available
+        if mixing_time[goal_idx] == 0:
+            last_0_idx = goal_idx
+    
+    return mixing_time  # TODO: Return last_0_idx?
+
+
 def compute_mixing_values(attainable_goals, mixing_parameter):
     mixing_values = np.zeros(len(attainable_goals))
     
@@ -99,42 +135,6 @@ def compute_optimal_values(goals, total_uncompleted_time_est, verbose=False):
         print(dp, '\n')
         
     return dp
-
-
-def compute_simple_mixing_time(attainable_goals):
-    """
-    Computes mixing time between two consecutive (by deadline) attainable goals.
-
-    Args:
-        attainable_goals: List of attainable goals
-
-    Returns:
-        (mixing-time list, index of last 0 value - goal after which misc tasks
-         can be completed)
-    """
-    n = len(attainable_goals)  # Number of attainable goals
-    last_0_idx = 0  # The time when 0 was encountered
-    mixing_time = np.zeros(shape=n, dtype=np.int32)
-
-    # Initialize current time
-    current_time_est = 0
-    
-    for goal_idx in range(n):
-        
-        # Get next goal from the sorted list of goals
-        goal = attainable_goals[goal_idx]
-        
-        # Move to the end of the current goal
-        current_time_est += goal.get_uncompleted_time_est()
-        
-        # Calculate time difference between two goal deadlines
-        mixing_time[goal_idx] = goal.get_effective_deadline() - current_time_est
-        
-        # Store last goal index for which no mixing time is available
-        if mixing_time[goal_idx] == 0:
-            last_0_idx = goal_idx
-        
-    return mixing_time, last_0_idx
 
 
 def get_attainable_goals_dp(goals, dp):
@@ -447,8 +447,11 @@ def run_algorithm(to_do_list, algorithm_fn, mixing_parameter=.0, verbose=False):
     # Get list of attainable goals
     attainable_goals = algorithm_fn(goals, verbose=verbose)
     
-    # Compute mixing time & mixing values
-    mixing_time, last_0_idx = compute_simple_mixing_time(attainable_goals)
+    # Compute mixing time
+    # mixing_time, last_0_idx = compute_mixing_time(attainable_goals)
+    mixing_time = compute_mixing_time(attainable_goals)
+    
+    # Compute mixing values
     mixing_values = compute_mixing_values(goals, mixing_parameter)
 
     # Get ordered task list (optimal sequence of tasks to complete)

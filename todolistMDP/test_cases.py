@@ -374,7 +374,7 @@ deterministic_tests["unattainable_low_reward_goal"] = [
 ]
 
 # Tests related to deadlines
-deterministic_tests["different_value_extra_time_deadlines"] = [
+deterministic_tests["all_different_extra_time_deadlines"] = [
     Goal(description="G1",
          tasks=[
             Task(description="T1", time_est=1),
