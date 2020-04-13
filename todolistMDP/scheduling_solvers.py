@@ -68,8 +68,7 @@ def compute_optimal_values(goals, total_uncompleted_time_est, verbose=False):
         print('===== Goals =====')
         for goal in goals:
             print(f"{goal.get_description()} "
-                  # f"| Latest start: {goal.latest_start_time} "
-                  f"| Est deadline: {goal.get_effective_deadline()}")
+                  f"| Effective deadline: {goal.get_effective_deadline()}")
         print()
 
     # Compute the optimal values
