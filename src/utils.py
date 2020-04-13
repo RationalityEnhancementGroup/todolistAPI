@@ -23,13 +23,13 @@ TOTAL_VALUE_REGEX = r"(?:^||>)\(?==\s*((-|)\d+)\)?(?:|\b|$)"
 DEADLINE_YEAR_LIMIT = 2100
 LARGE_NUMBER = 1000000
 WEEKDAYS = {
-    1: "Monday",
-    2: "Tuesday",
-    3: "Wednesday",
-    4: "Thursday",
-    5: "Friday",
-    6: "Saturday",
-    7: "Sunday"
+    0: "Monday",
+    1: "Tuesday",
+    2: "Wednesday",
+    3: "Thursday",
+    4: "Friday",
+    5: "Saturday",
+    6: "Sunday"
 }
 TAGS = ["future", "daily", "today", "weekdays", "weekends"] + \
        [weekday.lower() + r"(s)" for weekday in WEEKDAYS.values()] + \
@@ -106,95 +106,29 @@ def calculate_repetitive_tasks_time_est(projects, allowed_task_time,
                     task["repetitive_task_days"][weekday] = True
 
             # Subtract time
-            for weekday in range(len(task["repetitive_task_days"])):
-                weekday_tasks_time_est[weekday] -= task["est"]
+            for weekday, repetitive in enumerate(task["repetitive_task_days"]):
+                if repetitive:
+                    weekday_tasks_time_est[weekday] -= task["est"]
             
     return weekday_tasks_time_est
 
 
-def clean_output(task_list, round_param, points_per_hour):
-    """
-    Input is list of tasks
-    Outputs list of tasks for today with fields:
-        id, nm, lm, parentId, pcp, est, val (=reward)
-    """
-    def get_human_readable_name(task):
-        task_name = task["nm"]
-        
-        # Remove #date regex
-        task_name = re.sub(fr"#\s*{DATE_REGEX}", "", task_name, re.IGNORECASE)
-        
-        # Remove deadline
-        task_name = re.sub(DEADLINE_REGEX, "", task_name, re.IGNORECASE)
-        
-        # Remove time estimation
-        task_name = re.sub(TIME_EST_REGEX, "", task_name, re.IGNORECASE)
-        
-        # Remove tags
-        for tag in TAGS:
-            tag_regex = get_tag_regex(tag)
-            task_name = re.sub(tag_regex, "", task_name, re.IGNORECASE)
-            
-        task_name = task_name.strip()
-        
-        if len(re.sub(OUTPUT_GOAL_CODE_REGEX, "", task_name).strip()) == 0:
-            raise NameError(f"Task {task['nm']} has no name!")
-        
-        # Append time information
-        hours, minutes = task["est"] // 60, task["est"] % 60
-        
-        task_name += " (takes about "
-        if hours > 0:
-            if hours == 1:
-                task_name += f"1 hour"
-            else:
-                task_name += f"{hours} hours"
-        if minutes > 0:
-            if hours > 0:
-                task_name += " and "
-            if minutes == 1:
-                task_name += f"1 minute"
-            else:
-                task_name += f"{minutes} minutes"
-        
-        if task["deadline_datetime"] is not None:
-            task_name += ", due on "
-            
-            td = task["deadline_datetime"] - datetime.utcnow()
-            if td.days < 7:
-                weekday = task["deadline_datetime"].weekday()
-                task_name += WEEKDAYS[weekday]
-            else:
-                task_name += str(task["deadline_datetime"])[:-3]
-            
-        task_name += ")"
-        
-        return task_name
-        
-    keys_needed = ["id", "nm", "lm", "parentId", "pcp", "est", "val"]
+def compute_latest_start_time(goal_deadlines):
+    deadlines = sorted(list(goal_deadlines.keys()))
     
-    # for now only look at first dictionary
-    current_keys = set(task_list[0].keys())
-    extra_keys = list(current_keys - set(keys_needed))
-    missing_keys = list(set(keys_needed) - current_keys)
+    # Initialize current time
+    current_time = int(deadlines[0])
     
-    for task in task_list:
-        task["nm"] = get_human_readable_name(task)
-        
-        if points_per_hour:
-            task["val"] = str(round(task["pph"], round_param))+'/h'
-        else:
-            task["val"] = round(task["val"], round_param)
-
-        for extra_key in extra_keys:
-            if extra_key in task:
-                del task[extra_key]
+    # TODO: Check whether the loop is implemented correctly
+    for current_deadline in reversed(deadlines):
+        current_time = min(current_time, int(current_deadline))
+        current_time -= int(goal_deadlines[current_deadline])
     
-        for missing_key in missing_keys:
-            if missing_key not in task:
-                task[missing_key] = None
-
-    return task_list
+    # TODO: Handle this
+    if current_time < 0:
+        raise Exception("Goal not attainable!")  # TODO: Better message
+    
+    return current_time
 
 
 def create_projects_to_save(projects):
@@ -262,6 +196,92 @@ def flatten_intentions(projects):
                 goal["ch"].extend(task["ch"])
                 del task["ch"]
     return projects
+
+
+def get_final_output(task_list, round_param, points_per_hour):
+    """
+    Input is list of tasks
+    Outputs list of tasks for today with fields:
+        id, nm, lm, parentId, pcp, est, val (=reward)
+    """
+    
+    def get_human_readable_name(task):
+        task_name = task["nm"]
+        
+        # Remove #date regex
+        task_name = re.sub(fr"#\s*{DATE_REGEX}", "", task_name, re.IGNORECASE)
+
+        # Remove deadline
+        task_name = re.sub(DEADLINE_REGEX, "", task_name, re.IGNORECASE)
+        
+        # Remove time estimation
+        task_name = re.sub(TIME_EST_REGEX, "", task_name, re.IGNORECASE)
+        
+        # Remove tags
+        for tag in TAGS:
+            tag_regex = get_tag_regex(tag)
+            task_name = re.sub(tag_regex, "", task_name, re.IGNORECASE)
+        
+        task_name = task_name.strip()
+        
+        if len(re.sub(OUTPUT_GOAL_CODE_REGEX, "", task_name).strip()) == 0:
+            raise NameError(f"Task {task['nm']} has no name!")
+        
+        # Append time information
+        hours, minutes = task["est"] // 60, task["est"] % 60
+        
+        task_name += " (takes about "
+        if hours > 0:
+            if hours == 1:
+                task_name += f"1 hour"
+            else:
+                task_name += f"{hours} hours"
+        if minutes > 0:
+            if hours > 0:
+                task_name += " and "
+            if minutes == 1:
+                task_name += f"1 minute"
+            else:
+                task_name += f"{minutes} minutes"
+        
+        if task["deadline_datetime"] is not None:
+            task_name += ", due on "
+
+            td = task["deadline_datetime"] - datetime.utcnow()
+            if td.days < 7:
+                weekday = task["deadline_datetime"].weekday()
+                task_name += WEEKDAYS[weekday]
+            else:
+                task_name += str(task["deadline_datetime"])[:-3]
+        
+        task_name += ")"
+        
+        return task_name
+    
+    keys_needed = ["id", "nm", "lm", "parentId", "pcp", "est", "val"]
+    
+    # for now only look at first dictionary
+    current_keys = set(task_list[0].keys())
+    extra_keys = list(current_keys - set(keys_needed))
+    missing_keys = list(set(keys_needed) - current_keys)
+    
+    for task in task_list:
+        task["nm"] = get_human_readable_name(task)
+        
+        if points_per_hour:
+            task["val"] = str(round(task["pph"], round_param)) + '/h'
+        else:
+            task["val"] = round(task["val"], round_param)
+
+        for extra_key in extra_keys:
+            if extra_key in task:
+                del task[extra_key]
+        
+        for missing_key in missing_keys:
+            if missing_key not in task:
+                task[missing_key] = None
+    
+    return task_list
 
 
 def get_leaf_intentions(projects):
@@ -388,7 +408,13 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
         Returns:
             Task ID
         """
-        return task_name.split("$wf:")[-1]
+        split = task_name.split("$wf:")
+        
+        # If there is a WorkFlowy ID included in the intention name
+        if len(split) > 1:
+            return split[-1]  # Return the WorkFlowy ID
+        else:
+            return "__no_wf_id__"  # Return dummy WorkFlowy ID
 
     # Dictionary of all parsed current intentions
     current_intentions_dict = dict()
@@ -424,7 +450,8 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
         task_dict["vd"] = task["vd"] if "vd" in task.keys() else None
         
         # Add current task to the dictionary of all parsed current intentions
-        current_intentions_dict[task_dict["id"]] = task_dict
+        current_intentions_dict.setdefault(task_dict["id"], [])
+        current_intentions_dict[task_dict["id"]].append(task_dict)
         
     return current_intentions_dict
 
@@ -486,6 +513,9 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
         except Exception as error:
             raise Exception(f"Goal {goal['nm']}: {str(error)}")
         
+        # Initialize dict of all task deadlines
+        goal["task_deadlines"] = dict()
+        
         # If the goal code is not a digit --> misc goal
         if goal["code"][0] not in digits+"^":
             if ("_CS" in goal["nm"]):
@@ -516,9 +546,20 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
                 if task["deadline"] > goal["deadline"]:
                     raise Exception(f"Task {task['nm']}: Task deadline should "
                                     f"be before goal's deadline.")
+                
+                # TODO: Add comments...
+                str_deadline = str(task["deadline"])  # MongoDB requirement!
+                goal["task_deadlines"].setdefault(str_deadline, 0)
+                goal["task_deadlines"][str_deadline] += task["est"]
+                
             else:
                 task["deadline"] = None
                 task["deadline_datetime"] = None
+                
+                # TODO: Add comments...
+                str_deadline = str(goal["deadline"])  # MongoDB requirement!
+                goal["task_deadlines"].setdefault(str_deadline, 0)
+                goal["task_deadlines"][str_deadline] += task["est"]
                 
             # Check whether the task has already been scheduled in CompliceX or
             # completed in WorkFlowy
@@ -544,8 +585,15 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             task["nm"] = goal["code"] + ") " + task["nm"]
             
             # Assign points per hour
-            task["pph"] = goal["value"] / goal["est"]
-            
+            task["pph"] = goal["value"] / goal["est"] * 60
+
+        # Set latest start time
+        goal["latest_start_time"] = \
+            compute_latest_start_time(goal["task_deadlines"])
+
+        # Set estimated goal deadline
+        goal["effective_deadline"] = goal["latest_start_time"] + goal["est"]
+        
         # Check goal value per duration
         value_per_duration = goal["value"] / goal["est"]
         if min_goal_value_per_goal_duration != float('inf') and \
@@ -572,6 +620,9 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
 
 def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
                      default_deadline=None):
+    def time_delta_to_minutes(time_delta):
+        return time_delta.days * 24 * 60 + time_delta.seconds // 60
+    
     # Set starting time to the UTC time at the moment
     current_time = datetime.utcnow()
     
@@ -591,13 +642,14 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
             raise Exception("Invalid or no deadline provided!")
     
     deadline_datetime = date_str_to_datetime(deadline)
-    td = deadline_datetime - current_time
+    time_delta = deadline_datetime - current_time
+    regular_deadline_minutes = time_delta_to_minutes(time_delta)
 
     # Calculate the number of days until the deadline
-    days_after_today = deadline_datetime.date() - current_time.date()
+    days_after_today = (deadline_datetime.date() - current_time.date()).days
     
     # Calculate the number of weeks until the deadline
-    weeks_after_today = days_after_today.days // 7
+    weeks_after_today = days_after_today // 7
     
     # Get information on the weekdays of the current day and the deadline day
     current_weekday = current_time.weekday()
@@ -610,7 +662,7 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
         minutes_after_today += typical_minutes[day_idx] * weeks_after_today
         
     # Add available time w.r.t. remainder days
-    for day in range(days_after_today.days % 7):
+    for day in range(days_after_today % 7):
         weekday = (current_weekday + day + 1) % 7
         minutes_after_today += typical_minutes[weekday]
 
@@ -618,7 +670,8 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
     end_of_the_day = datetime(current_time.year, current_time.month,
                               current_time.day, 23, 59, 59)
     minutes_left_today = (end_of_the_day - current_time).seconds // 60
-    today_minutes = min(today_minutes, minutes_left_today)
+    today_minutes = min(today_minutes, minutes_left_today,
+                        regular_deadline_minutes)
     
     # Calculate deadline value
     deadline_value = today_minutes + minutes_after_today
@@ -847,6 +900,8 @@ def tree_to_old_structure(projects):
             Goal(description=goal["nm"],
                  goal_id=goal["id"],
                  tasks=tasks,
+                 effective_deadline=goal["effective_deadline"],
+                 latest_start_time=goal["latest_start_time"],
                  rewards={goal["deadline"]: goal["value"]},
                  penalty=0))  # TODO: Penalty for missing a deadline
         

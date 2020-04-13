@@ -104,8 +104,9 @@ class Task:
 
 
 class Goal:
-    def __init__(self, description, rewards, tasks,
-                 completed=False, goal_id=None, penalty=0):
+    def __init__(self, description, rewards, tasks, completed=False,
+                 effective_deadline=None, goal_id=None, latest_start_time=0,
+                 penalty=0):
         """
         # TODO: Complete this...
         
@@ -132,7 +133,15 @@ class Goal:
             self.goal_id = description
         
         # Set up a deadline
-        self.latest_deadline = max(rewards.keys())
+        self.latest_deadline_time = max(rewards.keys())
+        
+        # Set latest start time
+        self.latest_start_time = latest_start_time
+        
+        # Set estimated deadline
+        self.effective_deadline = effective_deadline
+        if self.effective_deadline is None:
+            self.effective_deadline = self.latest_deadline_time
 
         self.completed = completed
         self.penalty = penalty
@@ -163,30 +172,33 @@ class Goal:
         return id(self)
 
     def __eq__(self, other):
-        return self.get_latest_deadline_time() == other.get_latest_deadline_time()
+        return self.effective_deadline == other.effective_deadline
     
     def __ne__(self, other):
-        return self.get_latest_deadline_time() != other.get_latest_deadline_time()
+        return self.effective_deadline != other.effective_deadline
 
     def __ge__(self, other):
-        return self.get_latest_deadline_time() >= other.get_latest_deadline_time()
+        return self.effective_deadline >= other.effective_deadline
 
     def __gt__(self, other):
-        return self.get_latest_deadline_time() > other.get_latest_deadline_time()
+        return self.effective_deadline > other.effective_deadline
 
     def __le__(self, other):
-        return self.get_latest_deadline_time() <= other.get_latest_deadline_time()
+        return self.effective_deadline <= other.effective_deadline
 
     def __lt__(self, other):
-        return self.get_latest_deadline_time() < other.get_latest_deadline_time()
+        return self.effective_deadline < other.effective_deadline
 
     def __str__(self):
         return f'Description: {self.description}\n' \
                f'Rewards: {self.rewards}\n' \
                f'Completed: {self.completed}\n' \
                f'ID: {self.goal_id}\n' \
-               f'Latest deadline: {self.latest_deadline}\n' \
+               f'Latest deadline: {self.latest_deadline_time}\n' \
                f'Total time est.: {self.total_time_est}\n'
+
+    def get_all_tasks(self):
+        return self.all_tasks
 
     def get_completed_tasks(self):
         return self.completed_tasks
@@ -194,20 +206,23 @@ class Goal:
     def get_completed_time_est(self):
         return self.completed_time_est
 
-    def get_deadline_penalty(self):
-        return self.penalty
-
     def get_description(self):
         return self.description
+    
+    def get_effective_deadline(self):
+        return self.effective_deadline
 
     def get_goal_id(self):
         return self.goal_id
     
     def get_latest_deadline_time(self):
-        return self.latest_deadline
+        return self.latest_deadline_time
+    
+    def get_latest_start_time(self):
+        return self.latest_start_time
 
-    def get_tasks(self):
-        return self.all_tasks
+    def get_penalty(self):
+        return self.penalty
 
     def get_total_time_est(self):
         return self.total_time_est
@@ -327,9 +342,22 @@ class Goal:
         
     def set_rewards_dict(self, rewards):
         self.rewards = rewards
-        self.latest_deadline = max(rewards.keys())
+        self.latest_deadline_time = max(rewards.keys())
 
-    def scale_uncompleted_task_time(self, scale, up=True):
+    # TODO: Write a general function for scaling all parameters
+    def scale_est_deadline(self, scale, up=True):
+        if up:
+            self.effective_deadline = self.effective_deadline * scale
+        else:
+            self.effective_deadline = self.effective_deadline // scale
+
+    def scale_latest_start_time(self, scale, up=True):
+        if up:
+            self.latest_start_time = self.latest_start_time * scale
+        else:
+            self.latest_start_time = self.latest_start_time // scale
+            
+    def scale_uncompleted_time_est(self, scale, up=True):
         if up:
             self.uncompleted_time_est = self.uncompleted_time_est * scale
         else:
@@ -368,7 +396,7 @@ class ToDoList:
                 self.uncompleted_goals.add(goal)
 
             # Split tasks into completed and uncompleted
-            for task in goal.get_tasks():
+            for task in goal.get_all_tasks():
                 self.all_tasks.add(task)  # TODO: goal.get_tasks
     
                 if task.is_completed():
@@ -437,7 +465,7 @@ class ToDoList:
             # TODO: Shouldn't we have an inequality in one of the tests?!
             if curr_time > goal.get_latest_deadline_time() and \
                     not prev_time > goal.get_latest_deadline_time():
-                penalty += goal.get_deadline_penalty()
+                penalty += goal.get_penalty()
                 
         return penalty
     
@@ -492,7 +520,7 @@ class ToDoList:
         Add an entire goal
         """
         self.goals.append(goal)
-        self.all_tasks.extend(goal.get_tasks())  # TODO: Fix this...
+        self.all_tasks.extend(goal.get_all_tasks())  # TODO: Fix this...
         
         if goal.is_completed():
             self.completed_goals.add(goal)
@@ -536,7 +564,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
         self.goal_to_indices = {}
         for goal in self.goals:
             self.goal_to_indices[goal] = [self.task_to_index[task]
-                                          for task in goal.get_tasks()]
+                                          for task in goal.get_all_tasks()]
 
         # Generate state space
         self.states = []
@@ -770,7 +798,7 @@ class ToDoListMDP(mdp.MarkovDecisionProcess):
                     self.is_goal_active(goal, prev_time) and not \
                     self.is_goal_active(goal, next_time):
                 # If a deadline passed during time of action, add penalty
-                reward += goal.get_deadline_penalty()
+                reward += goal.get_penalty()
     
         return reward
 

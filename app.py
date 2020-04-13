@@ -325,8 +325,9 @@ class PostResource(RESTResource):
                 #         return json.dumps(status + CONTACT)
 
                 # Subtract time estimation of current intentions from available time
-                for task_id in current_intentions.keys():
-                    today_minutes -= current_intentions[task_id]["est"]
+                for tasks in current_intentions.values():
+                    for task in tasks:
+                        today_minutes -= task["est"]
 
                 # TODO: If it is necessary, check whether today_minutes > 0
                 
@@ -568,8 +569,8 @@ class PostResource(RESTResource):
                         cherrypy.response.status = 403
                         return json.dumps(status + " " + CONTACT)
                     try:
-                        final_tasks = clean_output(final_tasks, round_param,
-                                                   points_per_hour)
+                        final_tasks = get_final_output(final_tasks, round_param,
+                                                       points_per_hour)
                     except NameError as error:
                         store_log(db.request_log, log_dict,
                                   status="Task has no name!")
