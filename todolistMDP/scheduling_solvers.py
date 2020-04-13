@@ -170,9 +170,8 @@ def get_attainable_goals_dp(goals, dp):
             i -= 1
             if (len(goals[goal_idx].get_uncompleted_tasks()) > 0 and
                 goals[goal_idx].get_reward(t) >= 0):
-                raise Exception(
-                    f'Goal "{goals[goal_idx].get_description()}" '
-                    f'is unattainable!')
+                raise Exception(f'Goal {goals[goal_idx].get_description()} '
+                                f'is unattainable!')
             elif goals[goal_idx].get_reward(t) < 0:
                 raise Exception(
                     f'Goal "{goals[goal_idx].get_description()}" '
@@ -218,7 +217,7 @@ def get_attainable_goals_greedy(goals):
             attainable_goals += [goal]
             current_time += goal.get_total_time_est()
         else:
-            raise Exception(f'Goal "{goal.get_description()}" is unattainable')
+            raise Exception(f'Goal {goal.get_description()} is unattainable')
         
     return attainable_goals
     

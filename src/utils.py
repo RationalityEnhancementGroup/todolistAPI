@@ -113,20 +113,19 @@ def calculate_repetitive_tasks_time_est(projects, allowed_task_time,
     return weekday_tasks_time_est
 
 
-def compute_latest_start_time(goal_deadlines):
+def compute_latest_start_time(goal):
+    goal_deadlines = goal["task_deadlines"]
     deadlines = sorted(list(goal_deadlines.keys()))
     
     # Initialize current time
     current_time = int(deadlines[0])
     
-    # TODO: Check whether the loop is implemented correctly
     for current_deadline in reversed(deadlines):
         current_time = min(current_time, int(current_deadline))
         current_time -= int(goal_deadlines[current_deadline])
     
-    # TODO: Handle this
     if current_time < 0:
-        raise Exception("Goal not attainable!")  # TODO: Better message
+        raise Exception(f'Goal {goal["nm"]} is unattainable!')
     
     return current_time
 
@@ -588,8 +587,7 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             task["pph"] = goal["value"] / goal["est"] * 60
 
         # Set latest start time
-        goal["latest_start_time"] = \
-            compute_latest_start_time(goal["task_deadlines"])
+        goal["latest_start_time"] = compute_latest_start_time(goal)
 
         # Set estimated goal deadline
         goal["effective_deadline"] = goal["latest_start_time"] + goal["est"]
