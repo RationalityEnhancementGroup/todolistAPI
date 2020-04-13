@@ -63,56 +63,6 @@ def are_there_tree_differences(old_tree, new_tree):
         return True
 
 
-def calculate_repetitive_tasks_time_est(projects, allowed_task_time,
-                                       default_time_est):
-    # Initialize total daily tasks time estimation for each weekday
-    weekday_tasks_time_est = [0 for _ in range(7)]
-    
-    for goal in projects:
-    
-        # Remove formatting / HTML formatting
-        goal["nm"] = re.sub(HTML_REGEX, "", goal["nm"],
-                            count=LARGE_NUMBER, flags=re.IGNORECASE)
-    
-        # Initialize goal time estimation
-        goal["est"] = 0
-        
-        for task in goal["ch"]:
-    
-            # Remove formatting / HTML tags
-            task["nm"] = re.sub(HTML_REGEX, "", task["nm"],
-                                count=LARGE_NUMBER, flags=re.IGNORECASE)
-
-            # Process time estimation for a task
-            try:
-                task["est"] = \
-                    process_time_est(task["nm"], allowed_task_time,
-                                     default_time_est)
-            except Exception as error:
-                raise Exception(f"Task {task['nm']}: {str(error)}")
-            
-            # Update goal time estimation
-            goal["est"] += task["est"]
-
-            # Check whether weekday preferences are given
-            task["task_days"], task["repetitive_task_days"] = \
-                process_task_days(task)
-
-            # Check whether it is a daily task
-            task["daily"] = process_tagged_item("daily", task)
-            
-            if task["daily"]:
-                for weekday in range(len(task["repetitive_task_days"])):
-                    task["repetitive_task_days"][weekday] = True
-
-            # Subtract time
-            for weekday, repetitive in enumerate(task["repetitive_task_days"]):
-                if repetitive:
-                    weekday_tasks_time_est[weekday] -= task["est"]
-            
-    return weekday_tasks_time_est
-
-
 def compute_latest_start_time(goal):
     goal_deadlines = goal["task_deadlines"]
     deadlines = sorted(list(goal_deadlines.keys()))
@@ -428,20 +378,19 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
         task_dict["nvm"] = False
         if "nvm" in task.keys():
             task_dict["nvm"] = task["nvm"]
-        
-        # If current intention is still active
-        if not task_dict["nvm"]:
-            hours = re.search(HOURS_REGEX, task["t"], re.IGNORECASE)
-            if hours is not None:
-                hours = hours[0].strip()
-                hours = int(hours.split(" ")[0].strip())
-                task_dict["est"] += hours * 60
-    
-            minutes = re.search(MINUTES_REGEX, task["t"], re.IGNORECASE)
-            if minutes is not None:
-                minutes = minutes[0].strip()
-                minutes = int(minutes.split(" ")[0].strip())
-                task_dict["est"] += minutes
+            
+        # Get time estimation
+        hours = re.search(HOURS_REGEX, task["t"], re.IGNORECASE)
+        if hours is not None:
+            hours = hours[0].strip()
+            hours = float(hours.split(" ")[0].strip())
+            task_dict["est"] += hours * 60
+
+        minutes = re.search(MINUTES_REGEX, task["t"], re.IGNORECASE)
+        if minutes is not None:
+            minutes = minutes[0].strip()
+            minutes = int(minutes.split(" ")[0].strip())
+            task_dict["est"] += minutes
                 
         # Get other necessary information
         task_dict["id"] = get_wf_task_id(task["t"])
@@ -470,7 +419,65 @@ def parse_error_info(error):
 
 def parse_hours(time_string):
     return int(re.search(TOTAL_VALUE_REGEX, time_string, re.IGNORECASE)[1])
+
+
+def parse_scheduling_tags(projects, allowed_task_time, default_time_est):
+    # Initialize total daily tasks time estimation for each weekday
+    weekday_tasks_time_est = [0 for _ in range(7)]
     
+    for goal in projects:
+        
+        # Remove formatting / HTML formatting
+        goal["nm"] = re.sub(HTML_REGEX, "", goal["nm"],
+                            count=LARGE_NUMBER, flags=re.IGNORECASE)
+        
+        # Initialize goal time estimation
+        goal["est"] = 0
+        
+        for task in goal["ch"]:
+            
+            # Remove formatting / HTML tags
+            task["nm"] = re.sub(HTML_REGEX, "", task["nm"],
+                                count=LARGE_NUMBER, flags=re.IGNORECASE)
+            
+            # Process time estimation for a task
+            try:
+                task["est"] = \
+                    process_time_est(task["nm"], allowed_task_time,
+                                     default_time_est)
+            except Exception as error:
+                raise Exception(f"Task {task['nm']}: {str(error)}")
+            
+            # Update goal time estimation
+            goal["est"] += task["est"]
+            
+            # Check whether weekday preferences are given
+            task["task_days"], task["repetitive_task_days"] = \
+                process_task_days(task)
+            
+            # Check whether it is a daily task
+            task["daily"] = process_tagged_item("daily", task)
+            
+            if task["daily"]:
+                for weekday in range(len(task["repetitive_task_days"])):
+                    task["repetitive_task_days"][weekday] = True
+            
+            # Subtract time
+            for weekday, repetitive in enumerate(task["repetitive_task_days"]):
+                if repetitive:
+                    weekday_tasks_time_est[weekday] += task["est"]
+            
+            # Check whether a specific date is given
+            task['day_datetime'] = process_working_date(task)
+            
+            # Check whether a task has been marked to be completed in the future
+            task["future"] = process_tagged_item("future", task)
+            
+            # Check whether a task has been marked to be completed today
+            task["today"] = process_tagged_item("today", task)
+    
+    return weekday_tasks_time_est
+
 
 def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
                default_deadline, min_sum_of_goal_values,
@@ -568,15 +575,6 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             else:
                 task["completed"] = False
                 
-            # Check whether a specific date is given
-            task['day_datetime'] = process_working_date(task)
-    
-            # Check whether a task has been marked to be completed in the future
-            task["future"] = process_tagged_item("future", task)
-            
-            # Check whether a task has been marked to be completed today
-            task["today"] = process_tagged_item("today", task)
-            
             task["parentId"] = goal["id"]
             task["pcp"] = False  # TODO: Not sure what this field is...
             

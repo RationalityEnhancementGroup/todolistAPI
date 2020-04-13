@@ -294,8 +294,7 @@ def test_calculate_tasks_time_est():
     - daily = 1000 minutes
     - future = 10000 minutes
     """
-    result = calculate_repetitive_tasks_time_est(
-        TAGS_TREE, float('inf'), default_time_est=1)
+    result = parse_scheduling_tags(TAGS_TREE, float('inf'), default_time_est=1)
     assert result == [1110 for _ in range(7)]
     
     """
