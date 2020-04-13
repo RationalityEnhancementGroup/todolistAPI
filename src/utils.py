@@ -124,8 +124,8 @@ def compute_latest_start_time(goal):
         current_time = min(current_time, int(current_deadline))
         current_time -= int(goal_deadlines[current_deadline])
     
-    if current_time < 0:
-        raise Exception(f'Goal {goal["nm"]} is unattainable!')
+        if current_time < 0:
+            raise Exception(f'Goal {goal["nm"]} is unattainable!')
     
     return current_time
 
@@ -587,10 +587,10 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             task["pph"] = goal["value"] / goal["est"] * 60
 
         # Set latest start time
-        goal["latest_start_time"] = compute_latest_start_time(goal)
+        # goal["latest_start_time"] = compute_latest_start_time(goal)
 
         # Set estimated goal deadline
-        goal["effective_deadline"] = goal["latest_start_time"] + goal["est"]
+        # goal["effective_deadline"] = goal["latest_start_time"] + goal["est"]
         
         # Check goal value per duration
         value_per_duration = goal["value"] / goal["est"]
@@ -898,8 +898,8 @@ def tree_to_old_structure(projects):
             Goal(description=goal["nm"],
                  goal_id=goal["id"],
                  tasks=tasks,
-                 effective_deadline=goal["effective_deadline"],
-                 latest_start_time=goal["latest_start_time"],
+                 # effective_deadline=goal["effective_deadline"],
+                 # latest_start_time=goal["latest_start_time"],
                  rewards={goal["deadline"]: goal["value"]},
                  penalty=0))  # TODO: Penalty for missing a deadline
         
