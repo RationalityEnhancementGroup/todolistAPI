@@ -11,9 +11,10 @@ ROOT_NODE = Node(id=0)
 node_id_dict = {
     0: ROOT_NODE
 }
+DEFAULT_POINTS = 10
 
 """ (+) Manual node generation
- 
+
     Use the DEFAULT_* values in order to avoid getting None in the nodes' name!
 """
 new_nodes = node_id_dict[0].generate_nodes(
