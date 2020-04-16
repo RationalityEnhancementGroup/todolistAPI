@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from todolistAPI.src.utils import task_dict_from_projects
+from src.utils import task_dict_from_projects
 
 
 def basic_scheduler(task_list, time_zone=0, today_duration=8 * 60,

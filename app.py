@@ -8,14 +8,14 @@ from datetime import datetime
 from pprint import pprint
 from pymongo import MongoClient, DESCENDING
 
-from todolistAPI.src.apis import *
-from todolistAPI.src.schedulers import *
-from todolistAPI.src.point_scalers import utility_scaling
-from todolistAPI.src.utils import *
+from src.apis import *
+from src.schedulers import *
+from src.point_scalers import utility_scaling
+from src.utils import *
 
-from todolistAPI.todolistMDP.mdp_solvers \
+from todolistMDP.mdp_solvers \
     import backward_induction, policy_iteration, value_iteration
-from todolistAPI.todolistMDP.scheduling_solvers \
+from todolistMDP.scheduling_solvers \
     import run_dp_algorithm, run_greedy_algorithm
 
 CONTACT = "If you continue to encounter this issue, please contact us at reg.experiments@tuebingen.mpg.de."

@@ -3,7 +3,7 @@ import numpy as np
 import random
 import time
 
-from todolistAPI.todolistMDP import mdp
+from todolistMDP import mdp
 
 
 class Task:

@@ -4,7 +4,7 @@ Default values:
 - Probability = 1
 """
 
-from todolistAPI.todolistMDP.to_do_list import Goal, Task
+from todolistMDP.to_do_list import Goal, Task
 
 HOUR_TO_MINS = 60
 DAY_TO_MINS = 24 * HOUR_TO_MINS

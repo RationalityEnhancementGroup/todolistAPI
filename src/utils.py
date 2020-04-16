@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from math import ceil
 from string import digits
 
-from todolistAPI.todolistMDP.to_do_list import Goal, Task
+from todolistMDP.to_do_list import Goal, Task
 
 DATE_REGEX = r"([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
 DEADLINE_REGEX = fr"DUE:\s*{DATE_REGEX}"

@@ -1,7 +1,7 @@
 import pytest
-from todolistAPI.json_generator.nodes import *
-from todolistAPI.json_generator.value_generator import *
-from todolistAPI.json_generator.utils import *
+from json_generator.nodes import *
+from json_generator.value_generator import *
+from json_generator.utils import *
 from pprint import pprint
 
 
