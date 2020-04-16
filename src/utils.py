@@ -521,7 +521,7 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             raise Exception(f"Goal {goal['nm']}: {str(error)}")
         
         # Initialize dict of all task deadlines
-        goal["task_deadlines"] = dict()
+        # goal["task_deadlines"] = dict()
         
         # If the goal code is not a digit --> misc goal
         if goal["code"][0] not in digits+"^":
@@ -555,18 +555,18 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
                                     f"be before goal's deadline.")
                 
                 # TODO: Add comments...
-                str_deadline = str(task["deadline"])  # MongoDB requirement!
-                goal["task_deadlines"].setdefault(str_deadline, 0)
-                goal["task_deadlines"][str_deadline] += task["est"]
+                # str_deadline = str(task["deadline"])  # MongoDB requirement!
+                # goal["task_deadlines"].setdefault(str_deadline, 0)
+                # goal["task_deadlines"][str_deadline] += task["est"]
                 
             else:
                 task["deadline"] = None
                 task["deadline_datetime"] = None
                 
                 # TODO: Add comments...
-                str_deadline = str(goal["deadline"])  # MongoDB requirement!
-                goal["task_deadlines"].setdefault(str_deadline, 0)
-                goal["task_deadlines"][str_deadline] += task["est"]
+                # str_deadline = str(goal["deadline"])  # MongoDB requirement!
+                # goal["task_deadlines"].setdefault(str_deadline, 0)
+                # goal["task_deadlines"][str_deadline] += task["est"]
                 
             # Check whether the task has already been scheduled in CompliceX or
             # completed in WorkFlowy
