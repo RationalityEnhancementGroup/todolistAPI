@@ -257,6 +257,24 @@ def get_tag_regex(tag):
     return fr"#{tag}(?:\b|)"
 
 
+def get_wf_task_id(task_name):
+    """
+    Extracts the WorkFlowy ID from the name of the task.
+    Args:
+        task_name: Task name
+
+    Returns:
+        Task ID
+    """
+    split = task_name.split("$wf:")
+    
+    # If there is a WorkFlowy ID included in the intention name
+    if len(split) > 1:
+        return split[-1]  # Return the WorkFlowy ID
+    else:
+        return "__no_wf_id__"  # Return dummy WorkFlowy ID
+
+
 def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
     """
     Converts misc-goal tasks into goals for themselves. That is, each task is a
@@ -348,23 +366,6 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
     Returns:
         Dictionary of all parsed current intentions.
     """
-    def get_wf_task_id(task_name):
-        """
-        Extracts the WorkFlowy ID from the name of the task.
-        Args:
-            task_name: Task name
-
-        Returns:
-            Task ID
-        """
-        split = task_name.split("$wf:")
-        
-        # If there is a WorkFlowy ID included in the intention name
-        if len(split) > 1:
-            return split[-1]  # Return the WorkFlowy ID
-        else:
-            return "__no_wf_id__"  # Return dummy WorkFlowy ID
-
     # Dictionary of all parsed current intentions
     current_intentions_dict = dict()
     
