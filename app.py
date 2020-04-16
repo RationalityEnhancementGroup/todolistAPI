@@ -600,8 +600,12 @@ class PostResource(RESTResource):
                 
                 # Store anonymous error info in DB collection
                 anonymous_error = parse_error_info(str(error))
-                store_log(db.request_log, log_dict,
-                          status=status + " " + anonymous_error)
+                try:
+                    store_log(db.request_log, log_dict,
+                              status=status + " " + anonymous_error)
+                except:
+                    store_log(db.request_log,
+                              {"status": status + " " +"Exception while storing anonymous error info."})
                 
                 cherrypy.response.status = 403
                 return json.dumps(status + " " + CONTACT)
