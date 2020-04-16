@@ -1,12 +1,12 @@
 from copy import deepcopy
-from src.utils import tree_to_old_structure
-from src.utils import misc_tasks_to_goals, separate_tasks_with_deadlines, \
+from todolistAPI.src.utils import tree_to_old_structure
+from todolistAPI.src.utils import misc_tasks_to_goals, separate_tasks_with_deadlines, \
                       task_list_from_projects
-from src.schedulers import schedule_tasks_for_today
+from todolistAPI.src.schedulers import schedule_tasks_for_today
 
-from todolistMDP.scheduling_solvers import run_algorithm
+from todolistAPI.todolistMDP.scheduling_solvers import run_algorithm
 
-from todolistMDP.to_do_list import *
+from todolistAPI.todolistMDP.to_do_list import *
 
 
 def assign_constant_points(projects, default_task_value=10):
@@ -24,42 +24,42 @@ def assign_random_points(projects, distribution_fxn=np.random.normal,
                          fxn_args=(10, 2), min_value=1., max_value=float('inf')):
     """
     Takes in parsed project tree, with one level of tasks
-    Outputs project tree with random points assigned according to distribution 
+    Outputs project tree with random points assigned according to distribution
     function with inputted args
     """
     for goal in projects:
         for task in goal["ch"]:
-            
+
             # Bound values in the interval [min_value, max_value]
             task["val"] = max(min_value,
                               min(max_value, distribution_fxn(*fxn_args)))
-            
+
             # In case of negative rewards, convert them to absolute value
             # - This also depends on the choice of lower bound
             task["val"] = abs(task["val"])
-            
+
     return projects
-    
-    
+
+
 def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
                                       scaling_fn, scaling_inputs,
                                       day_duration=8 * 60, **params):
     projects = deepcopy(real_goals + misc_goals)
-    
+
     # Separate tasks with deadlines from real goals
     real_goals = separate_tasks_with_deadlines(real_goals)
 
     # Convert real goals from JSON to Goal class objects
     real_goals = tree_to_old_structure(real_goals)
-    
+
     # Assign deadlines to the misc goals & Separate tasks with deadlines
     # misc_goals = misc_tasks_to_goals(real_goals, misc_goals)
-    
+
     # Convert misc goals from JSON to Goal class objects
     # Note: The day duration for the misc tasks are implicitly while making
     #       their transformation to goals in the misc_tasks_to_goals function!
     misc_goals = tree_to_old_structure(misc_goals)
-    
+
     # Add them together into a single list
     to_do_list = ToDoList(real_goals + misc_goals, start_time=0)
 
@@ -71,7 +71,7 @@ def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
 
     # Scale task values according to the provided scaling function
     scaling_fn(ordered_tasks, **scaling_inputs)
-    
+
     # Schedule tasks for today
     today_tasks = schedule_tasks_for_today(projects, ordered_tasks,
                                            duration_remaining=day_duration,
@@ -91,7 +91,7 @@ def assign_old_api_points(projects, solver_fn, duration=8*60, **params):
         - policy_iteration
         - simple_goal_scheduler
         - value_iteration
-    
+
     **params:
         - mixing_parameter [0, 1): Probability of delaying a task in scheduling
     """
@@ -167,37 +167,37 @@ def assign_length_points(projects):
 def get_actions_and_rewards(mdp, verbose=False):
     policy = mdp.get_optimal_policy()
     values = mdp.get_value_function()
-    
+
     state = sorted(list(policy.keys()))[0]
     vec, tm = state
-    
+
     action = policy[state]
     value = values[state]
     actions_and_rewards = [(action, value)]
 
     if verbose:
         print(state, action, value)
-    
+
     # While there is an action to perform
     while policy[state] is not None:
-        
+
         # Get task
         idx = policy[state]
         task = mdp.index_to_task[idx]
-        
+
         # Get next state
         next_vec = list(vec)
         next_vec[idx] = 1
-        
+
         tm += task.get_time_est()
         state = (tuple(next_vec), tm)
         vec, tm = state
-        
+
         action = policy[state]
         value = values[state]
-    
+
         if verbose:
             print(state, action, value)
         actions_and_rewards += [(action, value)]
-    
+
     return actions_and_rewards

@@ -4,10 +4,10 @@ The test cases are provided in the todolistMDP/test_cases.py file.
 """
 
 import pytest
-from todolistMDP.mdp_solvers import *
-from todolistMDP.test_cases import *
-from todolistMDP.to_do_list import *
-from todolistMDP.scheduling_solvers \
+from todolistAPI.todolistMDP.mdp_solvers import *
+from todolistAPI.todolistMDP.test_cases import *
+from todolistAPI.todolistMDP.to_do_list import *
+from todolistAPI.todolistMDP.scheduling_solvers \
     import run_algorithm, run_dp_algorithm, run_greedy_algorithm
 from pprint import pprint
 

@@ -1,7 +1,7 @@
 import pytest
 
-from todolistMDP.scheduling_solvers import *
-from todolistMDP.test_cases import *
+from todolistAPI.todolistMDP.scheduling_solvers import *
+from todolistAPI.todolistMDP.test_cases import *
 
 
 def test_greedy_method_and_mixing_time():
