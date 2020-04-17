@@ -47,7 +47,7 @@ def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
     projects = deepcopy(real_goals + misc_goals)
     
     # Separate tasks with deadlines from real goals
-    real_goals = separate_tasks_with_deadlines(real_goals)
+    real_goals = separate_tasks_with_deadlines(real_goals + misc_goals)
 
     # Convert real goals from JSON to Goal class objects
     real_goals = tree_to_old_structure(real_goals)
@@ -58,10 +58,10 @@ def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
     # Convert misc goals from JSON to Goal class objects
     # Note: The day duration for the misc tasks are implicitly while making
     #       their transformation to goals in the misc_tasks_to_goals function!
-    misc_goals = tree_to_old_structure(misc_goals)
+    # misc_goals = tree_to_old_structure(misc_goals)
     
     # Add them together into a single list
-    to_do_list = ToDoList(real_goals + misc_goals, start_time=0)
+    to_do_list = ToDoList(real_goals, start_time=0)
 
     # Get ordered list of tasks
     ordered_tasks = \
