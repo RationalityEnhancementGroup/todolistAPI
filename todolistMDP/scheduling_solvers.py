@@ -27,11 +27,10 @@ def compute_mixing_time(attainable_goals):
         attainable_goals: List of attainable goals
 
     Returns:
-        (mixing-time list, index of last 0 value - goal after which misc tasks
-         can be completed)
+        List of time available for mixing tasks between the current goal and
+        future goals.
     """
     n = len(attainable_goals)  # Number of attainable goals
-    last_0_idx = 0  # The time when 0 was encountered
     mixing_time = np.zeros(shape=n, dtype=np.int32)
     
     # Initialize current time
@@ -48,11 +47,7 @@ def compute_mixing_time(attainable_goals):
         # Calculate time difference between two goal deadlines
         mixing_time[goal_idx] = goal.get_effective_deadline() - current_time_est
         
-        # Store last goal index for which no mixing time is available
-        if mixing_time[goal_idx] == 0:
-            last_0_idx = goal_idx
-    
-    return mixing_time  # TODO: Return last_0_idx?
+    return mixing_time
 
 
 def compute_mixing_values(attainable_goals, mixing_parameter):
@@ -137,6 +132,19 @@ def compute_optimal_values(goals, total_uncompleted_time_est, verbose=False):
     return dp
 
 
+def generate_unattainable_msg(goal):
+    tasks = goal.get_all_tasks()  # TODO: Store task number info in "cache"
+    
+    tp = "Goal"
+    if len(tasks) == 1 and goal.get_description() == tasks[0].get_description():
+        tp = "Task"
+        
+    return f'{tp} {goal.get_description()} is unattainable. Please extend ' \
+           f'the deadline, remove inessential {"sub-" if tp == "Task" else ""}' \
+           f'tasks or revise their time estimates, increase your working ' \
+           f'hours, drop this unachievable goal and prioritize other goals instead.'
+
+
 def get_attainable_goals_dp(goals, dp):
     """
     Returns a list of attainable goals. If at least one goal is not attainable,
@@ -169,8 +177,8 @@ def get_attainable_goals_dp(goals, dp):
             i -= 1
             if (len(goals[goal_idx].get_uncompleted_tasks()) > 0 and
                 goals[goal_idx].get_reward(t) >= 0):
-                raise Exception(f'Goal {goals[goal_idx].get_description()} '
-                                f'is unattainable!')
+                msg = generate_unattainable_msg(goals[goal_idx])
+                raise Exception(msg)
             elif goals[goal_idx].get_reward(t) < 0:
                 raise Exception(
                     f'Goal "{goals[goal_idx].get_description()}" '
@@ -212,11 +220,13 @@ def get_attainable_goals_greedy(goals):
     attainable_goals = []
     
     for goal in tqdm(goals):
-        if current_time + goal.get_total_time_est() <= goal.get_effective_deadline():
+        next_time = current_time + goal.get_uncompleted_time_est()
+        if next_time <= goal.get_effective_deadline():
             attainable_goals += [goal]
-            current_time += goal.get_total_time_est()
+            current_time = next_time
         else:
-            raise Exception(f'Goal {goal.get_description()} is unattainable')
+            msg = generate_unattainable_msg(goal)
+            raise Exception(msg)
         
     return attainable_goals
     
@@ -257,7 +267,7 @@ def get_ordered_task_list(attainable_goals, mixing_time, mixing_values):
         # Put all uncompleted tasks from the current goal in a queue
         batch_tasks_q = deque(batch_tasks)
         
-        while available_time > 0 and len(ordered_tasks_q) > 0:
+        while len(ordered_tasks_q) > 0:
             task = ordered_tasks_q.popleft()
             task_time = task.get_time_est()
 
@@ -266,6 +276,10 @@ def get_ordered_task_list(attainable_goals, mixing_time, mixing_values):
                 available_time -= task_time
             else:
                 other_tasks_q.append(task)
+                
+            if available_time == 0:
+                other_tasks_q.extend(ordered_tasks_q)
+                break
 
         # Mix tasks w.r.t. to the mixing parameter
         batch_tasks_q = shuffle(batch_tasks_q, mixing_parameter)
@@ -281,7 +295,8 @@ def get_ordered_task_list(attainable_goals, mixing_time, mixing_values):
 def print_optimal_solution(goals, dp):
     """
     Prints optimal solution accompanied with the earliest start time of the
-    attainable goals.
+    attainable goals. It is used for debugging purposes only and the "error"
+    messages are not shown to the end-user.
     
     Args:
         goals: [Goals]
@@ -448,7 +463,6 @@ def run_algorithm(to_do_list, algorithm_fn, mixing_parameter=.0, verbose=False):
     attainable_goals = algorithm_fn(goals, verbose=verbose)
     
     # Compute mixing time
-    # mixing_time, last_0_idx = compute_mixing_time(attainable_goals)
     mixing_time = compute_mixing_time(attainable_goals)
     
     # Compute mixing values

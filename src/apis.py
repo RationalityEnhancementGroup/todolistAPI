@@ -1,8 +1,7 @@
 from copy import deepcopy
 from src.utils import tree_to_old_structure
-from src.utils import misc_tasks_to_goals, separate_tasks_with_deadlines, \
-                      task_list_from_projects
-from src.schedulers import schedule_tasks_for_today
+from src.utils import separate_tasks_with_deadlines, task_list_from_projects
+from src.schedulers.schedulers import schedule_tasks_for_today
 
 from todolistMDP.scheduling_solvers import run_algorithm
 
@@ -41,27 +40,19 @@ def assign_random_points(projects, distribution_fxn=np.random.normal,
     return projects
     
     
-def assign_dynamic_programming_points(real_goals, misc_goals, solver_fn,
+
+def assign_dynamic_programming_points(projects, solver_fn,
                                       scaling_fn, scaling_inputs,
                                       day_duration=8 * 60, **params):
-    projects = deepcopy(real_goals + misc_goals)
     
     # Separate tasks with deadlines from real goals
-    real_goals = separate_tasks_with_deadlines(real_goals)
+    goals = separate_tasks_with_deadlines(deepcopy(projects))
 
     # Convert real goals from JSON to Goal class objects
-    real_goals = tree_to_old_structure(real_goals)
-    
-    # Assign deadlines to the misc goals & Separate tasks with deadlines
-    # misc_goals = misc_tasks_to_goals(real_goals, misc_goals)
-    
-    # Convert misc goals from JSON to Goal class objects
-    # Note: The day duration for the misc tasks are implicitly while making
-    #       their transformation to goals in the misc_tasks_to_goals function!
-    misc_goals = tree_to_old_structure(misc_goals)
+    goals = tree_to_old_structure(goals)
     
     # Add them together into a single list
-    to_do_list = ToDoList(real_goals + misc_goals, start_time=0)
+    to_do_list = ToDoList(goals, start_time=0)
 
     # Get ordered list of tasks
     ordered_tasks = \

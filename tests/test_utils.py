@@ -294,7 +294,8 @@ def test_calculate_tasks_time_est():
     - daily = 1000 minutes
     - future = 10000 minutes
     """
-    result = parse_scheduling_tags(TAGS_TREE, float('inf'), default_time_est=1)
+    result = parse_scheduling_tags(TAGS_TREE, float('inf'), default_time_est=1,
+                                   user_datetime=datetime.utcnow())
     assert result == [1110 for _ in range(7)]
     
     """
@@ -305,177 +306,182 @@ def test_calculate_tasks_time_est():
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is True
-    assert task["task_days"] == ALL_FALSE
-    assert task["repetitive_task_days"] == ALL_FALSE
+    assert task["days"] == ALL_FALSE
+    assert task["repetitive_days"] == ALL_FALSE
 
     task = TAGS_TREE[0]["ch"][1]  #daily
     assert task["daily"] is True
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == ALL_FALSE  # TODO: ?
-    assert task["repetitive_task_days"] == ALL_TRUE
+    assert task["days"] == ALL_FALSE
+    assert task["repetitive_days"] == ALL_TRUE
 
     task = TAGS_TREE[0]["ch"][2]  #weekdays
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == WEEKDAY  # TODO: ?
-    assert task["repetitive_task_days"] == WEEKDAY
+    assert task["days"] == ALL_FALSE
+    assert task["repetitive_days"] == WEEKDAY
 
     task = TAGS_TREE[0]["ch"][3]  #monday
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == MONDAY
-    assert task["repetitive_task_days"] == ALL_FALSE
+    assert task["days"] == MONDAY
+    assert task["repetitive_days"] == ALL_FALSE
 
     task = TAGS_TREE[0]["ch"][4]  #tuesday
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == TUESDAY
-    assert task["repetitive_task_days"] == ALL_FALSE
+    assert task["days"] == TUESDAY
+    assert task["repetitive_days"] == ALL_FALSE
 
     task = TAGS_TREE[0]["ch"][5]  #wednesday
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == WEDNESDAY
-    assert task["repetitive_task_days"] == ALL_FALSE
+    assert task["days"] == WEDNESDAY
+    assert task["repetitive_days"] == ALL_FALSE
 
     task = TAGS_TREE[0]["ch"][6]  #thursday
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == THURSDAY
-    assert task["repetitive_task_days"] == ALL_FALSE
+    assert task["days"] == THURSDAY
+    assert task["repetitive_days"] == ALL_FALSE
 
     task = TAGS_TREE[0]["ch"][7]  #friday
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == FRIDAY
-    assert task["repetitive_task_days"] == ALL_FALSE
+    assert task["days"] == FRIDAY
+    assert task["repetitive_days"] == ALL_FALSE
 
     task = TAGS_TREE[0]["ch"][8]  #saturday
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == SATURDAY
-    assert task["repetitive_task_days"] == ALL_FALSE
+    assert task["days"] == SATURDAY
+    assert task["repetitive_days"] == ALL_FALSE
 
     task = TAGS_TREE[0]["ch"][9]  #sunday
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == SUNDAY
-    assert task["repetitive_task_days"] == ALL_FALSE
+    assert task["days"] == SUNDAY
+    assert task["repetitive_days"] == ALL_FALSE
 
     task = TAGS_TREE[0]["ch"][10]  #TODAY date
     assert task["daily"] is False
     assert task["day_datetime"] == datetime.strptime(TODAY + " 23:59", "%Y-%m-%d %H:%M")
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == ALL_FALSE
-    assert task["repetitive_task_days"] == ALL_FALSE
+    assert task["days"] == ALL_FALSE
+    assert task["repetitive_days"] == ALL_FALSE
 
     task = TAGS_TREE[0]["ch"][11]  #TOMORROW date
     assert task["daily"] is False
     assert task["day_datetime"] == datetime.strptime(TOMORROW + " 23:59", "%Y-%m-%d %H:%M")
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == ALL_FALSE
-    assert task["repetitive_task_days"] == ALL_FALSE
+    assert task["days"] == ALL_FALSE
+    assert task["repetitive_days"] == ALL_FALSE
     
     task = TAGS_TREE[0]["ch"][12]  #weekends
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == [False for _ in range(5)] + [True, True]  # TODO: ?
-    assert task["repetitive_task_days"] == [False for _ in range(5)] + [True, True]
+    assert task["days"] == ALL_FALSE
+    assert task["repetitive_days"] == WEEKEND
 
     task = TAGS_TREE[0]["ch"][13]  #mondays
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == MONDAY
-    assert task["repetitive_task_days"] == MONDAY
+    assert task["days"] == MONDAY
+    assert task["repetitive_days"] == MONDAY
 
     task = TAGS_TREE[0]["ch"][14]  #tuesdays
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == TUESDAY
-    assert task["repetitive_task_days"] == TUESDAY
+    assert task["days"] == TUESDAY
+    assert task["repetitive_days"] == TUESDAY
 
     task = TAGS_TREE[0]["ch"][15]  #wednesdays
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == WEDNESDAY
-    assert task["repetitive_task_days"] == WEDNESDAY
+    assert task["days"] == WEDNESDAY
+    assert task["repetitive_days"] == WEDNESDAY
 
     task = TAGS_TREE[0]["ch"][16]  #thursdays
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == THURSDAY
-    assert task["repetitive_task_days"] == THURSDAY
+    assert task["days"] == THURSDAY
+    assert task["repetitive_days"] == THURSDAY
 
     task = TAGS_TREE[0]["ch"][17]  #fridays
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == FRIDAY
-    assert task["repetitive_task_days"] == FRIDAY
+    assert task["days"] == FRIDAY
+    assert task["repetitive_days"] == FRIDAY
     
     task = TAGS_TREE[0]["ch"][18]  #saturdays
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == SATURDAY
-    assert task["repetitive_task_days"] == SATURDAY
+    assert task["days"] == SATURDAY
+    assert task["repetitive_days"] == SATURDAY
 
     task = TAGS_TREE[0]["ch"][19]  #sundays
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == SUNDAY
-    assert task["repetitive_task_days"] == SUNDAY
+    assert task["days"] == SUNDAY
+    assert task["repetitive_days"] == SUNDAY
 
     task = TAGS_TREE[0]["ch"][20]  #future
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is True
     assert task["today"] is False
-    assert task["task_days"] == ALL_FALSE
-    assert task["repetitive_task_days"] == ALL_FALSE
+    assert task["days"] == ALL_FALSE
+    assert task["repetitive_days"] == ALL_FALSE
 
     task = TAGS_TREE[0]["ch"][21]  # without tags
     assert task["daily"] is False
     assert task["day_datetime"] is None
     assert task["future"] is False
     assert task["today"] is False
-    assert task["task_days"] == ALL_FALSE
-    assert task["repetitive_task_days"] == ALL_FALSE
+    assert task["days"] == ALL_FALSE
+    assert task["repetitive_days"] == ALL_FALSE
 
+
+def test_get_wf_task_id():
+    assert "__no_wf_id__" == get_wf_task_id("bla bla bla 888.0")
+    pass
+    
 
 # TODO: Important functions to test next
 #     - test_create_projects_to_save
