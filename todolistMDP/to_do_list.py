@@ -3,12 +3,12 @@ import numpy as np
 import random
 import time
 
-from todolistAPI.todolistMDP import mdp
+from todolistMDP import mdp
 
 
 class Task:
-    def __init__(self, description, completed=False, goal=None,
-                 prob=1., reward=0, task_id=None, time_est=1):
+    def __init__(self, description, completed=False, goal=None, prob=1.,
+                 reward=0, scheduled_today=False, task_id=None, time_est=1):
         """
         # TODO: reward=None
         # TODO: Complete this...
@@ -40,15 +40,17 @@ class Task:
         self.goal = goal
         self.prob = prob
         self.reward = reward
+        self.scheduled_today = scheduled_today
         self.time_est = time_est
     
     def __str__(self):
         return f'Description: {self.description}\n' \
                f'Completed: {self.completed}\n' \
                f'ID: {self.task_id}\n' \
-               f'Goal: {self.goal.get_description()}\n' \
+               f'Goal: {self.goal.description}\n' \
                f'Probability: {self.prob}\n' \
                f'Reward: {self.reward}\n' \
+               f'Scheduled today: {self.scheduled_today}\n' \
                f'Time est.: {self.time_est}\n'
     
     def get_copy(self):
@@ -66,6 +68,9 @@ class Task:
     
     def get_reward(self):
         return self.reward
+    
+    def get_scheduled_today(self):
+        return self.scheduled_today
     
     def get_task_id(self):
         return self.task_id
@@ -147,9 +152,10 @@ class Goal:
         self.penalty = penalty
         
         # Calculate time and value estimation
-        self.completed_time_est = 0  # Time estimation of completed tasks
-        self.uncompleted_time_est = 0  # Time estimation of uncompleted tasks
-        self.total_time_est = 0  # Time estimation of all tasks
+        self.completed_time_est = 0  # Time estimate of completed tasks
+        self.scheduled_time_est = 0  # Time estimate of scheduled tasks
+        self.uncompleted_time_est = 0  # Time estimate of uncompleted tasks
+        self.total_time_est = 0  # Time estimate of all tasks
 
         # Split tasks into completed and uncompleted
         self.all_tasks = tasks
@@ -164,7 +170,10 @@ class Goal:
                 self.completed_time_est += task.get_time_est()
             else:
                 self.uncompleted_tasks.add(task)
-                self.uncompleted_time_est += task.get_time_est()
+                if task.get_scheduled_today():
+                    self.scheduled_time_est += task.get_time_est()
+                else:
+                    self.uncompleted_time_est += task.get_time_est()
                 
         self.update_total_time_est()
 
@@ -338,6 +347,7 @@ class Goal:
             
     def update_total_time_est(self):
         self.total_time_est = self.completed_time_est + \
+                              self.scheduled_time_est + \
                               self.uncompleted_time_est
         
     def set_rewards_dict(self, rewards):
