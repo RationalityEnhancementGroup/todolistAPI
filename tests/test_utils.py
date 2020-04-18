@@ -2,7 +2,7 @@ import pytest
 
 from copy import deepcopy
 from datetime import datetime
-from src.utils import *
+from todolistAPI.src.utils import *
 
 ALL_FALSE = [False for _ in range(7)]
 ALL_TRUE = [True for _ in range(7)]

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from math import ceil
 from string import digits
 
-from todolistMDP.to_do_list import Goal, Task
+from todolistAPI.todolistMDP.to_do_list import Goal, Task
 
 DATE_REGEX = r"([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
 DEADLINE_REGEX = fr"DUE:\s*{DATE_REGEX}"
@@ -549,7 +549,7 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
         
         # If the goal code is not a digit --> misc goal
         if goal["code"][0] not in digits+"^":
-            if "_CSC209" in goal["nm"]:
+            if ("_CS" in goal["nm"]):
                 goal["code"] = "💻"
             else:
                 goal["code"] = "&"
