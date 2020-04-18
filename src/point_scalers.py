@@ -34,7 +34,7 @@ def utility_scaling(task_list, scale_type="no_scaling",
         
         task_time_est = task.get_time_est()
         goal_reward = task_goal.get_reward(0)
-        goal_time_est = task_goal.get_uncompleted_time_est()
+        goal_time_est = task_goal.get_total_time_est()
         
         # Calculate task utility according to its goal value
         task_reward = (goal_reward / goal_time_est) * task_time_est

@@ -169,9 +169,11 @@ def test_greedy_method_and_mixing_time():
     with pytest.raises(Exception):
         assert get_attainable_goals_greedy(goals)
 
+
 # TODO: Find a way to test:
 #       - compute_mixing_values
 #       - get_ordered_task_list
+#           - test whether len(input) == len(output)
 #       - shuffle
 
 # TODO: test_dp_method():

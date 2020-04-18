@@ -53,7 +53,7 @@ def are_there_tree_differences(old_tree, new_tree):
             for task in goal["ch"]:
                 final_dict[task["id"]] = \
                     (task["day_datetime"], task["deadline_datetime"],
-                     task["est"], task["task_days"])
+                     task["est"], task["days"])
         return final_dict
 
     if len(set(create_tree_dict(old_tree).items()) ^
@@ -147,7 +147,7 @@ def flatten_intentions(projects):
     return projects
 
 
-def get_final_output(task_list, round_param, points_per_hour):
+def get_final_output(task_list, round_param, points_per_hour, user_datetime):
     """
     Input is list of tasks
     Outputs list of tasks for today with fields:
@@ -196,7 +196,7 @@ def get_final_output(task_list, round_param, points_per_hour):
         if task["deadline_datetime"] is not None:
             task_name += ", due on "
 
-            td = task["deadline_datetime"] - datetime.utcnow()
+            td = task["deadline_datetime"] - user_datetime
             if td.days < 7:
                 weekday = task["deadline_datetime"].weekday()
                 task_name += WEEKDAYS[weekday]
@@ -374,7 +374,12 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
         
         # Get time estimation
         task_dict["est"] = 0
-        
+
+        # Check whether current intention has been completed
+        task_dict["d"] = False
+        if "d" in task.keys():
+            task_dict["d"] = task["d"]
+
         # Check whether current intention has been "neverminded"
         task_dict["nvm"] = False
         if "nvm" in task.keys():
@@ -393,10 +398,13 @@ def parse_current_intentions_list(current_intentions, default_time_est=None):
             minutes = int(minutes.split(" ")[0].strip())
             task_dict["est"] += minutes
                 
-        # Get other necessary information
+        # Parse WF ID from the task name
         task_dict["id"] = get_wf_task_id(task["t"])
-        task_dict["d"] = task["d"] if "d" in task.keys() else False
-        task_dict["vd"] = task["vd"] if "vd" in task.keys() else None
+        
+        # Get task value in the current intentions list
+        task_dict["vd"] = None
+        if "vd" in task.keys():
+            task_dict["vd"] = task["vd"]
         
         # Add current task to the dictionary of all parsed current intentions
         current_intentions_dict.setdefault(task_dict["id"], [])
@@ -422,7 +430,8 @@ def parse_hours(time_string):
     return int(re.search(TOTAL_VALUE_REGEX, time_string, re.IGNORECASE)[1])
 
 
-def parse_scheduling_tags(projects, allowed_task_time, default_time_est):
+def parse_scheduling_tags(projects, allowed_task_time, default_time_est,
+                          user_datetime):
     # Initialize total daily tasks time estimation for each weekday
     weekday_tasks_time_est = [0 for _ in range(7)]
     
@@ -432,8 +441,12 @@ def parse_scheduling_tags(projects, allowed_task_time, default_time_est):
         goal["nm"] = re.sub(HTML_REGEX, "", goal["nm"],
                             count=LARGE_NUMBER, flags=re.IGNORECASE)
         
-        # Initialize goal time estimation
+        # Initialize goal time estimate
         goal["est"] = 0
+        
+        # Initialize goal today time estimate for tasks scheduled by the user on
+        # today's day/date
+        goal["today_est"] = 0
         
         for task in goal["ch"]:
             
@@ -453,18 +466,18 @@ def parse_scheduling_tags(projects, allowed_task_time, default_time_est):
             goal["est"] += task["est"]
             
             # Check whether weekday preferences are given
-            task["task_days"], task["repetitive_task_days"] = \
+            task["days"], task["repetitive_days"] = \
                 process_task_days(task)
             
             # Check whether it is a daily task
             task["daily"] = process_tagged_item("daily", task)
             
             if task["daily"]:
-                for weekday in range(len(task["repetitive_task_days"])):
-                    task["repetitive_task_days"][weekday] = True
+                for weekday in range(len(task["repetitive_days"])):
+                    task["repetitive_days"][weekday] = True
             
-            # Subtract time
-            for weekday, repetitive in enumerate(task["repetitive_task_days"]):
+            # Add busy time for each weekday on which the task is scheduled
+            for weekday, repetitive in enumerate(task["repetitive_days"]):
                 if repetitive:
                     weekday_tasks_time_est[weekday] += task["est"]
             
@@ -476,24 +489,33 @@ def parse_scheduling_tags(projects, allowed_task_time, default_time_est):
             
             # Check whether a task has been marked to be completed today
             task["today"] = process_tagged_item("today", task)
-    
+            
+            # Check whether the task should be scheduled today (w/o repetition!)
+            weekday = user_datetime.date().weekday()
+            
+            task["scheduled_today"] = (
+                    task["today"] or task["days"][weekday] or
+                    (task["day_datetime"] is not None and
+                     task["day_datetime"].date() == user_datetime.date())
+            )
+            
+            # Add up the time estimate needed to be scheduled today
+            if task["scheduled_today"]:
+                goal["today_est"] += task["est"]
+                
     return weekday_tasks_time_est
 
 
 def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
                default_deadline, min_sum_of_goal_values,
                max_sum_of_goal_values, min_goal_value_per_goal_duration,
-               max_goal_value_per_goal_duration, time_zone):
+               max_goal_value_per_goal_duration, user_datetime):
     """
     This function reads in a flattened project tree and parses fields like goal
     code, total value, duration and deadline
     """
     def get_wf_task_id(task_name):
         return task_name.split("-")[-1]
-    
-    # Initialize lists of real and miscellaneous goals
-    real_goals = []
-    misc_goals = []
     
     # Initialize sum of goal values
     sum_of_goal_values = 0
@@ -509,7 +531,9 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
         try:
             goal["deadline"], goal["deadline_datetime"] = \
                 process_deadline(goal_deadline, today_minutes,
-                                 typical_minutes, time_zone, default_deadline)
+                                 typical_minutes,
+                                 current_datetime=user_datetime,
+                                 default_deadline=default_deadline)
         except Exception as error:
             raise Exception(f"Goal {goal['nm']}: {str(error)}")
 
@@ -529,9 +553,6 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
                 goal["code"] = "💻"
             else:
                 goal["code"] = "&"
-            misc_goals += [goal]
-        else:
-            real_goals += [goal]
             
         for task in goal["ch"]:
             
@@ -545,7 +566,8 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
                 try:
                     task["deadline"], task["deadline_datetime"] = \
                         process_deadline(task_deadline, today_minutes,
-                                         typical_minutes, time_zone)
+                                         typical_minutes,
+                                         current_datetime=user_datetime)
                 except Exception as error:
                     raise Exception(f"Task {task['nm']}: {str(error)}")
 
@@ -576,8 +598,11 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             else:
                 task["completed"] = False
                 
+            # Store parent ID
             task["parentId"] = goal["id"]
-            task["pcp"] = False  # TODO: Not sure what this field is...
+            
+            # Set parent as not completed
+            task["pcp"] = False
             
             # Append goal's name to task's name
             task["nm"] = goal["code"] + ") " + task["nm"]
@@ -612,19 +637,13 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
                         f"{max_sum_of_goal_values:.2f}. "
                         f"Please change your goal values.")
 
-    return real_goals, misc_goals
+    return projects
 
 
-def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
-                     default_deadline=None):
+def process_deadline(deadline, today_minutes, typical_minutes,
+                     current_datetime, default_deadline=None):
     def time_delta_to_minutes(time_delta):
         return time_delta.days * 24 * 60 + time_delta.seconds // 60
-    
-    # Set starting time to the UTC time at the moment
-    current_time = datetime.utcnow()
-    
-    # Shift the starting time according to the time zone
-    current_time += timedelta(minutes=time_zone)
     
     # If no deadline provided, set the default deadline
     if deadline is None:
@@ -633,23 +652,23 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
                 timedelta(days=int(default_deadline))
             deadline = \
                 re.search(DEADLINE_REGEX, "DUE:" +
-                          (current_time + default_deadline_datetime).strftime("%Y-%m-%d"),
+                          (current_datetime + default_deadline_datetime).strftime("%Y-%m-%d"),
                           re.IGNORECASE)
         else:
             raise Exception("Invalid or no deadline provided!")
     
     deadline_datetime = date_str_to_datetime(deadline)
-    time_delta = deadline_datetime - current_time
+    time_delta = deadline_datetime - current_datetime
     regular_deadline_minutes = time_delta_to_minutes(time_delta)
 
     # Calculate the number of days until the deadline
-    days_after_today = (deadline_datetime.date() - current_time.date()).days
+    days_after_today = (deadline_datetime.date() - current_datetime.date()).days
     
     # Calculate the number of weeks until the deadline
     weeks_after_today = days_after_today // 7
     
     # Get information on the weekdays of the current day and the deadline day
-    current_weekday = current_time.weekday()
+    current_weekday = current_datetime.weekday()
     
     # Initialize number of minutes after today's day
     minutes_after_today = 0
@@ -664,9 +683,9 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
         minutes_after_today += typical_minutes[weekday]
 
     # Calculate how much time is left today & update today's minutes
-    end_of_the_day = datetime(current_time.year, current_time.month,
-                              current_time.day, 23, 59, 59)
-    minutes_left_today = (end_of_the_day - current_time).seconds // 60
+    end_of_the_day = datetime(current_datetime.year, current_datetime.month,
+                              current_datetime.day, 23, 59, 59)
+    minutes_left_today = (end_of_the_day - current_datetime).seconds // 60
     today_minutes = min(today_minutes, minutes_left_today,
                         regular_deadline_minutes)
     
@@ -674,7 +693,7 @@ def process_deadline(deadline, today_minutes, typical_minutes, time_zone,
     deadline_value = today_minutes + minutes_after_today
 
     # Check whether it is in the future
-    if deadline_datetime < current_time:
+    if deadline_datetime < current_datetime:
         raise Exception(f"Deadline not in the future! Please check your "
                         f"deadline and your time zone.")
 
@@ -756,19 +775,19 @@ def process_task_days(task):
         if process_tagged_item(day.lower(), task):
             weekdays[day_idx] = True
         if process_tagged_item(day.lower() + 's', task):
-            weekdays[day_idx] = True
+            # weekdays[day_idx] = True
             repetitive_weekdays[day_idx] = True
             
     # Check #weekdays
     if process_tagged_item('weekdays', task):
         for day_idx in [0, 1, 2, 3, 4]:  # Monday to Friday
-            weekdays[day_idx] = True
+            # weekdays[day_idx] = True
             repetitive_weekdays[day_idx] = True
 
     # Check #weekends
     if process_tagged_item('weekends', task):
         for day_idx in [5, 6]:  # Saturday and Sunday
-            weekdays[day_idx] = True
+            # weekdays[day_idx] = True
             repetitive_weekdays[day_idx] = True
 
     return weekdays, repetitive_weekdays
@@ -797,7 +816,7 @@ def separate_tasks_with_deadlines(goals):
         separated_tasks = []
         
         for task in goal["ch"]:
-            if task["deadline"]:
+            if task["deadline"] is not None:
                 task_goal = deepcopy(goal)
                 
                 task_goal["deadline"] = task["deadline"]
@@ -888,9 +907,9 @@ def tree_to_old_structure(projects):
             # Create new task and add it to the task list
             tasks.append(Task(completed=task["completed"],
                               description=task["nm"],
+                              scheduled_today=task["scheduled_today"],
                               task_id=task["id"],
-                              time_est=task["est"],
-                              prob=1))  # TODO: Probability of success
+                              time_est=task["est"]))
 
         # Create new goal and add it to the goal list
         goals.append(
@@ -899,7 +918,6 @@ def tree_to_old_structure(projects):
                  tasks=tasks,
                  # effective_deadline=goal["effective_deadline"],
                  # latest_start_time=goal["latest_start_time"],
-                 rewards={goal["deadline"]: goal["value"]},
-                 penalty=0))  # TODO: Penalty for missing a deadline
+                 rewards={goal["deadline"]: goal["value"]}))
         
     return goals

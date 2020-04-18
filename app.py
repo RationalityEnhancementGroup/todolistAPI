@@ -9,7 +9,7 @@ from pprint import pprint
 from pymongo import MongoClient, DESCENDING
 
 from src.apis import *
-from src.schedulers import *
+from src.schedulers.schedulers import *
 from src.point_scalers import utility_scaling
 from src.utils import *
 
@@ -97,8 +97,12 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
+                
+                # Set up current time and date according to the user (UTC + TZ)
+                user_datetime = datetime.utcnow() + timedelta(minutes=time_zone)
+                log_dict["user_datetime"] = user_datetime
 
-                #last two input parameters
+                # Last two input parameters
                 try:
                     round_param = int(rounding)
                 except:
@@ -154,7 +158,9 @@ class PostResource(RESTResource):
                     default_time_est = int(default_time_est)
                     log_dict["default_time_est"] = default_time_est
                 except:
-                    status = "There was an issue with the API input (default time estimation). Please contact us at reg.experiments@tuebingen.mpg.de."
+                    status = "There was an issue with the API input " \
+                             "(default time estimation). Please contact us " \
+                             "at reg.experiments@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
@@ -164,7 +170,9 @@ class PostResource(RESTResource):
                     default_deadline = int(default_deadline)
                     log_dict["default_deadline"] = default_deadline
                 except:
-                    status = "There was an issue with the API input (default deadline). Please contact us at reg.experiments@tuebingen.mpg.de."
+                    status = "There was an issue with the API input " \
+                             "(default deadline). Please contact us at " \
+                             "reg.experiments@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
@@ -174,7 +182,9 @@ class PostResource(RESTResource):
                     allowed_task_time = float(allowed_task_time)
                     log_dict["allowed_task_time"] = allowed_task_time
                 except:
-                    status = "There was an issue with the API input (allowed time parameter). Please contact us at reg.experiments@tuebingen.mpg.de."
+                    status = "There was an issue with the API input " \
+                             "(allowed time parameter). Please contact us at " \
+                             "reg.experiments@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
@@ -194,17 +204,19 @@ class PostResource(RESTResource):
                     log_dict["max_goal_value_per_goal_duration"] = \
                         max_goal_value_per_goal_duration,
                 except:
-                    status = "There was an issue with the API input (goal-value limits). Please contact us at reg.experiments@tuebingen.mpg.de."
+                    status = "There was an issue with the API input " \
+                             "(goal-value limits). Please contact us at " \
+                             "reg.experiments@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
 
                 # Is there a user key
                 try:
-                    current_id = jsonData["userkey"]
-                    log_dict["user_id"] = current_id
+                    log_dict["user_id"] = jsonData["userkey"]
                 except:
-                    status = "We encountered a problem with the inputs from Workflowy, please try again."
+                    status = "We encountered a problem with the inputs " \
+                             "from Workflowy, please try again."
                     store_log(db.request_log, log_dict, status=status)
                     
                     cherrypy.response.status = 403
@@ -219,7 +231,8 @@ class PostResource(RESTResource):
                         jsonData["currentIntentionsList"],
                         default_time_est=default_time_est)
                 except:
-                    status = "An error related to the current intentions has occurred."
+                    status = "An error related to the current " \
+                             "intentions has occurred."
                     
                     # Save the data if there was a change, removing nm fields so
                     # that we keep participant data anonymous
@@ -242,7 +255,9 @@ class PostResource(RESTResource):
                     log_dict["tree"] = \
                         create_projects_to_save(projects)
                 except:
-                    status = "Something is wrong with your inputted goals and tasks. Please take a look at your Workflowy inputs and then try again."
+                    status = "Something is wrong with your inputted " \
+                             "goals and tasks. Please take a look at your " \
+                             "Workflowy inputs and then try again."
                     
                     # Save the data if there was a change, removing nm fields so
                     # that we keep participant data anonymous
@@ -256,7 +271,8 @@ class PostResource(RESTResource):
                     today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
                     log_dict["today_hours"] = today_hours
                 except:
-                    status = "Something is wrong with the hours in HOURS_TODAY. Please take a look and try again."
+                    status = "Something is wrong with the hours in " \
+                             "HOURS_TODAY. Please take a look and try again."
                     store_log(db.request_log, log_dict, status=status)
                     
                     cherrypy.response.status = 403
@@ -267,7 +283,8 @@ class PostResource(RESTResource):
                     typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
                     log_dict["typical_hours"] = typical_hours
                 except:
-                    status = "Something is wrong with the hours in HOURS_TYPICAL. Please take a look and try again."
+                    status = "Something is wrong with the hours in " \
+                             "HOURS_TYPICAL. Please take a look and try again."
                     store_log(db.request_log, log_dict, status=status)
                     
                     cherrypy.response.status = 403
@@ -299,11 +316,12 @@ class PostResource(RESTResource):
 
                 # Convert typical hours into typical minutes for each weekday
                 typical_minutes = [typical_hours * 60 for _ in range(7)]
-
-                # Get information about daily tasks time estimation
-                daily_tasks_time_est = parse_scheduling_tags(
-                    projects, allowed_task_time, default_time_est)
                 
+                # Get information about daily tasks time estimation
+                daily_tasks_time_est = \
+                    parse_scheduling_tags(projects, allowed_task_time,
+                                          default_time_est, user_datetime)
+
                 # Subtract daily tasks time estimation from typical working hours
                 for weekday in range(len(typical_minutes)):
                     typical_minutes[weekday] -= daily_tasks_time_est[weekday]
@@ -327,13 +345,21 @@ class PostResource(RESTResource):
                 # Subtract time estimation of current intentions from available time
                 for tasks in current_intentions.values():
                     for task in tasks:
+                        # If the task is not marked as completed or "nevermind"
                         if not task["d"] and not task["nvm"]:
                             today_minutes -= task["est"]
 
-                # TODO: If it is necessary, check whether today_minutes > 0
+                # Subtract time estimate for all tasks scheduled by the user on
+                # today's date from the total number of minutes for today
+                for goal in projects:
+                    today_minutes -= goal["today_est"]
                 
+                # Make 0 if the number of minutes is negative
+                today_minutes = max(today_minutes, 0)
+
+                # Parse to-do list
                 try:
-                    real_goals, misc_goals = \
+                    projects = \
                         parse_tree(projects, current_intentions,
                                    today_minutes, typical_minutes,
                                    default_deadline=default_deadline,
@@ -341,7 +367,7 @@ class PostResource(RESTResource):
                                    max_sum_of_goal_values=max_sum_of_goal_values,
                                    min_goal_value_per_goal_duration=min_goal_value_per_goal_duration,
                                    max_goal_value_per_goal_duration=max_goal_value_per_goal_duration,
-                                   time_zone=time_zone)
+                                   user_datetime=user_datetime)
                 except Exception as error:
                     status = str(error)
                     
@@ -351,17 +377,17 @@ class PostResource(RESTResource):
                     # Store error in DB
                     store_log(db.request_log, log_dict, status=anonymous_error)
                     
-                    status += " Please take a look at your Workflowy inputs and then try again. "
+                    status += " Please take a look at your Workflowy inputs " \
+                              "and then try again. "
                     cherrypy.response.status = 403
                     return json.dumps(status + CONTACT)
                 
-                projects = real_goals + misc_goals
                 log_dict["tree"] = create_projects_to_save(projects)
 
                 # Save the data if there was a change, removing nm fields so
                 # that we keep participant data anonymous
                 store_log(db.request_log, log_dict, status="Save parsed tree")
-
+                
                 if method == "constant":
                     # Parse default task value
                     try:
@@ -456,7 +482,9 @@ class PostResource(RESTResource):
 
                     # Defined by the experimenter
                     if not (0 <= mixing_parameter < 1):
-                        status = "There was an issue with the API input (mixing-parameter value). Please contact us at reg.experiments@tuebingen.mpg.de."
+                        status = "There was an issue with the API input " \
+                                 "(mixing-parameter value). Please contact " \
+                                 "us at reg.experiments@tuebingen.mpg.de."
                         store_log(db.request_log, log_dict, status=status)
                         cherrypy.response.status = 403
                         return json.dumps(status)
@@ -485,7 +513,7 @@ class PostResource(RESTResource):
                     try:
                         final_tasks = \
                             assign_dynamic_programming_points(
-                                real_goals, misc_goals,
+                                projects,
                                 solver_fn=solver_fn,
                                 scaling_fn=utility_scaling,
                                 scaling_inputs=utility_inputs,
@@ -524,7 +552,7 @@ class PostResource(RESTResource):
                     try:
                         final_tasks = \
                             basic_scheduler(task_list, time_zone=time_zone,
-                                            today_duration=today_minutes)
+                                            duration_remaining=today_minutes)
                     except Exception as error:
                         status = str(error) + ' '
     
@@ -570,8 +598,9 @@ class PostResource(RESTResource):
                         cherrypy.response.status = 403
                         return json.dumps(status + " " + CONTACT)
                     try:
-                        final_tasks = get_final_output(final_tasks, round_param,
-                                                       points_per_hour)
+                        final_tasks = get_final_output(
+                            final_tasks, round_param, points_per_hour,
+                            user_datetime=user_datetime)
                     except NameError as error:
                         store_log(db.request_log, log_dict,
                                   status="Task has no name!")
