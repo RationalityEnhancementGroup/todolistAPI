@@ -40,6 +40,7 @@ def assign_random_points(projects, distribution_fxn=np.random.normal,
     return projects
     
     
+
 def assign_dynamic_programming_points(projects, solver_fn,
                                       scaling_fn, scaling_inputs,
                                       day_duration=8 * 60, **params):
