@@ -1,6 +1,6 @@
 import numpy as np
 
-from todolistAPI.todolistMDP.to_do_list import ToDoListMDP
+from todolistMDP.to_do_list import ToDoListMDP
 from numpy import linalg as LA
 
 
