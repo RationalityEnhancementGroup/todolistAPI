@@ -12,7 +12,7 @@ def compute_gcd(goals):
     
     for goal in goals:
         times.append(goal.get_effective_deadline())
-        times.append(goal.get_uncompleted_time_est())
+        times.append(goal.get_unscheduled_time_est())
         
     gcd_scale = reduce(gcd, times)
 
@@ -42,7 +42,7 @@ def compute_mixing_time(attainable_goals):
         goal = attainable_goals[goal_idx]
         
         # Move to the end of the current goal
-        current_time_est += goal.get_uncompleted_time_est()
+        current_time_est += goal.get_unscheduled_time_est()
         
         # Calculate time difference between two goal deadlines
         mixing_time[goal_idx] = goal.get_effective_deadline() - current_time_est
@@ -69,14 +69,14 @@ def compute_mixing_values(attainable_goals, mixing_parameter):
     return mixing_values
 
 
-def compute_optimal_values(goals, total_uncompleted_time_est, verbose=False):
+def compute_optimal_values(goals, total_unscheduled_time_est, verbose=False):
     """
     Computes the maximum reward that can be attained by meeting the deadlines
     of the provided goals.
     
     Args:
         goals: [Goal]
-        total_uncompleted_time_est: Total uncompleted time estimate for all
+        total_unscheduled_time_est: Total uncompleted time estimate for all
                                     tasks in the to-do list.
         verbose: TODO: ...
 
@@ -86,7 +86,7 @@ def compute_optimal_values(goals, total_uncompleted_time_est, verbose=False):
     """
     
     # Initialize constants
-    d = total_uncompleted_time_est  # Set time horizon
+    d = total_unscheduled_time_est  # Set time horizon
     n = len(goals)  # Number of goals
     
     # Initialize dynamic programming table
@@ -115,7 +115,7 @@ def compute_optimal_values(goals, total_uncompleted_time_est, verbose=False):
             
             # Get the latest possible time that we can schedule goal i
             t_ = min(t, curr_est_deadline) \
-                - goals[goal_idx].get_uncompleted_time_est()
+                - goals[goal_idx].get_unscheduled_time_est()
             
             if t_ < 0:
                 dp[i, t] = dp[i - 1, t]
@@ -142,7 +142,7 @@ def generate_unattainable_msg(goal):
     return f'{tp} {goal.get_description()} is unattainable. Please extend ' \
            f'the deadline, remove inessential {"sub-" if tp == "Task" else ""}' \
            f'tasks or revise their time estimates, increase your working ' \
-           f'hours, drop this unachievable goal and prioritize other goals instead.'
+           f'hours, or drop this unachievable goal and prioritize other goals instead.'
 
 
 def get_attainable_goals_dp(goals, dp):
@@ -175,7 +175,7 @@ def get_attainable_goals_dp(goals, dp):
         
         if dp[i, t] == dp[i - 1, t]:
             i -= 1
-            if (len(goals[goal_idx].get_uncompleted_tasks()) > 0 and
+            if (len(goals[goal_idx].get_unscheduled_tasks()) > 0 and
                 goals[goal_idx].get_reward(t) >= 0):
                 msg = generate_unattainable_msg(goals[goal_idx])
                 raise Exception(msg)
@@ -185,7 +185,7 @@ def get_attainable_goals_dp(goals, dp):
                     f'has a negative reward value!')
         else:
             t_ = min(t, goals[goal_idx].effective_deadline) \
-                 - goals[goal_idx].get_uncompleted_time_est()
+                 - goals[goal_idx].get_unscheduled_time_est()
             i -= 1
             t = t_
             
@@ -198,7 +198,7 @@ def get_attainable_goals_dp(goals, dp):
             for task in goal.get_all_tasks():
                 task.set_reward(goal_reward)
                 
-            current_time_est += goal.get_uncompleted_time_est()
+            current_time_est += goal.get_unscheduled_time_est()
             
     return attainable_goals
 
@@ -220,7 +220,7 @@ def get_attainable_goals_greedy(goals):
     attainable_goals = []
     
     for goal in tqdm(goals):
-        next_time = current_time + goal.get_uncompleted_time_est()
+        next_time = current_time + goal.get_unscheduled_time_est()
         if next_time <= goal.get_effective_deadline():
             attainable_goals += [goal]
             current_time = next_time
@@ -246,50 +246,61 @@ def get_ordered_task_list(attainable_goals, mixing_time, mixing_values):
     Returns:
         Ordered list of tasks.
     """
-    # Get all uncompleted tasks from the last goal
-    ordered_tasks = attainable_goals[-1].get_uncompleted_tasks()
-    
-    # Initialize ordered task queue
-    ordered_tasks_q = deque(ordered_tasks)
+    # Initialize ordered task queue as all uncompleted tasks from the last goal
+    ordered_tasks = deque(attainable_goals[-1].get_unscheduled_tasks())
     
     for goal_idx in tqdm(reversed(range(len(attainable_goals)-1))):
     
         # Initialize other task queue (Tasks that do not fit in available time)
-        other_tasks_q = deque()
+        other_tasks = deque()
         
         # Get available time and mixing parameter for the current goal
         available_time = mixing_time[goal_idx]
         mixing_parameter = mixing_values[goal_idx]
 
-        # Get all uncompleted tasks from the current goal
-        batch_tasks = attainable_goals[goal_idx].get_uncompleted_tasks()
+        # Get all uncompleted unscheduled tasks from the current goal
+        unscheduled_tasks = attainable_goals[goal_idx].get_unscheduled_tasks()
         
-        # Put all uncompleted tasks from the current goal in a queue
-        batch_tasks_q = deque(batch_tasks)
+        # Convert tasks to list and sort w.r.t. deadline
+        unscheduled_tasks = list(unscheduled_tasks)
+        unscheduled_tasks.sort(key=lambda task: task.get_deadline())
         
-        while len(ordered_tasks_q) > 0:
-            task = ordered_tasks_q.popleft()
+        # Separate task with deadlines from other tasks in order to avoid
+        # scheduling tasks after their deadline
+        tasks_with_deadline = deque()
+        batch_tasks = deque()
+        
+        for task in unscheduled_tasks:
+            # If task has no "real" deadline
+            if task.get_deadline_datetime() is None:
+                batch_tasks.append(task)
+            else:
+                tasks_with_deadline.append(task)
+        
+        while len(ordered_tasks) > 0:
+            task = ordered_tasks.popleft()
             task_time = task.get_time_est()
 
             if task_time <= available_time:
-                batch_tasks_q.append(task)
+                batch_tasks.append(task)
                 available_time -= task_time
             else:
-                other_tasks_q.append(task)
+                other_tasks.append(task)
                 
+            # If there is no time for other tasks, there is no point iterating
             if available_time == 0:
-                other_tasks_q.extend(ordered_tasks_q)
+                other_tasks.extend(ordered_tasks)
                 break
 
         # Mix tasks w.r.t. to the mixing parameter
-        batch_tasks_q = shuffle(batch_tasks_q, mixing_parameter)
+        batch_tasks = shuffle(batch_tasks, mixing_parameter)
 
         # Append other tasks
-        batch_tasks_q.extend(other_tasks_q)
+        batch_tasks.extend(other_tasks)
         
-        ordered_tasks_q = batch_tasks_q
+        ordered_tasks = batch_tasks
 
-    return ordered_tasks_q
+    return ordered_tasks
 
 
 def print_optimal_solution(goals, dp):
@@ -317,7 +328,7 @@ def print_optimal_solution(goals, dp):
             print(f'Unattainable goal {goal_idx}!')
         else:
             t_ = min(t, goals[goal_idx].get_effective_deadline()) \
-                 - goals[goal_idx].get_uncompleted_time_est()
+                 - goals[goal_idx].get_unscheduled_time_est()
             print_opt(i-1, t_)
             print(f'Attainable goal {goal_idx}!')
     
@@ -341,7 +352,7 @@ def scale_time(goals, scale, is_up=True):
 
             # Scale latest start time & uncompleted task time estimate
             goal.scale_est_deadline(scale, up=is_up)
-            goal.scale_uncompleted_time_est(scale, up=is_up)
+            goal.scale_unscheduled_time_est(scale, up=is_up)
             
             # Set reward for the latest estimated deadline
             new_rewards[goal.effective_deadline] = reward
@@ -417,11 +428,11 @@ def run_dp_algorithm(goals, verbose=False):
         goals = scale_time(goals, gcd_scale, is_up=False)
 
     # Compute total uncompleted time estimate
-    total_uncompleted_time_estimate = \
-        sum([goal.get_uncompleted_time_est() for goal in goals])
+    total_unscheduled_time_est = \
+        sum([goal.get_unscheduled_time_est() for goal in goals])
 
     # Compute optimal values
-    dp = compute_optimal_values(goals, total_uncompleted_time_estimate, verbose)
+    dp = compute_optimal_values(goals, total_unscheduled_time_est, verbose)
 
     # Generate ordered lists of attainable and unattainable goals
     attainable_goals = get_attainable_goals_dp(goals, dp)

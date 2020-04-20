@@ -3,12 +3,14 @@ import numpy as np
 import random
 import time
 
+from collections import deque
 from todolistMDP import mdp
 
 
 class Task:
-    def __init__(self, description, completed=False, goal=None, prob=1.,
-                 reward=0, scheduled_today=False, task_id=None, time_est=1):
+    def __init__(self, description, completed=False, deadline=None,
+                 deadline_datetime=None, goal=None, prob=1., reward=0,
+                 scheduled_today=False, task_id=None, time_est=1):
         """
         # TODO: reward=None
         # TODO: Complete this...
@@ -37,6 +39,8 @@ class Task:
             self.task_id = description
         
         self.completed = completed
+        self.deadline = deadline
+        self.deadline_datetime = deadline_datetime
         self.goal = goal
         self.prob = prob
         self.reward = reward
@@ -46,6 +50,7 @@ class Task:
     def __str__(self):
         return f'Description: {self.description}\n' \
                f'Completed: {self.completed}\n' \
+               f'Deadline: {self.deadline}\n' \
                f'ID: {self.task_id}\n' \
                f'Goal: {self.goal.description}\n' \
                f'Probability: {self.prob}\n' \
@@ -56,6 +61,12 @@ class Task:
     def get_copy(self):
         return Task(self.description, completed=self.completed, goal=self.goal,
                     prob=self.prob, reward=self.reward, time_est=self.time_est)
+    
+    def get_deadline(self):
+        return self.deadline
+    
+    def get_deadline_datetime(self):
+        return self.deadline_datetime
     
     def get_description(self):
         return self.description
@@ -69,9 +80,6 @@ class Task:
     def get_reward(self):
         return self.reward
     
-    def get_scheduled_today(self):
-        return self.scheduled_today
-    
     def get_task_id(self):
         return self.task_id
     
@@ -80,7 +88,10 @@ class Task:
     
     def is_completed(self):
         return self.completed
-    
+
+    def is_scheduled_today(self):
+        return self.scheduled_today
+
     # def set_completed(self, completed):
     #     if self.completed != completed:
     #         self.completed = completed
@@ -95,15 +106,13 @@ class Task:
         if self.goal is not goal:
             
             # Remove task from the old goal
+            # TODO: Allow tasks to have multiple goals
             if self.goal is not None:
                 self.goal.remove_task(self)
             
             # Set new goal
             self.goal = goal
             
-            # Add task to the new goal
-            self.goal.add_task(self)
-    
     def set_reward(self, value):
         self.reward = value
 
@@ -154,28 +163,18 @@ class Goal:
         # Calculate time and value estimation
         self.completed_time_est = 0  # Time estimate of completed tasks
         self.scheduled_time_est = 0  # Time estimate of scheduled tasks
-        self.uncompleted_time_est = 0  # Time estimate of uncompleted tasks
+        self.unscheduled_time_est = 0  # Time estimate of uncompleted tasks
         self.total_time_est = 0  # Time estimate of all tasks
 
         # Split tasks into completed and uncompleted
-        self.all_tasks = tasks
-        self.completed_tasks = set()
-        self.uncompleted_tasks = set()
+        self.all_tasks = deque()
+        self.completed_tasks = deque()
+        self.scheduled_tasks = deque()
+        self.unscheduled_tasks = deque()
 
-        for task in self.all_tasks:
-            task.set_goal(self)  # Set a reference from the tasks to the goal
-
-            if task.completed:
-                self.completed_tasks.add(task)
-                self.completed_time_est += task.get_time_est()
-            else:
-                self.uncompleted_tasks.add(task)
-                if task.get_scheduled_today():
-                    self.scheduled_time_est += task.get_time_est()
-                else:
-                    self.uncompleted_time_est += task.get_time_est()
-                
-        self.update_total_time_est()
+        # Add task to the queue of tasks
+        for task in tasks:
+            self.add_task(task)
 
     def __hash__(self):
         return id(self)
@@ -232,15 +231,21 @@ class Goal:
 
     def get_penalty(self):
         return self.penalty
+    
+    def get_scheduled_tasks(self):
+        return self.scheduled_tasks
+
+    def get_scheduled_time_est(self):
+        return self.scheduled_time_est
 
     def get_total_time_est(self):
         return self.total_time_est
 
-    def get_uncompleted_tasks(self):
-        return self.uncompleted_tasks
+    def get_unscheduled_tasks(self):
+        return self.unscheduled_tasks
 
-    def get_uncompleted_time_est(self):
-        return self.uncompleted_time_est
+    def get_unscheduled_time_est(self):
+        return self.unscheduled_time_est
 
     def get_reward(self, time):
         """
@@ -285,27 +290,41 @@ class Goal:
 
     def add_completed_time(self, time_est):
         self.completed_time_est += time_est
-        self.uncompleted_time_est -= time_est
+        self.unscheduled_time_est -= time_est
         self.update_total_time_est()
+
+    def add_completed_task(self, task):
+        self.completed_tasks.append(task)
+        self.completed_time_est += task.get_time_est()
+
+    def add_scheduled_task(self, task):
+        self.scheduled_tasks.append(task)
+        self.scheduled_time_est += task.get_time_est()
+
+    def add_unscheduled_task(self, task):
+        self.unscheduled_tasks.append(task)
+        self.unscheduled_time_est += task.get_time_est()
 
     def add_task(self, task):
         if self.all_tasks is None:
-            self.all_tasks = []
+            self.all_tasks = deque()
+            
+        # Add task to the list of all tasks
+        self.all_tasks.append(task)
         
-        if task.get_goal() is not self:
-            self.all_tasks.append(task)
-            task.set_goal(self)
-            
-            task_time_est = task.get_time_est()
-            
-            if not task.completed:
-                # self.set_completed(False)
-                self.uncompleted_time_est += task_time_est
+        # Set task goal
+        task.set_goal(self)
+        
+        if task.is_completed():
+            self.add_completed_task(task)
+        else:
+            if task.is_scheduled_today():
+                self.add_scheduled_task(task)
             else:
-                self.completed_time_est += task_time_est
-            
-            self.total_time_est += task_time_est
-            # self.value_est += task.get_prob() * task.get_reward()
+                self.add_unscheduled_task(task)
+        
+        self.update_total_time_est()
+        # self.value_est += task.get_prob() * task.get_reward()
 
     # def remove_task(self, task):
     #     if task in self.all_tasks:
@@ -348,7 +367,7 @@ class Goal:
     def update_total_time_est(self):
         self.total_time_est = self.completed_time_est + \
                               self.scheduled_time_est + \
-                              self.uncompleted_time_est
+                              self.unscheduled_time_est
         
     def set_rewards_dict(self, rewards):
         self.rewards = rewards
@@ -367,11 +386,11 @@ class Goal:
         else:
             self.latest_start_time = self.latest_start_time // scale
             
-    def scale_uncompleted_time_est(self, scale, up=True):
+    def scale_unscheduled_time_est(self, scale, up=True):
         if up:
-            self.uncompleted_time_est = self.uncompleted_time_est * scale
+            self.unscheduled_time_est = self.unscheduled_time_est * scale
         else:
-            self.uncompleted_time_est = self.uncompleted_time_est // scale
+            self.unscheduled_time_est = self.unscheduled_time_est // scale
 
 
 class ToDoList:
@@ -385,12 +404,13 @@ class ToDoList:
         """
         # Goals
         self.goals = goals  # TODO: Change list to dictionary
-        self.completed_goals = set()
-        self.uncompleted_goals = set()
+        self.completed_goals = deque()
+        self.uncompleted_goals = deque()
         
-        self.all_tasks = set()  # TODO: Change list to dictionary
-        self.completed_tasks = set()
-        self.uncompleted_tasks = set()
+        self.all_tasks = deque()
+        self.completed_tasks = deque()
+        self.scheduled_tasks = deque()
+        self.unscheduled_tasks = deque()
         
         self.time = start_time  # Current time  | TODO: Do we need this?
         self.start_time = start_time  # TODO: Do we need this?
@@ -401,20 +421,20 @@ class ToDoList:
         # Add goals and tasks to the to-do list
         for goal in self.goals:
             if goal.is_completed():
-                self.completed_goals.add(goal)
+                self.completed_goals.append(goal)
             else:
-                self.uncompleted_goals.add(goal)
+                self.uncompleted_goals.append(goal)
 
             # Split tasks into completed and uncompleted
             for task in goal.get_all_tasks():
-                self.all_tasks.add(task)  # TODO: goal.get_tasks
+                self.all_tasks.append(task)  # TODO: goal.get_tasks
     
                 if task.is_completed():
                     # TODO: goal.get_completed_tasks
-                    self.completed_tasks.add(task)
+                    self.completed_tasks.append(task)
                 else:
                     # TODO: goal.get_uncompleted_tasks
-                    self.uncompleted_tasks.add(task)
+                    self.unscheduled_tasks.append(task)
                     
             self.max_deadline = max(self.max_deadline, goal.get_latest_deadline_time())
             
@@ -448,7 +468,7 @@ class ToDoList:
         """
         # TODO: Randomly get an uncompleted task from an uncompleted goal
         if task is None:
-            task = random.sample(self.uncompleted_tasks, 1)[0]
+            task = random.sample(self.unscheduled_tasks, 1)[0]
         
         reward = 0
         prev_time = self.time
@@ -493,8 +513,8 @@ class ToDoList:
                 and not goal.is_completed():
                 
             task.set_completed(True)
-            self.uncompleted_tasks.discard(task)
-            self.completed_tasks.add(task)
+            self.unscheduled_tasks.discard(task)
+            self.completed_tasks.append(task)
             
             # If completion of the task completes the goal
             if goal.is_completed():

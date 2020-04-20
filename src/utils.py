@@ -64,18 +64,17 @@ def are_there_tree_differences(old_tree, new_tree):
 
 
 def compute_latest_start_time(goal):
-    goal_deadlines = goal["task_deadlines"]
-    deadlines = sorted(list(goal_deadlines.keys()))
-    
     # Initialize current time
-    current_time = int(deadlines[0])
+    current_time = goal["deadline"]
     
-    for current_deadline in reversed(deadlines):
-        current_time = min(current_time, int(current_deadline))
-        current_time -= int(goal_deadlines[current_deadline])
+    # Iterate tasks in reverse order w.r.t. deadline
+    for task in reversed(goal["ch"]):
+        current_time = min(current_time, task["deadline"])
+        current_time -= int(task["est"])
     
         if current_time < 0:
-            raise Exception(f'Goal {goal["nm"]} is unattainable!')
+            # TODO: Task ... is unattainable... (instructions)...
+            raise Exception(f'Task {task["nm"]} is unattainable!')
     
     return current_time
 
@@ -545,7 +544,7 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             raise Exception(f"Goal {goal['nm']}: {str(error)}")
         
         # Initialize dict of all task deadlines
-        # goal["task_deadlines"] = dict()
+        goal["task_deadlines"] = dict()
         
         # If the goal code is not a digit --> misc goal
         if goal["code"][0] not in digits+"^":
@@ -576,19 +575,10 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
                     raise Exception(f"Task {task['nm']}: Task deadline should "
                                     f"be before goal's deadline.")
                 
-                # TODO: Add comments...
-                # str_deadline = str(task["deadline"])  # MongoDB requirement!
-                # goal["task_deadlines"].setdefault(str_deadline, 0)
-                # goal["task_deadlines"][str_deadline] += task["est"]
-                
             else:
-                task["deadline"] = None
-                task["deadline_datetime"] = None
-                
-                # TODO: Add comments...
-                # str_deadline = str(goal["deadline"])  # MongoDB requirement!
-                # goal["task_deadlines"].setdefault(str_deadline, 0)
-                # goal["task_deadlines"][str_deadline] += task["est"]
+                # If task has no deadline, set its deadline to be goal deadline
+                task["deadline"] = goal["deadline"]
+                task["deadline_datetime"] = None  # goal["deadline_datetime"]
                 
             # Check whether the task has already been scheduled in CompliceX or
             # completed in WorkFlowy
@@ -610,11 +600,14 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             # Assign points per hour
             task["pph"] = goal["value"] / goal["est"] * 60
 
+        # Sort tasks w.r.t their deadline
+        goal["ch"].sort(key=lambda task: task["deadline"])
+
         # Set latest start time
-        # goal["latest_start_time"] = compute_latest_start_time(goal)
+        goal["latest_start_time"] = compute_latest_start_time(goal)
 
         # Set estimated goal deadline
-        # goal["effective_deadline"] = goal["latest_start_time"] + goal["est"]
+        goal["effective_deadline"] = goal["latest_start_time"] + goal["est"]
         
         # Check goal value per duration
         value_per_duration = goal["value"] / goal["est"]
@@ -897,27 +890,36 @@ def tree_to_old_structure(projects):
     input: parsed tree
     output: structure that can be inputted to old project code
     """
-    goals = []
+    goals = deque()
     for goal in projects:
         
         # Get list of tasks
-        tasks = []
-        for task in goal['ch']:
+        tasks = deque()
+        for task in goal["ch"]:
 
             # Create new task and add it to the task list
-            tasks.append(Task(completed=task["completed"],
-                              description=task["nm"],
-                              scheduled_today=task["scheduled_today"],
-                              task_id=task["id"],
-                              time_est=task["est"]))
+            tasks.append(
+                Task(
+                    completed=task["completed"],
+                    deadline=task["deadline"],
+                    deadline_datetime=task["deadline_datetime"],
+                    description=task["nm"],
+                    scheduled_today=task["scheduled_today"],
+                    task_id=task["id"],
+                    time_est=task["est"]
+                )
+            )
 
         # Create new goal and add it to the goal list
         goals.append(
-            Goal(description=goal["nm"],
-                 goal_id=goal["id"],
-                 tasks=tasks,
-                 # effective_deadline=goal["effective_deadline"],
-                 # latest_start_time=goal["latest_start_time"],
-                 rewards={goal["deadline"]: goal["value"]}))
+            Goal(
+                description=goal["nm"],
+                goal_id=goal["id"],
+                effective_deadline=goal["effective_deadline"],
+                latest_start_time=goal["latest_start_time"],
+                rewards={goal["deadline"]: goal["value"]},
+                tasks=list(tasks)
+            )
+        )
         
-    return goals
+    return list(goals)

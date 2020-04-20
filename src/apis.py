@@ -4,7 +4,6 @@ from src.utils import separate_tasks_with_deadlines, task_list_from_projects
 from src.schedulers.schedulers import schedule_tasks_for_today
 
 from todolistMDP.scheduling_solvers import run_algorithm
-
 from todolistMDP.to_do_list import *
 
 
@@ -39,17 +38,17 @@ def assign_random_points(projects, distribution_fxn=np.random.normal,
             
     return projects
     
-    
 
 def assign_dynamic_programming_points(projects, solver_fn,
                                       scaling_fn, scaling_inputs,
                                       day_duration=8 * 60, **params):
     
     # Separate tasks with deadlines from real goals
-    goals = separate_tasks_with_deadlines(deepcopy(projects))
+    # goals = separate_tasks_with_deadlines(deepcopy(projects))
 
     # Convert real goals from JSON to Goal class objects
-    goals = tree_to_old_structure(goals)
+    goals = tree_to_old_structure(projects)
+    # goals = tree_to_old_structure(goals)
     
     # Add them together into a single list
     to_do_list = ToDoList(goals, start_time=0)
@@ -60,11 +59,19 @@ def assign_dynamic_programming_points(projects, solver_fn,
                       mixing_parameter=params["mixing_parameter"],
                       verbose=params["verbose"])
 
+    # Get all tasks to be scheduled today
+    tasks = deque()
+    for goal in goals:
+        tasks.extend(goal.get_scheduled_tasks())
+
+    # Add additional tasks to be scheduled
+    tasks.extend(ordered_tasks)
+
     # Scale task values according to the provided scaling function
-    scaling_fn(ordered_tasks, **scaling_inputs)
+    scaling_fn(tasks, **scaling_inputs)
     
     # Schedule tasks for today
-    today_tasks = schedule_tasks_for_today(projects, ordered_tasks,
+    today_tasks = schedule_tasks_for_today(projects, tasks,
                                            duration_remaining=day_duration,
                                            time_zone=params['time_zone'])
 
