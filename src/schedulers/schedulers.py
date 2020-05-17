@@ -104,7 +104,7 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
     current_weekday = current_day.weekday()
     
     for task in ordered_tasks:
-        task_id = task.get_task_id()
+        task_id = task.get_item_id()
         task_item = task_dict[task_id]
         task_item["val"] = task.get_reward()
         

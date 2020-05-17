@@ -14,15 +14,16 @@ from tqdm import tqdm
 
 LOCAL = 1
 HEROKU_STAGING = 2
-VERBOSE = True
+VERBOSE = False
 
-MODE = HEROKU_STAGING
+MODE = LOCAL
 
+ALGORITHM = "dp"
 TEST_TYPE = "no_deadlines"
 USER_ID = "__test__"
 
 PATH_NAME = f"tests/data/{TEST_TYPE}"
-OUTPUT_PATH = f"tests/output/{TEST_TYPE}"
+OUTPUT_PATH = f"tests/output/{ALGORITHM}/{TEST_TYPE}"
 os.makedirs(OUTPUT_PATH, exist_ok=True)
 
 DB = None
@@ -40,7 +41,7 @@ if MODE == LOCAL:
     DB = CONN["ai4productivity"]
 
 if MODE == HEROKU_STAGING:
-    URI = os.environ['MONGODB_URI']
+    URI = "mongodb://hC2P81mItQ16:a1R9ydF01dih@ds341557.mlab.com:41557/heroku_g6l4lr9d?retryWrites=false"  # os.environ['MONGODB_URI']
     CONN = MongoClient(URI)
     DB = CONN.heroku_g6l4lr9d
 
@@ -60,74 +61,96 @@ print("Trees collection count:",
 
 
 #%%
-def test_size(n_goals, n_tasks, mixing_params, n_trials=1):
+def test_size(n_goals, n_tasks, deadline_years, mixing_params, n_trials=1):
     time_results = dict()
     
     time_df = pd.DataFrame()
     tout_df = pd.DataFrame()
     
+    break_flag = False
+    
     for ng in n_goals:
         for nt in n_tasks:
+            for dy in deadline_years:
             
-            time_log = pd.Series(index=mixing_params)
-            tout_log = pd.Series(index=mixing_params)
-            
-            idx_name = f"{ng}_goals_{nt}_tasks"
-            
-            with open(f"{PATH_NAME}/{idx_name}.json", "r") as file:
-                data = json.load(file)
+                time_log = pd.Series(index=mixing_params)
+                tout_log = pd.Series(index=mixing_params)
                 
-            for mp in mixing_params:
-                time_results[mp] = list()
-                tout_log[mp] = 0
+                idx_name = f"{ng}_goals_{nt}_tasks"
                 
-                print("Number of goals:", ng,
-                      "| Number of tasks per goal:", nt,
-                      "| Mixing parameter:", mp)
-        
-                PARAMS = f"api/greedy/mdp/1/10/inf/0/inf/0/inf/{mp}" \
-                         f"/0/0/tree/u123/getTasksForToday"
-                API_ENDPOINT = SERVER + PARAMS
-        
-                for _ in tqdm(range(n_trials)):
+                with open(f"{PATH_NAME}/{idx_name}.json", "r") as file:
+                    data = json.load(file)
                     
-                    start_time = time.time()
-                    r = requests.post(url=API_ENDPOINT, data=json.dumps(data))
-                    end_time = time.time()
-        
-                    output = r.text
-        
-                    if output[0] == '"':
-                        print('\nTimeout!')
-                        tout_log[mp] += 1
-                    elif output[0] == '<':
-                        print(output)
-                    else:
-                        if VERBOSE:
-                            pprint(json.loads(output))
-                        time_results[mp].append(end_time - start_time)
+                for mp in mixing_params:
+                    time_results[mp] = list()
+                    tout_log[mp] = 0
+                    
+                    print("Number of goals:", ng,
+                          "| Number of tasks per goal:", nt,
+                          "| Years to deadline:", dy,
+                          "| Mixing parameter:", mp)
+            
+                    PARAMS = f"api/{ALGORITHM}/mdp/1/10/inf/0/inf/0/inf/{mp}" \
+                             f"/0/0/tree/u123/getTasksForToday"
+                    API_ENDPOINT = SERVER + PARAMS
+            
+                    for _ in tqdm(range(n_trials)):
                         
-                    # Clean-up database
-                    DB.request_log.delete_many({"user_id": USER_ID})
-                    DB.trees.delete_many({"user_id": USER_ID})
-        
-                # Print results
-                time_log[mp] = np.mean(time_results[mp])
-                print(f"\nNumber of goals: {ng}\n"
-                      f"Number of tasks per goal: {nt}\n"
-                      f"Total number of tasks: {ng * nt}\n"
-                      f"Mixing parameter: {mp:.2f}\n"
-                      f"Average time: {time_log[mp]:.4f}\n"
-                      f"Timeouts: {tout_log[mp]}\n"
-                      f"Time results: {time_results[mp]}\n")
-        
-            time_df[idx_name] = time_log
-            tout_df[idx_name] = tout_log
-        
-            time_df.to_csv(f"{OUTPUT_PATH}/"
-                           f"results_{SERVER_ABBR}_{TEST_TYPE}_time.csv")
-            tout_df.to_csv(f"{OUTPUT_PATH}/"
-                           f"results_{SERVER_ABBR}_{TEST_TYPE}_tout.csv")
+                        start_time = time.time()
+                        r = requests.post(url=API_ENDPOINT, data=json.dumps(data))
+                        end_time = time.time()
+            
+                        output = r.text
+                        
+                        print(output)
+            
+                        if output[0] == '"':
+                            print('\nTimeout!')
+                            tout_log[mp] += 1
+                        elif output[0] == '<':
+                            print(output)
+                        else:
+                            if VERBOSE:
+                                pprint(json.loads(output))
+                            time_results[mp].append(end_time - start_time)
+                            
+                        # Clean-up database
+                        DB.request_log.delete_many({"user_id": USER_ID})
+                        DB.trees.delete_many({"user_id": USER_ID})
+            
+                    # Print results
+                    time_log[mp] = np.mean(time_results[mp])
+                    print(f"\nNumber of goals: {ng}\n"
+                          f"Number of tasks per goal: {nt}\n"
+                          f"Total number of tasks: {ng * nt}\n"
+                          f"Number of years: {dy}\n"
+                          f"Mixing parameter: {mp:.2f}\n"
+                          f"Average time: {time_log[mp]:.4f}\n"
+                          f"Timeouts: {tout_log[mp]}\n"
+                          f"Time results: {time_results[mp]}\n")
+                    
+                    # if n_trials == tout_log[mp]:
+                    #     break_flag = True
+                    #     print("Breaking...", end=" ")
+                    #     break
+
+                time_df[idx_name] = time_log
+                tout_df[idx_name] = tout_log
+            
+                time_df.to_csv(f"{OUTPUT_PATH}/"
+                               f"results_{SERVER_ABBR}_time.csv")
+                tout_df.to_csv(f"{OUTPUT_PATH}/"
+                               f"results_{SERVER_ABBR}_tout.csv")
+                
+                if break_flag:
+                    break
+                
+            if break_flag:
+                print("Done!\n")
+                break
+
+        # Reset break flag
+        break_flag = False
 
     return time_df, tout_df
 
@@ -138,7 +161,8 @@ if __name__ == '__main__':
     # Tests for different values of goals, tasks and mixing-parameter values
     test_size(
         n_goals=[10],
-        n_tasks=[10, 50, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000],
+        n_tasks=[2500, 7500, 10000],  # 10, 50, 100, 250, 500, 750, 1000,
+        deadline_years=[None],
         mixing_params=[0.00, 0.10, 0.25, 0.50, 0.75, 0.90, 0.99],
-        n_trials=10
+        n_trials=3
     )

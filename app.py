@@ -639,7 +639,9 @@ class PostResource(RESTResource):
                               status=status + " " + anonymous_error)
                 except:
                     store_log(db.request_log,
-                              {"status": status + " " +"Exception while storing anonymous error info."})
+                              {"start_time": log_dict["start_time"],
+                               "status": status + " " +
+                                         "Exception while storing anonymous error info."})
                 
                 cherrypy.response.status = 403
                 return json.dumps(status + " " + CONTACT)
@@ -655,8 +657,10 @@ class Root(object):
 
 
 if __name__ == '__main__':
-    conn = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
-    db = conn.heroku_g6l4lr9d
+    uri = "mongodb://ai4productivity:ai4productivity@127.0.0.1/ai4productivity"
+    client = MongoClient(uri)
+    db = client["ai4productivity"]
+    collection = db["ai4productivity"]
     
     conf = {
         '/':       {

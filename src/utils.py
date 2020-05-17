@@ -904,7 +904,7 @@ def tree_to_old_structure(projects):
                     deadline=task["deadline"],
                     deadline_datetime=task["deadline_datetime"],
                     description=task["nm"],
-                    scheduled_today=task["scheduled_today"],
+                    scheduled=task["scheduled_today"],
                     task_id=task["id"],
                     time_est=task["est"]
                 )

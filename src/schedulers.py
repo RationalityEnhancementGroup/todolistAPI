@@ -125,7 +125,7 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
     # overwork_minutes = 0
     
     for task in ordered_tasks:
-        task_id = task.get_task_id()
+        task_id = task.get_item_id()
         task_item = task_dict[task_id]
         task_item["val"] = task.get_reward()
         
@@ -154,7 +154,7 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
         if duration_remaining == 0:
             break
         
-        task_id = task.get_task_id()
+        task_id = task.get_item_id()
         task_item = task_dict[task_id]
         
         # If the task has not been completed and it is not for today and

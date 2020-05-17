@@ -34,6 +34,8 @@ def follow_policy(mdp):
 
     print(state, action, value)
     
+    visited_states = deque([state])
+    
     while policy[state] is not None:
         # Get task
         idx = policy[state]
@@ -48,10 +50,28 @@ def follow_policy(mdp):
         
         action = policy[state]
         value = values[state]
+        
+        visited_states.append(state)
 
         print(state, action, value)
 
-    return
+    return visited_states
+
+
+def print_pseudo_rewards(mdp, states):
+    for idx in range(len(states) - 1):
+        s = states[idx]
+        a = mdp.get_optimal_policy(s)
+        s_ = states[idx + 1]
+        print(mdp.pseudo_rewards[(s, a, s_)])
+
+
+def print_transformed_pseudo_rewards(mdp, states):
+    for idx in range(len(states) - 1):
+        s = states[idx]
+        a = mdp.get_optimal_policy(s)
+        s_ = states[idx + 1]
+        print(mdp.transformed_pseudo_rewards[(s, a, s_)])
 
 
 def solve(to_do_list, solver,
@@ -142,10 +162,11 @@ def test_multiple_test_cases(test_cases, algorithm,
 
 # Set of goals to use
 # goals = generate_deterministic_test(num_goals=1000, num_tasks=10)
+goals = d_bm
 
 # Generate to-do list MDP
-# s_time = time.time()  # Start timer
-# to_do_list = ToDoList(goals, start_time=0)
+s_time = time.time()  # Start timer
+to_do_list = ToDoList(goals, start_time=0)
 
 # ===== Backward induction =====
 """
@@ -154,8 +175,11 @@ def test_multiple_test_cases(test_cases, algorithm,
     (+) Probabilistic case (2 goals x 2 tasks)
 """
 # mdp = ToDoListMDP(to_do_list)
-# print(f'MDP initialization takes {time.time() - s_time:.4f} seconds.')
-# mdp = solve(to_do_list, backward_induction)
+print(f'MDP initialization takes {time.time() - s_time:.4f} seconds.')
+mdp = solve(to_do_list, backward_induction)
+# pprint(mdp.v_states)
+# print(mdp.pseudo_rewards)
+# print(mdp.transformed_pseudo_rewards)
 
 # ===== Policy iteration =====
 """
@@ -195,18 +219,18 @@ def test_multiple_test_cases(test_cases, algorithm,
 #     print(task)
 #     current_time += task.get_time_est()
 
-for num_goals in [1000]:
-    for mixing_parameter in [0.0, 0.1, 0.25, 0.5, 0.75, 0.90, 0.99]:
-        print(f"Goals: {num_goals} | "
-              f"Mixing parameter {mixing_parameter}")
-
-        goals = generate_deterministic_test(num_goals=num_goals, num_tasks=1)
-        to_do_list = ToDoList(goals, start_time=0)
-
-        run_algorithm(to_do_list, algorithm_fn=run_greedy_algorithm,
-                      mixing_parameter=mixing_parameter, verbose=False)
-
-        print()
+# for num_goals in [1000]:
+#     for mixing_parameter in [0.0, 0.1, 0.25, 0.5, 0.75, 0.90, 0.99]:
+#         print(f"Goals: {num_goals} | "
+#               f"Mixing parameter {mixing_parameter}")
+#
+#         goals = generate_deterministic_test(num_goals=num_goals, num_tasks=1)
+#         to_do_list = ToDoList(goals, start_time=0)
+#
+#         run_algorithm(to_do_list, algorithm_fn=run_greedy_algorithm,
+#                       mixing_parameter=mixing_parameter, verbose=False)
+#
+#         print()
 
 # ===== Comparison ====
 # for num_tasks in range(1, 5):

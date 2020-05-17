@@ -30,7 +30,7 @@ def utility_scaling(task_list, scale_type="no_scaling",
     mean_reward = []
     
     for task in task_list:
-        task_goal = task.get_goal()
+        task_goal = task.get_super_items()
         
         task_time_est = task.get_time_est()
         goal_reward = task_goal.get_reward(0)

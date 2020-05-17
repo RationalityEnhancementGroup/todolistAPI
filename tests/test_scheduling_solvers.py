@@ -174,6 +174,7 @@ def test_greedy_method_and_mixing_time():
 #       - compute_mixing_values
 #       - get_ordered_task_list
 #           - test whether len(input) == len(output)
+#           - check whether tasks are still attainable after mixing!
 #       - shuffle
 
 # TODO: test_dp_method():

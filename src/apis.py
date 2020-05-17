@@ -57,7 +57,7 @@ def assign_dynamic_programming_points(projects, solver_fn,
     ordered_tasks = \
         run_algorithm(to_do_list, solver_fn,
                       mixing_parameter=params["mixing_parameter"],
-                      verbose=params["verbose"])
+                      verbose=True)
 
     # Get all tasks to be scheduled today
     tasks = deque()
