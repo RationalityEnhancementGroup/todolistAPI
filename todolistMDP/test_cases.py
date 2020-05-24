@@ -4,7 +4,7 @@ Default values:
 - Probability = 1
 """
 
-from todolistMDP.to_do_list import Item
+from todolistMDP.to_do_list import ComplexItem, Task, Goal
 
 HOUR_TO_MINS = 60
 DAY_TO_MINS = 24 * HOUR_TO_MINS
@@ -93,103 +93,103 @@ Optimal Ordering:
 '''
 
 d_bm_mod = [
-    Item(
+    ComplexItem(
         description="Goal A",
         deadline=10,
         # penalty=-10,
         reward=100,
         # rewards={10: 100},
         sub_items=[
-            Item(
+            ComplexItem(
                 description="Task A1",
                 time_est=1
             ),
-            Item(
+            ComplexItem(
                 description="Task A2",
                 time_est=1
             )
         ]
     ),
-    Item(
+    ComplexItem(
         description="Goal B",
         deadline=10,
         # penalty=0,
         reward=10,
         # rewards={1: 10, 10: 10},
         sub_items=[
-            Item(
+            ComplexItem(
                 description="Task B1",
                 time_est=2
             ),
-            Item(
+            ComplexItem(
                 description="Task B2",
                 time_est=2
             )
         ],
     ),
-    Item(
+    ComplexItem(
         description="Goal C",
         deadline=6,
         # penalty=-1,
         reward=100,
         # rewards={1: 10, 6: 100},
         sub_items=[
-            Item(
+            ComplexItem(
                 description="Task C1",
                 time_est=3
             ),
-            Item(
+            ComplexItem(
                 description="Task C2",
                 time_est=3
             )
         ],
     ),
-    Item(
+    ComplexItem(
         description="Goal D",
         deadline=40,
         # penalty=-10,
         reward=10,
         # rewards={20: 100, 40: 10},
         sub_items=[
-            Item(
+            ComplexItem(
                 description="Task D1",
                 time_est=3
             ),
-            Item(
+            ComplexItem(
                 description="Task D2",
                 time_est=3
             )
         ],
     ),
-    Item(
+    ComplexItem(
         description="Goal E",
         deadline=70,
         # penalty=-110,
         reward=10,
         # rewards={60: 100, 70: 10},
         sub_items=[
-            Item(
+            ComplexItem(
                 description="Task E1",
                 time_est=3
             ),
-            Item(
+            ComplexItem(
                 description="Task E2",
                 time_est=3
             )
         ],
     ),
-    Item(
+    ComplexItem(
         description="Goal F",
         deadline=70,
         # penalty=-110
         reward=10,
         # rewards={60: 100, 70: 10},
         sub_items=[
-            Item(
+            ComplexItem(
                 description="Task F1",
                 time_est=3
             ),
-            Item(
+            ComplexItem(
                 description="Task F2",
                 time_est=3
             )
