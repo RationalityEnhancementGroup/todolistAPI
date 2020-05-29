@@ -403,7 +403,7 @@ class Goal(Item):
         )
 
     def check_missed_task_deadline(self, deadline, t):
-        return t > deadline != self.latest_deadline_time
+        return t > deadline and deadline != self.latest_deadline_time
 
     # def compute_penalties(self, missed_deadlines, t):
     #     self.deadline_mode = "hard"  # "soft"
@@ -693,12 +693,12 @@ class Goal(Item):
                         
                         # Add deadline to the missed deadlines if not attained
                         if self.check_missed_task_deadline(task_deadline, t_):
-                            total_penalty = next_task.get_total_penalty() * \
+                            total_penalty = next_task.get_unit_penalty() * \
                                             (t_ - task_deadline)
                             
-                            curr_state["missed_deadlines"].append(task_deadline)
-                            curr_state["penalty_factor"] += total_penalty
-
+                            next_state["missed_deadlines"].append(task_deadline)
+                            next_state["penalty_factor"] += total_penalty
+                            
                         if mode == "deadline":
                             next_state["idx_deadlines"] = idx + 1
                             
