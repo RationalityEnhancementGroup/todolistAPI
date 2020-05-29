@@ -16,63 +16,91 @@ N_TASKS = 500
 START_TIME = 0
 TIME_SCALE = 1
 
+SLACK_REWARD = 0  # 1e-3
+TIME_PRECISION = 6
+TIME_SUPPORT = 1
+
+TASK_UNIT_PENALTY = 0.01
+UNIT_PENALTY = 0.01
+
 sys.setrecursionlimit(10000)
 
 d_bm = [
     Goal(
         description="Goal A",
         # deadline=10,
+        hard_deadline=False,
         loss_rate=LOSS_RATE,
-        penalty=-10,
+        # penalty=-10,
         # reward=100,
         rewards={10: 100},
         tasks=[
              Task("Task A1", time_est=1),
              Task("Task A2", time_est=1)
         ],
+        task_unit_penalty=TASK_UNIT_PENALTY,
+        time_precision=TIME_PRECISION,
+        time_support=TIME_SUPPORT,
+        unit_penalty=UNIT_PENALTY,
     ),
     Goal(
         description="Goal B",
         # deadline=10,
+        hard_deadline=False,
         loss_rate=LOSS_RATE,
-        penalty=0,
+        # penalty=0,
         # reward=10,
         # rewards={10: 10},  # Simplified
         rewards={1: 10, 10: 10},
         tasks=[
              Task("Task B1", time_est=2),
              Task("Task B2", time_est=2)
-        ]
+        ],
+        task_unit_penalty=TASK_UNIT_PENALTY,
+        time_precision=TIME_PRECISION,
+        time_support=TIME_SUPPORT,
+        unit_penalty=UNIT_PENALTY,
     ),
     Goal(description="Goal C",
          # deadline=6,
+         hard_deadline=False,
          loss_rate=LOSS_RATE,
-         penalty=-1,
+         # penalty=-1,
          # reward=100,
          # rewards={6: 100},  # Simplified
          rewards={1: 10, 6: 100},
          tasks=[
              Task("Task C1", time_est=3),
              Task("Task C2", time_est=3)
-         ]
+         ],
+         task_unit_penalty=TASK_UNIT_PENALTY,
+         time_precision=TIME_PRECISION,
+         time_support=TIME_SUPPORT,
+         unit_penalty=UNIT_PENALTY,
     ),
     Goal(description="Goal D",
          # deadline=40,
+         hard_deadline=False,
          loss_rate=LOSS_RATE,
-         penalty=-10,
+         # penalty=-10,
          # reward=10,
          # rewards={40: 10},  # Simplified
          rewards={20: 100, 40: 10},
          tasks=[
              Task("Task D1", time_est=3),
              Task("Task D2", time_est=3)
-         ]
+         ],
+         task_unit_penalty=TASK_UNIT_PENALTY,
+         time_precision=TIME_PRECISION,
+         time_support=TIME_SUPPORT,
+         unit_penalty=UNIT_PENALTY,
     ),
     Goal(
         description="Goal E",
         # deadline=70,
+        hard_deadline=False,
         loss_rate=LOSS_RATE,
-        penalty=-110,
+        # penalty=-110,
         # reward=10,
         # rewards={70: 10},  # Simplified
         rewards={60: 100, 70: 10},
@@ -80,12 +108,17 @@ d_bm = [
             Task("Task E1", time_est=3),
             Task("Task E2", time_est=3)
         ],
+        task_unit_penalty=TASK_UNIT_PENALTY,
+        time_precision=TIME_PRECISION,
+        time_support=TIME_SUPPORT,
+        unit_penalty=UNIT_PENALTY,
     ),
     Goal(
         description="Goal F",
         # deadline=70,
+        hard_deadline=False,
         loss_rate=LOSS_RATE,
-        penalty=-110,
+        # penalty=-110,
         # reward=10,
         # rewards={70: 10},  # Simplified
         rewards={60: 100, 70: 10},
@@ -93,6 +126,10 @@ d_bm = [
             Task("Task F1", time_est=3),
             Task("Task F2", time_est=3)
         ],
+        task_unit_penalty=TASK_UNIT_PENALTY,
+        time_precision=TIME_PRECISION,
+        time_support=TIME_SUPPORT,
+        unit_penalty=UNIT_PENALTY,
     )
 ]
 
@@ -114,14 +151,20 @@ d_bm = [
 
 def generate_goal(n_tasks, deadline_time, reward=100, time_scale=TIME_SCALE):
     return Goal(
-        description="Goal",
+        description="__GOAL__",
         loss_rate=0,
         penalty=0,
         rewards={deadline_time: reward},
+        # tasks=[
+        #     Task(f"T{i}", deadline=n_tasks-i+1, time_est=i * time_scale)
+        #     for i in range(1, n_tasks+1)
+        # ]
         tasks=[
-            Task(f"T{i}", deadline=n_tasks-i+1, time_est=i * time_scale)
+            Task(f"T{i}", deadline=n_tasks * 25, time_est=25)
             for i in range(1, n_tasks+1)
-        ]
+        ],
+        time_precision=TIME_PRECISION,
+        time_support=TIME_SUPPORT
     )
 
 
@@ -185,10 +228,11 @@ def multi_test(num_goals: list, num_tasks: list, num_samples=1,
             
             for _ in tqdm(range(num_samples)):
                 tic = time.time()
-                goals = [generate_goal(n_tasks, deadline_time=1000000 * n_goals,
-                                       time_scale=2 * s + 1)
-                         for s in range(n_goals)]
-                to_do_list = ToDoList(goals, gamma=gamma)
+                goals = [
+                    generate_goal(n_tasks, deadline_time=n_tasks * n_goals * 30)
+                    for s in range(n_goals)
+                ]
+                to_do_list = ToDoList(goals, gamma=gamma, slack_reward=0)
                 to_do_list.solve(verbose=False)
                 toc = time.time()
                 
@@ -223,22 +267,25 @@ def multi_test(num_goals: list, num_tasks: list, num_samples=1,
 def run(goals, gamma=GAMMA, verbose=False):
     
     tic = time.time()
-    to_do_list = ToDoList(goals, gamma=gamma)
-    to_do_list.solve(verbose=False)
+    to_do_list = ToDoList(goals, gamma=gamma, slack_reward=SLACK_REWARD)
+    to_do_list.solve(start_time=0, verbose=verbose)
     toc = time.time()
     print()
-    if verbose:
-        print(f"Recursive procedure took {toc - tic:.2f} seconds!")
-        print()
-    
-    print_stats(to_do_list)
-    pprint(to_do_list.get_q_values())
-    st, _ = to_do_list.run_optimal_policy(verbose=True)
+    print(f"Recursive procedure took {toc - tic:.2f} seconds!")
     print()
     
-    for a, t_end in st:
-        goal = to_do_list.goals[a]
-        # pprint(goal.Q)
+    print_stats(to_do_list)
+    # st, _ = to_do_list.run_optimal_policy(verbose=True)
+    pprint(to_do_list.get_q_values())
+    print()
+    
+    for goal in to_do_list.get_goals():
+        print(goal.get_description())
+        pprint(goal.get_q_values())
+    
+    # for a, t_end in st:
+    #     goal = to_do_list.goals[a]
+    #     pprint(goal.Q)
 
     # goal_order = [s for s, t in st]
     # print(goal_order)
@@ -260,15 +307,16 @@ def run(goals, gamma=GAMMA, verbose=False):
     #     # t += goal.get_time_est()
 
 
-# goals = [generate_goal(n_tasks=3, deadline_time=100) for s in range(1)]
+# goals = [generate_goal(n_tasks=3, deadline_time=np.PINF) for s in range(1)]
 # goals = [generate_goal(n_tasks=2, time_scale=2*s+1) for s in range(1)]
-goals = d_bm
-# goals = [d_bm[2]]
-run(goals=goals, verbose=True)
+# goals = d_bm
+goals = [d_bm[2]]
+
+run(goals=goals, verbose=False)
 
 # multi_test(
-#     num_goals=[1, 2, 3, 4, 5],
-#     num_tasks=[25, 50, 75, 100],
-#     num_samples=1,
+#     num_goals=[2, 3, 4, 5, 6, 7, 8, 9],
+#     num_tasks=[50],
+#     num_samples=3,
 #     verbose=False
 # )
