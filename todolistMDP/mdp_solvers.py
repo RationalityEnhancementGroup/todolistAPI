@@ -35,7 +35,7 @@ def backward_induction(to_do_list):
     #     mdp.optimal_policy[state] = mdp.v_states[state][1]
 
     # TODO: Make pseudo-rewards active
-    mdp.calculate_pseudo_rewards()
+    mdp.compute_pseudo_rewards()
     mdp.transform_pseudo_rewards()
     
     return mdp
