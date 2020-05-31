@@ -433,7 +433,7 @@ class Goal(Item):
     #
     #     return total_penalty
 
-    def compute_pseudo_rewards(self, loc=0., scale=1.):
+    def compute_pseudo_rewards(self, start_t=0, loc=0., scale=1.):
         """
         Computes pseudo-rewards.
         
@@ -443,8 +443,11 @@ class Goal(Item):
         if self.highest_negative_reward == np.NINF:
             standardizing_reward = 0
         
+        # Get time-shift discount
+        discount = ToDoList.get_discount(start_t)
+
         for s in self.Q.keys():
-            
+    
             self.PR.setdefault(s, dict())
             
             for t in self.Q[s].keys():
@@ -455,35 +458,36 @@ class Goal(Item):
                     
                     self.PR[s][t].setdefault(a, dict())
                     
-                    if a is None:
+                    if a is None or a == -1:
 
                         # Calculate pseudo-reward of the terminal state
                         self.PR[s][t][a]["E"] = 0
-                    
+                        
                     else:
+                        
                         # Get current Task object
                         curr_task = self.tasks[a]
-    
+                        
                         # Move to the next state
                         s_ = ToDoList.exec_action(s, a)
-    
+
                         # Make time transition
                         t_ = t + curr_task.get_time_est()
-                    
+                        
                         # Get optimal action in the next state
                         a_ = self.P[s_][t_]
     
                         # Expected Q-value of the next state
-                        q_ = self.Q[s_][t_][a_]["E"]
+                        q_ = self.Q[s_][t_][a_]["E"] * discount
     
                         # Expected Q-value of the current state
-                        q = self.Q[s][t][a]["E"]
+                        q = self.Q[s][t][a]["E"] * discount
                         
                         # Compute value of the reward-shaping function
                         f = q_ - q
                         
                         # Standardize rewards s.t. negative rewards <= 0
-                        # f -= standardizing_reward
+                        # f -= standardizing_reward * discount
                         
                         # Make affine transformation of the reward-shaping function
                         f = scale * f + loc
@@ -575,16 +579,20 @@ class Goal(Item):
         """
         # TODO: Write abbreviation description
         
+        # If no state was provided, get start state
         if s is None:
             s = tuple(0 for _ in range(self.num_tasks))
             
         # Check whether the state has a valid length
         assert len(s) == self.num_tasks
+        
+        # Store start time
+        start_t = t
     
-        # TODO: Describe... | Check whether still holds... (?!)
-        st_pairs = []
-    
-        # Initialize reward placeholder
+        # Initialize optimal-policy actions list
+        opt_P = []
+
+        # Initialize reward placeholder (for printing purposes)
         r = None
 
         if verbose:
@@ -593,57 +601,71 @@ class Goal(Item):
         while t <= t_end:
             
             # Add slack reward to the dictionary
-            slack_reward = self.compute_slack_reward(t)
+            # slack_reward = self.compute_slack_reward(0)  # TODO: t or 0 (?)
 
-            self.Q[s][t].setdefault(-1, dict())
-            self.Q[s][t][-1]["E"] = slack_reward
+            # self.Q[s][t].setdefault(-1, dict())
+            # self.Q[s][t][-1]["E"] = slack_reward
             
             # if verbose:
             #     print(self.Q[s][t])
 
+            # Get {actions: {time': reward}} dictionary
             q = self.Q[s][t]
             
+            # Get best action and its reward from the dictionary
             a, r_ = ToDoList.max_from_dict(q)
 
+            # If next action is not termination
             if a is not None:
+                
+                # Get next task to "work on"
                 goal = self.tasks[a]
+                
+                # Compute time transition
                 t_ = t + goal.get_time_est()
-                # a, t_ = q_
 
-            # Set optimal action for state s in time t
+            # Set optimal action for policy in (s)tate and (t)ime
             self.P[s][t] = a
 
             if verbose:
+
+                # Prepare print if action is termination or slack-off
                 print_a = '-' if a is None else a
                 print_t_ = '-' if a is None or a == -1 else t_
-                # print_pr = '-' if a == -1 else self.PR[s][t][a]['E']
+                print_pr = '-' if a == -1 else self.PR[s][t][a]['E']
     
                 if r is not None:
-                    print(f"Future reward: {r} | "
-                #           f"Reward difference: {r - r_} | "
+                    print(f"Current reward: {r_ - r} | "
+                          # f"Reward difference: {r - r_} | "
                     )
                 print(f"Taken action: {print_a} | "
                       f"From time: {t} | "
                       f"To time: {print_t_} | "
-                      # f"PR: {print_pr}"
+                      f"PR: {print_pr} | "
+                      f"Future reward: {r_} | "
                       , end=""
                       )
 
+            # If next action is termination or slack-off, terminate
             if a is None or a == -1:
                 break
 
-            st_pairs.append((a, t_))
+            # Append (action, time') to the optimal-policy actions list
+            opt_P.append((a, t_))
 
-            if a >= 0:
-                s = ToDoList.exec_action(s, a)
+            # Move to the next (s)tate
+            s = ToDoList.exec_action(s, a)
+            
+            # Move to the next time step
             t = t_
 
+            # Store reward for printing purposes
             r = r_
     
         if verbose:
             print()
     
-        return st_pairs, t
+        return opt_P, t
 
     # def scale_rewards(self, min_value=1, max_value=100, print_values=False):
     #     """
@@ -677,6 +699,7 @@ class Goal(Item):
             """
             s = curr_state["s"]
             t = curr_state["t"]
+            start_t = curr_state["start_t"]
 
             idx_deadlines = curr_state["idx_deadlines"]
             idx_time_est = curr_state["idx_time_est"]
@@ -755,11 +778,17 @@ class Goal(Item):
                     self.total_computations += 1
 
                     # Get cumulative discounts at current time and next time
-                    cum_discount_t = ToDoList.get_cum_discount(t)
-                    cum_discount_t_ = ToDoList.get_cum_discount(t_)
+                    # cum_discount_t = ToDoList.get_cum_discount(t)
+                    # cum_discount_t_ = ToDoList.get_cum_discount(t_)
                     
                     # Calculate discount for the next action
-                    discount = cum_discount_t_ - cum_discount_t
+                    # discount = cum_discount_t_ - cum_discount_t
+                    
+                    # TODO: Not sure...
+                    # time_est_discount = ToDoList.get_cum_discount(start_t + time_est)
+                    # start_t_discount = ToDoList.get_cum_discount(start_t)
+                    # dt_discount = time_est_discount - start_t_discount
+                    discount = ToDoList.get_cum_discount(time_est)
                     
                     # Calculate total loss for next action
                     r = next_task.get_total_loss(discount=discount)
@@ -842,7 +871,11 @@ class Goal(Item):
                     if a_ is None:
                         total_reward = r + r_
                     else:
-                        total_reward = r + self.gamma * r_
+                        # Single time-step discount (MDP)
+                        # total_reward = r + self.gamma * r_
+                        
+                        # Multiple time-step discount (SMDP)
+                        total_reward = r + ToDoList.get_discount(time_est) * r_
 
                     # If total reward is negative, compare it with the highest
                     # negative reward and substitute if higher
@@ -912,7 +945,8 @@ class Goal(Item):
             "idx_deadlines": 0,
             "idx_time_est":  0,
             "missed_deadlines": deque(),  # self.get_latest_deadline_time()
-            "penalty_factor": 0.
+            "penalty_factor": 0.,
+            "start_t": t
         }
 
         # Take next action to be from the task list sorted w.r.t. time estimates
@@ -924,6 +958,9 @@ class Goal(Item):
         # Get optimal action and value for the starting state and time
         a, r = ToDoList.max_from_dict(self.Q[s][t])
 
+        '''
+        Revise optimal policy
+        '''
         # TODO: Revise optimal policy by incorporating the slack-off action
         #     - For each step, check whether the slack-off action is better than
         #       working on any other goal. If that is the case, take the
@@ -931,10 +968,8 @@ class Goal(Item):
         #     - NOTE: This makes sense only if gamma < 1. Otherwise, the
         #             slack-off action is always the best one since it brings
         #             infinite positive reward.
-        
-        '''
-        Revise optimal policy
-        '''
+        #     - Done in the run_optimal_policy method!
+
         # Store policy for the next (state, time) pair
         self.P[s][t] = a
         
@@ -942,6 +977,8 @@ class Goal(Item):
         return {
             "P": self.P,
             "Q": self.Q,
+            "s": s,
+            "t": t,
             "a": a,
             "r": r
         }
@@ -1122,7 +1159,7 @@ class ToDoList:
             if goal.get_slack_reward() is None:
                 goal.set_slack_reward(self.slack_reward)
 
-    def compute_pseudo_rewards(self, loc=0., scale=1.):
+    def compute_pseudo_rewards(self, start_t=0, loc=0., scale=1.):
         """
         Computes pseudo-rewards.
 
@@ -1131,6 +1168,9 @@ class ToDoList:
         standardizing_reward = self.highest_negative_reward
         if self.highest_negative_reward == np.NINF:
             standardizing_reward = 0
+            
+        # Get time-shift discount
+        discount = ToDoList.get_discount(start_t)
 
         for s in self.Q.keys():
         
@@ -1165,16 +1205,16 @@ class ToDoList:
                     a_ = self.P[s_][t_]
                 
                     # Expected Q-value of the next state
-                    q_ = self.Q[s_][t_][a_]["E"]
+                    q_ = self.Q[s_][t_][a_]["E"] * discount
                 
                     # Expected Q-value of the current state
-                    q = self.Q[s][t][a]["E"]
+                    q = self.Q[s][t][a]["E"] * discount
                     
                     # Compute value of the reward-shaping function
                     f = q_ - q
                     
                     # Standardize rewards s.t. negative rewards <= 0
-                    # f -= standardizing_reward
+                    # f -= standardizing_reward * discount
                     
                     # Make affine transformation of the reward-shaping function
                     f = scale * f + loc
@@ -1256,46 +1296,58 @@ class ToDoList:
     def get_slack_reward(self):
         return self.slack_reward
 
-    def run_optimal_policy(self, s=None, t=0, verbose=False):
+    def run_optimal_policy(self, s=None, t=0,
+                           run_goal_policy=True, verbose=False):
         # TODO: Write abbreviation description
         
         if s is None:
             s = tuple(0 for _ in range(self.num_goals))
         assert len(s) == self.num_goals
         
-        st_pairs = []
+        # Initialize optimal-policy actions list
+        opt_P = []
         
+        # Initialize reward placeholder (for printing purposes)
         r = None
         
         if verbose:
-            print("\n===== Goal-level policy=====\n")
+            print("\n===== Goal-level policy =====\n")
             
         while True:
-            # Add slack reward to the dictionary
-            slack_reward = self.compute_slack_reward(t)
             
-            self.Q[s][t].setdefault(-1, dict())
-            self.Q[s][t][-1]["E"] = slack_reward
+            # Add slack reward to the dictionary
+            # slack_reward = self.compute_slack_reward(0)  # TODO: t or 0 (?)
+            
+            # self.Q[s][t].setdefault(-1, dict())
+            # self.Q[s][t][-1]["E"] = slack_reward
     
             # if verbose:
             #     print(self.Q[(s, t)])
-    
+
+            # Get {actions: {time': reward}} dictionary
             q = self.Q[s][t]
             
+            # Get best action and its reward from the dictionary
             a, r_ = ToDoList.max_from_dict(q)
             
+            # If next action is not termination
             if a is not None:
+                
+                # Get next goal to "work on"
                 goal = self.goals[a]
+                
+                # Compute time transition
                 t_ = t + goal.get_time_est()
-                # a, t_ = q_
 
-            # Set optimal action for state s in time t
+            # Set optimal action for policy in (s)tate and (t)ime
             self.P[s][t] = a
             
             if verbose:
+                
+                # Prepare print if action is termination or slack-off
                 print_a = '-' if a is None else a
                 print_t_ = '-' if a is None or a == -1 else t_
-                # print_pr = '-' if a == -1 else self.PR[s][t][a]['E']
+                print_pr = '-' if a == -1 else self.PR[s][t][a]['E']
                 
                 if r is not None:
                     print(f"Future reward: {r} | "
@@ -1304,38 +1356,58 @@ class ToDoList:
                 print(f"Taken action: {print_a} | "
                       f"From time: {t} | "
                       f"To time: {print_t_} | "
-                      # f"PR: {print_pr}"
+                      f"PR: {print_pr} | "
                       , end=""
                 )
 
+            # If next action is termination or slack-off, terminate
             if a is None or a == -1:
                 break
                 
-            st_pairs.append((a, t_))
+            # Append (action, time') to the optimal-policy actions list
+            opt_P.append((a, t_))
+
+            # Move to the next (s)tate
+            s = ToDoList.exec_action(s, a)
             
-            if a >= 0:
-                s = ToDoList.exec_action(s, a)
+            # Move to the next time step
             t = t_
             
+            # Store reward for printing purposes
             r = r_
 
         if verbose:
             print("\n")
-            print(st_pairs)
+            print(opt_P)
 
-        idx = 0
-        t = 0
-        while idx < len(st_pairs):
-            print(f"Starting time: {t}")
-            a, t_end = st_pairs[idx]
-            goal = self.goals[a]
+        """
+        Run task-level optimal policy in the order as computed by the goal-level
+        optimal policy
+        """
+        if run_goal_policy:
             
-            goal.compute_pseudo_rewards(loc=0, scale=10)
+            # Set index of the list of optimal action
+            idx = 0
             
-            st_, t = goal.run_optimal_policy(t=t, t_end=t_end, verbose=verbose)
-            idx += 1
+            # Set initial time
+            t = 0
             
-        return st_pairs, t
+            while idx < len(opt_P):
+                # Get action and next time step from the optimal-policy actions list
+                a, t_end = opt_P[idx]
+                
+                # Get next goal
+                goal = self.goals[a]
+                
+                # Compute pseudo-rewards for the next goal
+                goal.compute_pseudo_rewards(start_t=t, loc=0, scale=2)
+                
+                # Run task-level optimal policy for the next goal
+                st_, t = goal.run_optimal_policy(t=t, t_end=t_end, verbose=verbose)
+                
+                idx += 1
+            
+        return opt_P, t
 
     def set_gamma(self, gamma):
         assert 0 < gamma <= 1
@@ -1388,7 +1460,10 @@ class ToDoList:
                 
                 # If the goal with index goal_idx is not completed
                 if s[goal_idx] == 0:
-                    
+    
+                    # Increase total-computations counter
+                    self.total_computations += 1
+    
                     # Set action to be the corresponding goal index
                     a = goal_idx
 
@@ -1403,23 +1478,16 @@ class ToDoList:
 
                     # Get next Goal object
                     next_goal = self.goals[goal_idx]
+                    
+                    # Get goal's time estimate
+                    time_est = next_goal.get_time_est()
 
                     # Move for "expected goal time estimate" units in the future
-                    t_ = t + next_goal.get_time_est()
-    
-                    # Increase total-computations counter
-                    self.total_computations += 1
-    
-                    # Get cumulative discount for times t and t'
-                    cum_discount_t = ToDoList.get_cum_discount(t)
-                    cum_discount_t_ = ToDoList.get_cum_discount(t_)
-    
-                    # Calculate discount for the next action
-                    discount = cum_discount_t_ - cum_discount_t
+                    t_ = t + time_est
     
                     # Calculate total reward for next action
                     result = next_goal.solve(start_time=t, verbose=verbose)
-                    r = result["r"]  # * discount
+                    r = result["r"]
     
                     if verbose:
                         print(f"Current reward {r} | ", end="")
@@ -1431,35 +1499,19 @@ class ToDoList:
                     # The computation has already been done --> Prune!
                     if t_ in self.Q[s][t][a].keys():
         
+                        # Increase already-computed-pruning counter
+                        self.already_computed_pruning += 1
+
                         if verbose:
                             print(f"Transition (s, t, a, t') {(s, t, a, t_)} "
                                   f"already computed.")
         
-                        # Increase already-computed-pruning counter
-                        self.already_computed_pruning += 1
-
                     # Explore the next goal-level state
                     else:
                         
                         # Initialize key
-                        self.Q[s][t][a][t_] = r  # np.NINF | TODO: Not sure whether it makes any difference...
+                        self.Q[s][t][a][t_] = None
                         
-                        # The reward is smaller than tolerance --> Prune!
-                        # TODO: Implement tolerance parameter
-                        # TODO: Potentially unnecessary (?!)
-                        # if abs(r) < 1e-3 and self.loss_rate != 0:
-                        #
-                        #     if verbose:
-                        #         print(f"Pruning reward {r}")
-                        #
-                        #     # Increase small-reward-pruning counter
-                        #     self.small_reward_pruning += 1
-                        #
-                        #     # Initialize future as 0 | TODO: Not sure about this...
-                        #     self.Q[s][t][a][t_] = 0
-                        #
-                        # else:
-                            
                         if verbose:
                             print()
                         
@@ -1478,10 +1530,13 @@ class ToDoList:
                     # Store policy for the next (state, time) pair
                     self.P[s_][t_] = a_
                     
-                    # Compute total reward for the current state-time action
-                    # Immediate + Expected future reward
-                    # total_reward = r + r_  # Immediate + Expected future reward
-                    total_reward = r + self.gamma ** next_goal.num_tasks * r_
+                    # Compute total reward for the current state-time action as
+                    # immediate + (discounted) expected future reward
+                    #   - Single time-step discount (MDP)
+                    # total_reward = r + self.gamma ** next_goal.num_tasks * r_
+                    
+                    #   - Multiple time-step discount (SMDP)
+                    total_reward = r + self.get_discount(time_est) * r_
                     
                     # If total reward is negative, compare it with the highest
                     # negative reward and substitute if higher
@@ -1489,23 +1544,22 @@ class ToDoList:
                         self.highest_negative_reward =\
                             max(self.highest_negative_reward, total_reward)
 
-                    # Store Q value for the current ((state, time), (action, time')) pair
+                    # Store Q-value for the current (state, time, action, time')
                     self.Q[s][t][a][t_] = total_reward
 
-                    # Store Q-value for taking (a)ction in ((s)tate, (t)ime)
-                    # self.Q[s][t][a][t_] += prob * (r + r_)
-                    
                     # TODO: Probability of transition to next state
                     prob = 1
 
+                    # Store Q-value for taking (a)ction in ((s)tate, (t)ime)
+                    self.Q[s][t][a][t_] = total_reward
+                    
                     # Add more values to the expected value
-                    # TODO: Potential double calculations?!
-                    self.Q[s][t][a]["E"] = total_reward
+                    self.Q[s][t][a]["E"] += prob * total_reward
 
             # ===== Terminal state =====
             if next_goal is None:
                 
-                # TODO: Compute total penalty of missing goal deadlines?!
+                # TODO: Compute total penalty of missing goal deadlines (?!)
                 
                 # TODO: ...
                 self.Q[s][t].setdefault(None, dict())
@@ -1542,6 +1596,8 @@ class ToDoList:
         return {
             "P": self.P,
             "Q": self.Q,
+            "s": s,
+            "t": t,
             "a": a,
             "r": r
         }
