@@ -9,25 +9,26 @@ from tqdm import tqdm
 from todolistMDP.to_do_list import Task, Goal, ToDoList
 
 # ===== Constants =====
-LOSS_RATE = 0  # Default
-# LOSS_RATE = 1
+# LOSS_RATE = 0  # Default
+LOSS_RATE = -1
 # LOSS_RATE = -1e-3
 
-# GAMMA = 1 - 1e-3  # 0.9999
-GAMMA = 0.9999
+GAMMA = 0.9999  # Default
+# GAMMA = 1 - 1e-3
 
 N_GOALS = 1
 N_TASKS = 500
-
 START_TIME = 0  # Default
 
-TIME_SCALE = 1  # Default
-# TIME_SCALE = 30
+# TIME_SCALE = 1  # Default
+TIME_SCALE = 20
 
 VALUE_SCALE = 1  # Default
 # VALUE_SCALE = 10
 
-SLACK_REWARD = 0  # 1e-3
+SLACK_REWARD = -np.NINF
+# SLACK_REWARD = 1e-3
+
 TIME_PRECISION = 1
 TIME_SUPPORT = None
 
@@ -221,15 +222,18 @@ test_1 = [
 
 
 def generate_discrepancy_test(n_goals, n_tasks):
-    deadline = n_goals * n_tasks ** 2
+    deadline = (n_goals * n_tasks ** 2) * TIME_SCALE
     return [
         Goal(
             description=f"G{g+1}",
             hard_deadline=True,
-            loss_rate=0,
-            rewards={deadline: (g + 1) * 100},
+            loss_rate=LOSS_RATE,
+            rewards={deadline: 150},
+            # rewards={deadline: (g + 1) * 150},
+            # rewards={deadline: (g + 1) * 1000},
             tasks=[
-                Task(f"T{t+1}", time_est=t+1)
+                # Task(f"G{g+1} T{t+1}", time_est=g + 1 + (t + 1) * TIME_SCALE)
+                Task(f"G{g+1} T{t+1}", time_est=(g + 1) * 5 + (t + 1) * TIME_SCALE)
                 # Task(f"T{t+1}", time_est=1)
                 for t in range(n_tasks)
             ],
@@ -379,11 +383,11 @@ def run(goals, gamma=GAMMA, verbose=False):
     # print(to_do_list.get_highest_negative_reward())
     
     # pprint(to_do_list.get_q_values(s=s))
-    # pprint(to_do_list.get_q_values())
-    # to_do_list.compute_pseudo_rewards(loc=0, scale=0.1)
-    # pprint(to_do_list.get_pseudo_rewards())
+    pprint(to_do_list.get_q_values())
+    to_do_list.compute_pseudo_rewards(loc=0, scale=0.1)
+    pprint(to_do_list.get_pseudo_rewards())
     
-    st, _ = to_do_list.run_optimal_policy(verbose=True)
+    st, _ = to_do_list.run_optimal_policy(run_goal_policy=False, verbose=True)
     
     print()
     
@@ -392,7 +396,8 @@ def run(goals, gamma=GAMMA, verbose=False):
     #     print(goal.get_highest_negative_reward())
     #     pprint(goal.get_q_values())
     #     goal.compute_pseudo_rewards(loc=10, scale=2.)
-    #     pprint(goal.get_pseudo_rewards())
+    #     goal.compute_pseudo_rewards(loc=0, scale=1.)
+        # pprint(goal.get_pseudo_rewards())
 
     # for a, t_end in st:
     #     goal = to_do_list.goals[a]
