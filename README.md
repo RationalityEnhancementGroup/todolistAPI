@@ -65,7 +65,7 @@ You can use our URL generator to get the general URL to post to, before the last
 - Additional parameters
   - `default_task_value`: Constant value of points to be assigned to each task.
 
-- URL example: `http://127.0.0.1:6789/api/constant/basic/30/14/inf/0/1000/40/60/10/cite/tree/u123/getTasksForToday`
+- URL example: `http://127.0.0.1:6789/api/constant/basic/30/14/inf/0/1000/0/60/10/10/2/tree/u123/getTasksForToday`
 
 ### Dynamic programming point-assignment method (`dp`)
 - Additional parameters
