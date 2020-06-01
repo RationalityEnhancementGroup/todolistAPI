@@ -127,6 +127,10 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
+                
+                # Set up current time and date according to the user (UTC + TZ)
+                user_datetime = datetime.utcnow() + timedelta(minutes=time_zone)
+                log_dict["user_datetime"] = user_datetime
 
                 # Additional parameters (the order of URL input matters!)
                 # Casting to other data types is done in the functions that use
