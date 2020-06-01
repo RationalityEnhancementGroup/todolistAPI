@@ -885,7 +885,8 @@ def task_list_from_projects(projects):
     return task_list
 
 
-def tree_to_old_structure(projects):
+def tree_to_old_structure(projects, hard_deadline=True, loss_rate=-1,
+                          time_precision=1, task_unit_penalty=0, unit_penalty=0):
     """
     input: parsed tree
     output: structure that can be inputted to old project code
@@ -900,11 +901,11 @@ def tree_to_old_structure(projects):
             # Create new task and add it to the task list
             tasks.append(
                 Task(
-                    completed=task["completed"],
+                    # completed=task["completed"],
                     deadline=task["deadline"],
-                    deadline_datetime=task["deadline_datetime"],
+                    # deadline_datetime=task["deadline_datetime"],
                     description=task["nm"],
-                    scheduled=task["scheduled_today"],
+                    # scheduled=task["scheduled_today"],
                     task_id=task["id"],
                     time_est=task["est"]
                 )
@@ -915,10 +916,15 @@ def tree_to_old_structure(projects):
             Goal(
                 description=goal["nm"],
                 goal_id=goal["id"],
-                effective_deadline=goal["effective_deadline"],
-                latest_start_time=goal["latest_start_time"],
+                # effective_deadline=goal["effective_deadline"],
+                hard_deadline=hard_deadline,
+                # latest_start_time=goal["latest_start_time"],
+                loss_rate=loss_rate,
                 rewards={goal["deadline"]: goal["value"]},
-                tasks=list(tasks)
+                tasks=list(tasks),
+                task_unit_penalty=task_unit_penalty,
+                time_precision=time_precision,
+                unit_penalty=unit_penalty
             )
         )
         

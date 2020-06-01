@@ -2,6 +2,7 @@ import cherrypy
 import json
 import os
 import stopit
+import sys
 
 from copy import deepcopy
 from datetime import datetime
@@ -13,13 +14,17 @@ from src.schedulers.schedulers import *
 from src.point_scalers import utility_scaling
 from src.utils import *
 
-from todolistMDP.mdp_solvers \
-    import backward_induction, policy_iteration, value_iteration
+# from todolistMDP.mdp_solvers \
+#     import backward_induction, policy_iteration, value_iteration
 from todolistMDP.scheduling_solvers \
     import run_dp_algorithm, run_greedy_algorithm
 
-CONTACT = "If you continue to encounter this issue, please contact us at reg.experiments@tuebingen.mpg.de."
+CONTACT = "If you continue to encounter this issue, please contact us at " \
+          "reg.experiments@tuebingen.mpg.de."
 TIMEOUT_SECONDS = 28
+
+# Extend recusion limit
+sys.setrecursionlimit(10000)
 
 
 class RESTResource(object):
@@ -76,8 +81,8 @@ class PostResource(RESTResource):
                 # Compulsory parameters
                 method = vpath[0]
                 scheduler = vpath[1]
-                default_time_est = vpath[2]  # This needs to be in minutes
-                default_deadline = vpath[3]  # This needs to be in days
+                default_time_est = vpath[2]  # This has to be in minutes
+                default_deadline = vpath[3]  # This has to be in days
                 allowed_task_time = vpath[4]
                 min_sum_of_goal_values = vpath[5]
                 max_sum_of_goal_values = vpath[6]
@@ -531,17 +536,38 @@ class PostResource(RESTResource):
                         cherrypy.response.status = 403
                         if to_ctx_mgr.state == to_ctx_mgr.TIMED_OUT:
 
-                            error = "The API took too long processing your Workflowy information, please try again. Long processing times can arise from too many or very late deadlines -- if you can, you might want to reduce these."
+                            error = "The API took too long processing your " \
+                                    "Workflowy information, please try again. " \
+                                    "Long processing times can arise from too " \
+                                    "many or very late deadlines -- if you " \
+                                    "can, you might want to reduce these."
             
                         return json.dumps(str(error) + " " + CONTACT)
                 
+                elif method == "smdp":
+                    # TODO: Make this URL input
+                    gamma = 0.9999
+                    goal_pr_loc = 1000
+                    goal_pr_scale = 1 - gamma
+                    task_pr_loc = 0
+                    task_pr_scale = 2
+                    
+                    final_tasks = assign_smdp_points(
+                        projects, day_duration=today_minutes,
+                        gamma=gamma, time_zone=time_zone,
+                        goal_pr_loc=goal_pr_loc, goal_pr_scale=goal_pr_scale,
+                        task_pr_loc=task_pr_loc, task_pr_scale=task_pr_scale
+                    )
+
                 # TODO: Test and fix potential bugs!
-                elif method == "old-report":
-                    final_tasks = \
-                        assign_old_api_points(projects, backward_induction,
-                                              duration=today_minutes)
+                # elif method == "old-report":
+                #     final_tasks = \
+                #         assign_old_api_points(projects, backward_induction,
+                #                               duration=today_minutes)
+                
                 else:
-                    status = "API method does not exist. Please contact us at reg.experiments@tuebingen.mpg.de."
+                    status = "API method does not exist. Please contact us " \
+                             "at reg.experiments@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
@@ -584,7 +610,8 @@ class PostResource(RESTResource):
                 elif scheduler == "mdp":
                     pass
                 else:
-                    status = "Scheduling method does not exist. Please contact us at reg.experiments@tuebingen.mpg.de."
+                    status = "Scheduling method does not exist. Please " \
+                             "contact us at reg.experiments@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
@@ -598,7 +625,12 @@ class PostResource(RESTResource):
                 
                 elif api_method == "getTasksForToday":
                     if len(final_tasks) == 0:
-                        status = "The API has scheduled all of the tasks it can for today, given your working hours. If you want to pull a specific task, please tag it #today on Workflowy. You may also change your working hours for today at the bottom of the Workflowy tree."
+                        status = "The API has scheduled all of the tasks it " \
+                                 "can for today, given your working hours. " \
+                                 "If you want to pull a specific task, please " \
+                                 "tag it #today on Workflowy. You may also " \
+                                 "change your working hours for today at the " \
+                                 "bottom of the Workflowy tree."
                         store_log(db.request_log, log_dict, status=status)
                         cherrypy.response.status = 403
                         return json.dumps(status + " " + CONTACT)
@@ -623,7 +655,8 @@ class PostResource(RESTResource):
                     return json.dumps(final_tasks)
                 
                 else:
-                    status = "API Method not implemented. Please contact us at reg.experiments@tuebingen.mpg.de."
+                    status = "API Method not implemented. Please contact us " \
+                             "at reg.experiments@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
                     
                     cherrypy.response.status = 405

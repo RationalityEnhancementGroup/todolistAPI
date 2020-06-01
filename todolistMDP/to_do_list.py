@@ -26,7 +26,7 @@ class Item:
             self.item_id = self.description
             
         self.loss_rate = loss_rate
-        self.optimal_reward = None  # TODO: Result of SMDP run
+        self.optimal_reward = np.NINF
         self.rewards = rewards
         self.time_est = time_est
         
@@ -312,7 +312,6 @@ class Goal(Item):
     
     def __init__(self, description, gamma=None, goal_id=None,
                  hard_deadline=True, loss_rate=0, rewards=None,
-                 # penalty=0,
                  slack_reward=None, task_unit_penalty=0., tasks=None,
                  time_precision=1, time_support=None, unit_penalty=0.):
         super().__init__(
@@ -327,7 +326,6 @@ class Goal(Item):
             unit_penalty=unit_penalty
         )
         
-        # self.penalty = penalty  # TODO: Potentially unnecessary (?!)
         self.slack_reward = slack_reward
         self.task_unit_penalty = task_unit_penalty
         
@@ -433,7 +431,7 @@ class Goal(Item):
     #
     #     return total_penalty
 
-    def compute_pseudo_rewards(self, start_t=0, loc=0., scale=1.):
+    def compute_pseudo_rewards(self, start_time=0, loc=0., scale=1.):
         """
         Computes pseudo-rewards.
         
@@ -444,7 +442,7 @@ class Goal(Item):
             standardizing_reward = 0
         
         # Get time-shift discount
-        discount = ToDoList.get_discount(start_t)
+        discount = ToDoList.get_discount(start_time)
 
         for s in self.Q.keys():
     
@@ -454,50 +452,59 @@ class Goal(Item):
                 
                 self.PR[s].setdefault(t, dict())
                 
-                for a in self.Q[s][t].keys():
+                a = self.P[s][t]
+                
+                # for a in self.Q[s][t].keys():
                     
-                    self.PR[s][t].setdefault(a, dict())
+                self.PR[s][t].setdefault(a, dict())
+                
+                if a is None or a == -1:
+
+                    # Calculate pseudo-reward of the terminal state
+                    self.PR[s][t][a]["E"] = 0
                     
-                    if a is None or a == -1:
+                else:
+                    
+                    # Get current Task object
+                    curr_task = self.tasks[a]
+                    
+                    # Move to the next state
+                    s_ = ToDoList.exec_action(s, a)
 
-                        # Calculate pseudo-reward of the terminal state
-                        self.PR[s][t][a]["E"] = 0
-                        
-                    else:
-                        
-                        # Get current Task object
-                        curr_task = self.tasks[a]
-                        
-                        # Move to the next state
-                        s_ = ToDoList.exec_action(s, a)
+                    # Make time transition
+                    t_ = t + curr_task.get_time_est()
+                    
+                    # Get optimal action in the next state
+                    a_ = self.P[s_][t_]
+                    
+                    # Get discount factor for the next state | TODO: Check (?)
+                    # gamma = ToDoList.DISCOUNTS[curr_task.get_time_est()]
+                    gamma = 1
 
-                        # Make time transition
-                        t_ = t + curr_task.get_time_est()
-                        
-                        # Get optimal action in the next state
-                        a_ = self.P[s_][t_]
-    
-                        # Expected Q-value of the next state
-                        q_ = self.Q[s_][t_][a_]["E"] * discount
-    
-                        # Expected Q-value of the current state
-                        q = self.Q[s][t][a]["E"] * discount
-                        
-                        # Compute value of the reward-shaping function
-                        f = q_ - q
-                        
-                        # Standardize rewards s.t. negative rewards <= 0
-                        # f -= standardizing_reward * discount
-                        
-                        # Make affine transformation of the reward-shaping function
-                        f = scale * f + loc
+                    # Expected Q-value of the next state
+                    q_ = self.Q[s_][t_][a_]["E"] * discount * gamma
 
-                        # TODO: r = ...
-                        r = q - q_
+                    # Expected Q-value of the current state
+                    q = self.Q[s][t][a]["E"] * discount
+                    
+                    # Compute value of the reward-shaping function
+                    f = q_ - q
+                    
+                    # Standardize rewards s.t. negative rewards <= 0
+                    f -= standardizing_reward * discount
+                    
+                    # Make affine transformation of the reward-shaping function
+                    f = scale * f + loc
 
-                        # Calculate pseudo-reward
-                        self.PR[s][t][a]["E"] = f + r
+                    # TODO: r = ...
+                    r = q - q_
 
+                    # Calculate pseudo-reward
+                    self.PR[s][t][a]["E"] = f + r
+                    
+                    # Set optimal pseudo-reward for current task
+                    curr_task.set_optimal_reward(self.PR[s][t][a]["E"])
+                    
     def compute_slack_reward(self, t=0):
         if self.slack_reward == 0:
             return 0
@@ -1159,7 +1166,7 @@ class ToDoList:
             if goal.get_slack_reward() is None:
                 goal.set_slack_reward(self.slack_reward)
 
-    def compute_pseudo_rewards(self, start_t=0, loc=0., scale=1.):
+    def compute_pseudo_rewards(self, start_time=0, loc=0., scale=1.):
         """
         Computes pseudo-rewards.
 
@@ -1170,7 +1177,7 @@ class ToDoList:
             standardizing_reward = 0
             
         # Get time-shift discount
-        discount = ToDoList.get_discount(start_t)
+        discount = ToDoList.get_discount(start_time)
 
         for s in self.Q.keys():
         
@@ -1214,7 +1221,7 @@ class ToDoList:
                     f = q_ - q
                     
                     # Standardize rewards s.t. negative rewards <= 0
-                    # f -= standardizing_reward * discount
+                    f -= standardizing_reward * discount
                     
                     # Make affine transformation of the reward-shaping function
                     f = scale * f + loc
@@ -1224,6 +1231,9 @@ class ToDoList:
 
                     # Calculate pseudo-reward
                     self.PR[s][t][a]["E"] = f + r
+                    
+                    # Set optimal pseudo-reward for current goal
+                    curr_goal.set_optimal_reward(self.PR[s][t][a]["E"])
 
     def compute_slack_reward(self, t=0):
         if self.slack_reward == 0:
@@ -1400,14 +1410,14 @@ class ToDoList:
                 goal = self.goals[a]
                 
                 # Compute pseudo-rewards for the next goal
-                goal.compute_pseudo_rewards(start_t=t, loc=0, scale=2)
+                goal.compute_pseudo_rewards(start_time=t, loc=0, scale=2)
                 
                 # Run task-level optimal policy for the next goal
                 st_, t = goal.run_optimal_policy(t=t, t_end=t_end, verbose=verbose)
                 
                 idx += 1
             
-        return opt_P, t
+        return opt_P
 
     def set_gamma(self, gamma):
         assert 0 < gamma <= 1

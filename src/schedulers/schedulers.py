@@ -88,6 +88,8 @@ def deadline_scheduler(task_list, deadline_window=1, time_zone=0,
 
 def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
                              time_zone=0):
+    
+    # Get task dictionary from JSON tree
     task_dict = task_dict_from_projects(projects)
     
     # Initialize queue of tasks for today
@@ -104,9 +106,9 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
     current_weekday = current_day.weekday()
     
     for task in ordered_tasks:
-        task_id = task.get_item_id()
+        task_id = task.get_id()
         task_item = task_dict[task_id]
-        task_item["val"] = task.get_reward()
+        task_item["val"] = task.get_optimal_reward()
         
         # If the task is not completed and not indefinitely postponed (future)
         if not task_item["completed"] and not task_item["future"]:
