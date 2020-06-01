@@ -20,8 +20,8 @@ N_GOALS = 1
 N_TASKS = 500
 START_TIME = 0  # Default
 
-# TIME_SCALE = 1  # Default
-TIME_SCALE = 20
+TIME_SCALE = 1  # Default
+# TIME_SCALE = 20
 
 VALUE_SCALE = 1  # Default
 # VALUE_SCALE = 10
@@ -387,7 +387,7 @@ def run(goals, gamma=GAMMA, verbose=False):
     to_do_list.compute_pseudo_rewards(loc=0, scale=0.1)
     pprint(to_do_list.get_pseudo_rewards())
     
-    st, _ = to_do_list.run_optimal_policy(run_goal_policy=False, verbose=True)
+    opt_P = to_do_list.run_optimal_policy(run_goal_policy=False, verbose=True)
     
     print()
     
@@ -399,11 +399,11 @@ def run(goals, gamma=GAMMA, verbose=False):
     #     goal.compute_pseudo_rewards(loc=0, scale=1.)
         # pprint(goal.get_pseudo_rewards())
 
-    # for a, t_end in st:
+    # for a, t_end in opt_P:
     #     goal = to_do_list.goals[a]
     #     pprint(goal.Q)
 
-    # goal_order = [s for s, t in st]
+    # goal_order = [s for s, t in opt_P]
     # print(goal_order)
 
     # pprint(to_do_list.P[((0, 0, 0, 0, 0, 0), 0)])
@@ -417,25 +417,26 @@ def run(goals, gamma=GAMMA, verbose=False):
     #     pprint(goal.get_q_values())
     #     print()
     #
-    #     # st, t = get_policy(goal, t=t, verbose=True)
+    #     # opt_P, t = get_policy(goal, t=t, verbose=True)
     #     # print()
     #
     #     # t += goal.get_time_est()
 
 
-# goals = [generate_goal(n_tasks=3, deadline_time=np.PINF) for s in range(1)]
-# goals = [generate_goal(n_tasks=2, time_scale=2*s+1) for s in range(1)]
-# goals = d_bm
-# goals = [d_bm[2]]
-# goals = test_1
-
-goals = generate_discrepancy_test(n_goals=3, n_tasks=3)
-
-run(goals=goals, verbose=False)
-
-# multi_test(
-#     num_goals=[2, 3, 4, 5, 6, 7, 8],
-#     num_tasks=[75],
-#     num_samples=3,
-#     verbose=False
-# )
+if __name__ == '__main__':
+    # goals = [generate_goal(n_tasks=3, deadline_time=np.PINF) for s in range(1)]
+    # goals = [generate_goal(n_tasks=2, time_scale=2*s+1) for s in range(1)]
+    goals = d_bm
+    # goals = [d_bm[2]]
+    # goals = test_1
+    
+    # goals = generate_discrepancy_test(n_goals=3, n_tasks=3)
+    
+    run(goals=goals, verbose=False)
+    
+    # multi_test(
+    #     num_goals=[2, 3, 4, 5, 6, 7, 8],
+    #     num_tasks=[75],
+    #     num_samples=3,
+    #     verbose=False
+    # )
