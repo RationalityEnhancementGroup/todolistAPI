@@ -1,0 +1,38 @@
+[
+    {
+        "id": "g2-t1",
+        "nm": "2) Read the proposed paper (takes about 4 hours)",
+        "lm": 0,
+        "est": 240,
+        "parentId": "g2",
+        "pcp": false,
+        "val": 403.11
+    },
+    {
+        "id": "g1-t1-t2",
+        "nm": "1) Solve the exercises (takes about 4 hours)",
+        "lm": 0,
+        "est": 240,
+        "parentId": "g1",
+        "pcp": false,
+        "val": 237.15
+    },
+    {
+        "id": "gm-t1",
+        "nm": "&) Register for exams (takes about 25 minutes, due on 2030-03-05 23:59)",
+        "lm": 0,
+        "est": 25,
+        "parentId": "gm",
+        "pcp": false,
+        "val": 107.35
+    },
+    {
+        "id": "g1-t1-t1",
+        "nm": "1) Meet with the exercise partner at the library (takes about 10 minutes)",
+        "lm": 0,
+        "est": 10,
+        "parentId": "g1",
+        "pcp": false,
+        "val": 11.32
+    }
+]
