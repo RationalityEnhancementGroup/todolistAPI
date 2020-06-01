@@ -1,4 +1,5 @@
 from copy import deepcopy
+from src.point_scalers import scale_optimal_rewards
 from src.utils import tree_to_old_structure
 from src.utils import separate_tasks_with_deadlines, task_list_from_projects
 from src.schedulers.schedulers import schedule_tasks_for_today
@@ -45,7 +46,7 @@ def assign_dynamic_programming_points(projects, solver_fn,
         tasks.extend(goal.get_scheduled_tasks())
 
     # Add additional tasks to be scheduled
-    tasks.extend(ordered_tasks)
+    # tasks.extend(ordered_tasks)
 
     # Scale task values according to the provided scaling function
     scaling_fn(tasks, **scaling_inputs)
@@ -163,7 +164,7 @@ def assign_random_points(projects, distribution_fxn=np.random.normal,
     return projects
 
 
-def assign_smdp_points(projects, day_duration,
+def assign_smdp_points(projects, day_duration, scaling_inputs,
                        gamma=1., json=True, start_time=0, time_zone=0,
                        goal_pr_loc=0., goal_pr_scale=1.,
                        task_pr_loc=0., task_pr_scale=1., verbose=False):
@@ -221,15 +222,16 @@ def assign_smdp_points(projects, day_duration,
     
     # Sort tasks w.r.t. optimal reward (pseudo-reward)
     tasks.sort(key=lambda task: -task.get_optimal_reward())
-    
-    for task in tasks:
-        print(task.get_id(), task.get_optimal_reward())
+
+    if verbose:
+        for task in tasks:
+            print(task.get_id(), task.get_optimal_reward())
         
     # Add additional tasks to be scheduled
     # tasks.extend(ordered_tasks)  # TODO: ???
     
     # Scale task values according to the provided scaling function
-    # scaling_fn(tasks, **scaling_inputs)  # TODO: ???
+    scale_optimal_rewards(tasks, **scaling_inputs)
 
     # Schedule tasks for today
     if json:

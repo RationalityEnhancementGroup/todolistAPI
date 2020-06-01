@@ -11,7 +11,6 @@ from pymongo import MongoClient, DESCENDING
 
 from src.apis import *
 from src.schedulers.schedulers import *
-from src.point_scalers import utility_scaling
 from src.utils import *
 
 # from todolistMDP.mdp_solvers \
@@ -423,6 +422,19 @@ class PostResource(RESTResource):
 
                         cherrypy.response.status = 403
                         return json.dumps(status + CONTACT)
+                    
+                elif method == "length":
+                    # Assign random points
+                    try:
+                        projects = assign_length_points(projects)
+                    except:
+                        status = "Problem while assigning points. "
+        
+                        # Store error in DB
+                        store_log(db.request_log, log_dict, status=status)
+        
+                        cherrypy.response.status = 403
+                        return json.dumps(status + CONTACT)
 
                 elif method == "random":
                     # Parse distribution name
@@ -469,94 +481,99 @@ class PostResource(RESTResource):
                         cherrypy.response.status = 403
                         return json.dumps(status + CONTACT)
 
-                elif method == "length":
-                    # Assign random points
-                    try:
-                        projects = assign_length_points(projects)
-                    except:
-                        status = "Problem while assigning points. "
-    
-                        # Store error in DB
-                        store_log(db.request_log, log_dict, status=status)
-    
-                        cherrypy.response.status = 403
-                        return json.dumps(status + CONTACT)
-
                 # DP method
-                elif method == "dp" or method == "greedy":
-                    # Get mixing parameter | Default URL value: 0
-                    mixing_parameter = float(parameters[0])
-                    
-                    # Store the value of the mixing parameter in the log dict
-                    log_dict['mixing_parameter'] = mixing_parameter
+                # elif method == "dp" or method == "greedy":
+                #     # Get mixing parameter | Default URL value: 0
+                #     mixing_parameter = float(parameters[0])
+                #
+                #     # Store the value of the mixing parameter in the log dict
+                #     log_dict['mixing_parameter'] = mixing_parameter
+                #
+                #     # Defined by the experimenter
+                #     if not (0 <= mixing_parameter < 1):
+                #         status = "There was an issue with the API input " \
+                #                  "(mixing-parameter value). Please contact " \
+                #                  "us at reg.experiments@tuebingen.mpg.de."
+                #         store_log(db.request_log, log_dict, status=status)
+                #         cherrypy.response.status = 403
+                #         return json.dumps(status)
+                #
+                #     scaling_inputs = {
+                #         'scale_type': "no_scaling",
+                #         'scale_min': None,
+                #         'scale_max': None
+                #     }
+                #
+                #     if len(parameters) >= 4:
+                #         scaling_inputs['scale_type'] = parameters[1]
+                #         scaling_inputs['scale_min'] = float(parameters[2])
+                #         scaling_inputs['scale_max'] = float(parameters[3])
+                #
+                #         if scaling_inputs["scale_min"] == float("inf"):
+                #             scaling_inputs["scale_min"] = None
+                #         if scaling_inputs["scale_max"] == float("inf"):
+                #             scaling_inputs["scale_max"] = None
+                #
+                #     solver_fn = run_dp_algorithm
+                #     if method == "greedy":
+                #         solver_fn = run_greedy_algorithm
+                #
+                #     # TODO: Get informative exceptions
+                #     try:
+                #         final_tasks = \
+                #             assign_dynamic_programming_points(
+                #                 projects,
+                #                 solver_fn=solver_fn,
+                #                 scaling_fn=utility_scaling,
+                #                 scaling_inputs=scaling_inputs,
+                #                 day_duration=today_minutes,
+                #                 mixing_parameter=mixing_parameter,
+                #                 time_zone=time_zone,
+                #                 verbose=False
+                #             )
+                #     except Exception as error:
+                #         cherrypy.response.status = 403
+                #         if to_ctx_mgr.state == to_ctx_mgr.TIMED_OUT:
+                #
+                #             error = "The API took too long processing your " \
+                #                     "Workflowy information, please try again. " \
+                #                     "Long processing times can arise from too " \
+                #                     "many or very late deadlines -- if you " \
+                #                     "can, you might want to reduce these."
+                #
+                #         return json.dumps(str(error) + " " + CONTACT)
+                
+                elif method == "smdp":
+                    gamma = float(parameters[0])  # 0.9999
+                    goal_pr_loc = float(parameters[1])  # 1000
+                    goal_pr_scale = float(parameters[2])  # 1 - gamma
+                    task_pr_loc = float(parameters[3])  # 0
+                    task_pr_scale = float(parameters[4])  # 2
 
-                    # Defined by the experimenter
-                    if not (0 <= mixing_parameter < 1):
-                        status = "There was an issue with the API input " \
-                                 "(mixing-parameter value). Please contact " \
-                                 "us at reg.experiments@tuebingen.mpg.de."
-                        store_log(db.request_log, log_dict, status=status)
-                        cherrypy.response.status = 403
-                        return json.dumps(status)
-
-                    utility_inputs = {
+                    scaling_inputs = {
                         'scale_type': "no_scaling",
                         'scale_min': None,
                         'scale_max': None
                     }
+                    
+                    if len(parameters) >= 8:
+                        scaling_inputs['scale_type'] = parameters[5]
+                        scaling_inputs['scale_min'] = float(parameters[6])
+                        scaling_inputs['scale_max'] = float(parameters[7])
 
-                    if len(parameters) >= 4:
-                        utility_inputs['scale_type'] = parameters[1]
-                        utility_inputs['scale_min'] = float(parameters[2])
-                        utility_inputs['scale_max'] = float(parameters[3])
-                        
-                        if utility_inputs["scale_min"] == float("inf"):
-                            utility_inputs["scale_min"] = None
-                        if utility_inputs["scale_max"] == float("inf"):
-                            utility_inputs["scale_max"] = None
+                        if scaling_inputs["scale_min"] == float("inf"):
+                            scaling_inputs["scale_min"] = None
+                        if scaling_inputs["scale_max"] == float("inf"):
+                            scaling_inputs["scale_max"] = None
 
-                    solver_fn = run_dp_algorithm
-                    if method == "greedy":
-                        solver_fn = run_greedy_algorithm
-                        
-                    # TODO: Get informative exceptions
-                    try:
-                        final_tasks = \
-                            assign_dynamic_programming_points(
-                                projects,
-                                solver_fn=solver_fn,
-                                scaling_fn=utility_scaling,
-                                scaling_inputs=utility_inputs,
-                                day_duration=today_minutes,
-                                mixing_parameter=mixing_parameter,
-                                time_zone=time_zone,
-                                verbose=False
-                            )
-                    except Exception as error:
-                        cherrypy.response.status = 403
-                        if to_ctx_mgr.state == to_ctx_mgr.TIMED_OUT:
-
-                            error = "The API took too long processing your " \
-                                    "Workflowy information, please try again. " \
-                                    "Long processing times can arise from too " \
-                                    "many or very late deadlines -- if you " \
-                                    "can, you might want to reduce these."
-            
-                        return json.dumps(str(error) + " " + CONTACT)
-                
-                elif method == "smdp":
-                    # TODO: Make this URL input
-                    gamma = 0.9999
-                    goal_pr_loc = 1000
-                    goal_pr_scale = 1 - gamma
-                    task_pr_loc = 0
-                    task_pr_scale = 2
+                    # if verbose:
+                    #     print(parameters)
                     
                     final_tasks = assign_smdp_points(
-                        projects, day_duration=today_minutes,
-                        gamma=gamma, time_zone=time_zone,
+                        projects, day_duration=today_minutes, gamma=gamma,
                         goal_pr_loc=goal_pr_loc, goal_pr_scale=goal_pr_scale,
-                        task_pr_loc=task_pr_loc, task_pr_scale=task_pr_scale
+                        task_pr_loc=task_pr_loc, task_pr_scale=task_pr_scale,
+                        scaling_inputs=scaling_inputs, time_zone=time_zone
                     )
 
                 # TODO: Test and fix potential bugs!
