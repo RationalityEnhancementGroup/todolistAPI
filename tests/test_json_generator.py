@@ -12,28 +12,33 @@ node_id_dict = {
     0: ROOT_NODE
 }
 DEFAULT_POINTS = 10
+NUM_NODES = 3
 
 """ (+) Manual node generation
 
     Use the DEFAULT_* values in order to avoid getting None in the nodes' name!
 """
 new_nodes = node_id_dict[0].generate_nodes(
-    points=[DEFAULT_POINTS for _ in range(3)]
+    points=[DEFAULT_POINTS for _ in range(NUM_NODES)],
+    num_nodes=NUM_NODES
 )
 map_nodes(node_id_dict, new_nodes)
 
 new_nodes = node_id_dict[3].generate_nodes(
-    points=[DEFAULT_POINTS for _ in range(3)]
+    points=[DEFAULT_POINTS for _ in range(NUM_NODES)],
+    num_nodes=NUM_NODES
 )
 map_nodes(node_id_dict, new_nodes)
 
 new_nodes = node_id_dict[6].generate_nodes(
-    points=[DEFAULT_POINTS for _ in range(3)]
+    points=[DEFAULT_POINTS for _ in range(NUM_NODES)],
+    num_nodes=NUM_NODES
 )
 map_nodes(node_id_dict, new_nodes)
 
 new_nodes = node_id_dict[9].generate_nodes(
-    points=[DEFAULT_POINTS for _ in range(3)]
+    points=[DEFAULT_POINTS for _ in range(NUM_NODES)],
+    num_nodes=NUM_NODES
 )
 map_nodes(node_id_dict, new_nodes)
 
