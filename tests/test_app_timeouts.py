@@ -201,8 +201,6 @@ def test_speed_smdp(n_goals, n_tasks, n_trials=1, worst=True):
 
                     output = r.text
 
-                    print(output[:8])
-                    
                     if output[:8] == '"Testing':
                         if VERBOSE:
                             pprint(json.loads(output))
