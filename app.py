@@ -715,7 +715,7 @@ class PostResource(RESTResource):
                     toc = time.time()
                     
                     return json.dumps(
-                        f"Testing {api_method} with"
+                        f"Testing {api_method} with "
                         f"{jsonData['n_goals']} goals and "
                         f"{jsonData['n_tasks']} tasks per goal "
                         f"took {toc - tic:.3f} seconds!"
