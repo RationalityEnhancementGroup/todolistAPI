@@ -1,4 +1,3 @@
-import cherrypy
 import json
 import os
 import stopit
@@ -10,13 +9,12 @@ from pprint import pprint
 from pymongo import MongoClient, DESCENDING
 
 from src.apis import *
+from todolistMDP.smdp_test_generator import *
 from src.schedulers.schedulers import *
 from src.utils import *
 
 # from todolistMDP.mdp_solvers \
 #     import backward_induction, policy_iteration, value_iteration
-from todolistMDP.scheduling_solvers \
-    import run_dp_algorithm, run_greedy_algorithm
 
 CONTACT = "If you continue to encounter this issue, please contact us at " \
           "reg.experiments@tuebingen.mpg.de."
@@ -67,6 +65,9 @@ class PostResource(RESTResource):
     
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
+        
+        # Start timer
+        tic = time.time()
 
         with stopit.ThreadingTimeout(TIMEOUT_SECONDS) as to_ctx_mgr:
             assert to_ctx_mgr.state == to_ctx_mgr.EXECUTING
@@ -548,37 +549,70 @@ class PostResource(RESTResource):
                 #         return json.dumps(str(error) + " " + CONTACT)
                 
                 elif method == "smdp":
+    
                     gamma = float(parameters[0])  # 0.9999
                     goal_pr_loc = float(parameters[1])  # 1000
                     goal_pr_scale = float(parameters[2])  # 1 - gamma
                     task_pr_loc = float(parameters[3])  # 0
                     task_pr_scale = float(parameters[4])  # 2
-
+    
                     scaling_inputs = {
                         'scale_type': "no_scaling",
-                        'scale_min': None,
-                        'scale_max': None
+                        'scale_min':  None,
+                        'scale_max':  None
                     }
-                    
+    
                     if len(parameters) >= 8:
                         scaling_inputs['scale_type'] = parameters[5]
                         scaling_inputs['scale_min'] = float(parameters[6])
                         scaling_inputs['scale_max'] = float(parameters[7])
-
+        
                         if scaling_inputs["scale_min"] == float("inf"):
                             scaling_inputs["scale_min"] = None
                         if scaling_inputs["scale_max"] == float("inf"):
                             scaling_inputs["scale_max"] = None
+    
+                    final_tasks = None
 
-                    # if verbose:
-                    #     print(parameters)
+                    if api_method == "bestSpeedTestSMDP":
+                        test_goals = generate_test_case(
+                            n_goals=jsonData["n_goals"],
+                            n_tasks=jsonData["n_tasks"],
+                            worst=False
+                        )
+    
+                        assign_smdp_points(
+                            projects=test_goals,
+                            scaling_inputs=scaling_inputs,
+                            day_duration=today_minutes,
+                            json=False
+                        )
+    
+                        simulate_task_scheduling(test_goals)
+    
+                    elif api_method == "worstSpeedTestSMDP":
+                        test_goals = generate_test_case(
+                            n_goals=jsonData["n_goals"],
+                            n_tasks=jsonData["n_tasks"],
+                            worst=True
+                        )
+                        
+                        assign_smdp_points(
+                            projects=test_goals,
+                            scaling_inputs=scaling_inputs,
+                            day_duration=today_minutes,
+                            json=False
+                        )
+                        
+                        simulate_task_scheduling(test_goals)
                     
-                    final_tasks = assign_smdp_points(
-                        projects, day_duration=today_minutes, gamma=gamma,
-                        goal_pr_loc=goal_pr_loc, goal_pr_scale=goal_pr_scale,
-                        task_pr_loc=task_pr_loc, task_pr_scale=task_pr_scale,
-                        scaling_inputs=scaling_inputs, time_zone=time_zone
-                    )
+                    else:
+                        final_tasks = assign_smdp_points(
+                            projects, day_duration=today_minutes, gamma=gamma,
+                            goal_pr_loc=goal_pr_loc, goal_pr_scale=goal_pr_scale,
+                            task_pr_loc=task_pr_loc, task_pr_scale=task_pr_scale,
+                            scaling_inputs=scaling_inputs, time_zone=time_zone
+                        )
 
                 # TODO: Test and fix potential bugs!
                 # elif method == "old-report":
@@ -674,6 +708,17 @@ class PostResource(RESTResource):
 
                     # Return scheduled tasks
                     return json.dumps(final_tasks)
+                
+                elif api_method in ["bestSpeedTestSMDP", "worstSpeedTestSMDP"]:
+                    
+                    # Stop timer
+                    toc = time.time()
+                    
+                    return json.dumps(
+                        f"Testing {api_method} with {jsonData['n_goals']} and "
+                        f"{jsonData['n_tasks']} per goal took "
+                        f"{toc - tic:.3f} seconds!"
+                    )
                 
                 else:
                     status = "API Method not implemented. Please contact us " \
