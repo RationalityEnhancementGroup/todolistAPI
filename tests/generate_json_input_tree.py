@@ -6,12 +6,14 @@ from json_generator.nodes import *
 from json_generator.utils import *
 
 # Number of goals
-N_GOALS = [11]
 # N_GOALS = [10, 50, 100, 500, 1000, 2500, 5000, 7500, 10000]
+# N_GOALS = [11]
+N_GOALS = list(range(1, 11))
 
 # Number of tasks
-N_TASKS = [1]
+# N_TASKS = [1]
 # N_TASKS = [10, 50, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000]
+N_TASKS = [25, 50, 75, 125, 150]
 
 # Today and typical working hours
 HOURS_TODAY = 12
@@ -20,13 +22,14 @@ HOURS_TYPICAL = 12
 # Deadlines
 # DEADLINES = [None]
 TODAY_DATE = datetime.today().date()
-DEADLINE_YEARS = [1, 2, 3, 5, 10, 15, 20]
+# DEADLINE_YEARS = [1, 2, 3, 5, 10, 15, 20]
+DEADLINE_YEARS = [1]
 
 # Type of input tree
-INPUT_TYPE = "dp"
+INPUT_TYPE = "smdp"
 
 # Path-related variables
-PATH_NAME = f"tests/data/{INPUT_TYPE}/"
+PATH_NAME = f"data/{INPUT_TYPE}/"
 
 
 def generate_file_name(n_goals, n_tasks, years):
@@ -64,7 +67,8 @@ for n_goals in N_GOALS:
             # Generate goals
             new_nodes = node_id_dict[0].generate_nodes(
                 deadline_val=deadline_val, num_nodes=n_goals,
-                point_val=n_tasks, time_est_val=0)
+                point_val=n_tasks, time_est_val=0
+            )
         
             # Map generated goals
             map_nodes(node_id_dict, new_nodes)
@@ -99,7 +103,9 @@ for n_goals in N_GOALS:
                         }
                     ],
                     "updated": 0,
-                    "userkey": "__test__"
+                    "userkey": "__test__",
+                    "n_goals": n_goals,
+                    "n_tasks": n_tasks
                 }
                 
                 file.writelines(json.dumps(json_output, indent=4))
