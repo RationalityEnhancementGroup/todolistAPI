@@ -8,6 +8,29 @@ from tqdm import tqdm
 
 from todolistMDP.to_do_list import Task, Goal, ToDoList
 
+
+def print_item(item):
+    for s in sorted(list(item.Q.keys())):
+        for t in item.Q[s].keys():
+            for a in item.Q[s][t].keys():
+                if a is None:
+                    print_a = '-'
+                else:
+                    print_a = str(a)
+                # for t_ in to_do_list.Q[s][t][a].keys():
+                #     if t_ != "E":
+                # print(s, t, a, t_, to_do_list.Q[s][t][a][t_])
+                print(f"s: {s} | ", end="")
+                print(f"t: {t:6d} | ", end="")
+                print(f"a: {print_a} | ", end="")
+                # print(f"t': {t_} | ", end="")
+                print(f"Q: {item.Q[s][t][a]['E']:10.3f} | ", end="")
+                print(f"f: {item.F[s][t][a]['E']:10.3f} | ", end="")
+                print(f"r: {item.R[s][t][a]['E']:10.3f} | ", end="")
+                print(f"r': {item.R_[s][t][a]['E']:10.3f} | ", end="")
+                print()
+
+
 # ===== Constants =====
 # LOSS_RATE = 0  # Default
 LOSS_RATE = -1
@@ -16,8 +39,8 @@ LOSS_RATE = -1
 GAMMA = 0.9999  # Default
 # GAMMA = 1 - 1e-3
 
-N_GOALS = 1
-N_TASKS = 500
+N_GOALS = 10
+N_TASKS = 50
 START_TIME = 0  # Default
 
 TIME_SCALE = 1  # Default
@@ -32,7 +55,7 @@ SLACK_REWARD = -np.NINF
 TIME_PRECISION = 1
 TIME_SUPPORT = None
 
-HARD_DEADLINE = True
+HARD_DEADLINE = False
 TASK_UNIT_PENALTY = 0.
 UNIT_PENALTY = 0.
 
@@ -228,12 +251,13 @@ def generate_discrepancy_test(n_goals, n_tasks):
             description=f"G{g+1}",
             hard_deadline=True,
             loss_rate=LOSS_RATE,
-            rewards={deadline: 150},
+            rewards={deadline: 10000},
             # rewards={deadline: (g + 1) * 150},
             # rewards={deadline: (g + 1) * 1000},
             tasks=[
                 # Task(f"G{g+1} T{t+1}", time_est=g + 1 + (t + 1) * TIME_SCALE)
-                Task(f"G{g+1} T{t+1}", time_est=(g + 1) * 5 + (t + 1) * TIME_SCALE)
+                Task(f"G{g+1} T{t+1}",
+                     time_est=(g + 1) * n_goals + (t + 1) * TIME_SCALE)
                 # Task(f"T{t+1}", time_est=1)
                 for t in range(n_tasks)
             ],
@@ -249,58 +273,23 @@ def generate_discrepancy_test(n_goals, n_tasks):
 def generate_goal(n_tasks, deadline_time, reward=100, time_scale=TIME_SCALE):
     return Goal(
         description="__GOAL__",
-        loss_rate=0,
+        loss_rate=LOSS_RATE,
         rewards={deadline_time: reward},
-        # tasks=[
-        #     Task(f"T{i}", deadline=n_tasks-i+1, time_est=i * time_scale)
-        #     for i in range(1, n_tasks+1)
-        # ]
         tasks=[
-            Task(
-                description=f"T{i}",
-                deadline=n_tasks * 25,
-                time_est=25
-            )
+            Task(f"T{i}", deadline=n_tasks-i+1, time_est=i * time_scale)
             for i in range(1, n_tasks+1)
         ],
+        # tasks=[
+        #     Task(
+        #         description=f"T{i}",
+        #         deadline=n_tasks * 25,
+        #         time_est=25
+        #     )
+        #     for i in range(1, n_tasks+1)
+        # ],
         time_precision=TIME_PRECISION,
         time_support=TIME_SUPPORT
     )
-
-
-# def get_policy(to_do_list: ToDoList, t=0, verbose=False):
-#     Q = to_do_list.get_q_values()
-#
-#     s = tuple(0 for _ in range(to_do_list.get_vector_length()))
-#
-#     st = []
-#
-#     r = None
-#
-#     while True:
-#         q = Q[(s, t)]
-#         q_, r_ = ToDoList.max_from_dict(q)
-#
-#         if r is not None:
-#             print(r_ - r)
-#         print(t, q_, r_, end=" | ")
-#
-#         if q_ is None:
-#             break
-#
-#         st.append(q_)
-#
-#         a, t_ = q_
-#
-#         if a >= 0:
-#             s = ToDoList.exec_action(s, a)
-#         t = t_
-#
-#         r = r_
-#
-#     print()
-#
-#     return st, t
 
 
 def print_stats(goal):  # TODO: Move this a Goal method!
@@ -329,10 +318,12 @@ def multi_test(num_goals: list, num_tasks: list, num_samples=1,
             for _ in tqdm(range(num_samples)):
                 tic = time.time()
                 goals = [
-                    generate_goal(n_tasks, deadline_time=n_tasks * n_goals * 30)
+                    generate_goal(n_tasks, deadline_time=n_tasks * n_goals * 30,
+                                  time_scale=2*s+1)
                     for s in range(n_goals)
                 ]
-                to_do_list = ToDoList(goals, gamma=gamma, slack_reward=0)
+                to_do_list = ToDoList(goals, gamma=gamma,
+                                      slack_reward=SLACK_REWARD)
                 to_do_list.solve(verbose=False)
                 toc = time.time()
                 
@@ -370,73 +361,71 @@ def run(goals, gamma=GAMMA, verbose=False):
     to_do_list = ToDoList(goals, gamma=gamma, slack_reward=SLACK_REWARD)
     to_do_list.solve(start_time=0, verbose=verbose)
     toc = time.time()
+
+    print_stats(to_do_list)
     print()
+    
     print(f"Recursive procedure took {toc - tic:.2f} seconds!")
     print()
     
-    # s = (0, 0, 0, 0, 0, 0)
     
-    # s = (0, 0)
+    # if verbose:
+    if True:
+        to_do_list.compute_pseudo_rewards(loc=0, scale=1.)
 
-    print_stats(to_do_list)
-    
-    # print(to_do_list.get_highest_negative_reward())
-    
-    # pprint(to_do_list.get_q_values(s=s))
-    pprint(to_do_list.get_q_values())
-    to_do_list.compute_pseudo_rewards(loc=0, scale=0.1)
-    pprint(to_do_list.get_pseudo_rewards())
-    
-    opt_P = to_do_list.run_optimal_policy(run_goal_policy=False, verbose=True)
-    
-    print()
-    
-    # for goal in to_do_list.get_goals():
-    #     print(goal.get_description())
-    #     print(goal.get_highest_negative_reward())
-    #     pprint(goal.get_q_values())
-    #     goal.compute_pseudo_rewards(loc=10, scale=2.)
-    #     goal.compute_pseudo_rewards(loc=0, scale=1.)
-        # pprint(goal.get_pseudo_rewards())
+        print(f"===== Goal level =====")
+        print_item(to_do_list)
+        print()
+        
+        for goal in to_do_list.goals:
+            goal.compute_pseudo_rewards(start_time=1500, loc=0, scale=1.)
+            
+            print(f"===== {goal.description} =====")
+            print_item(goal)
+            print()
+        
+        # pprint(to_do_list.Q)
+        # print()
+        # pprint(to_do_list.F)
+        # print()
+        # pprint(to_do_list.R)
+        # print()
+        # pprint(to_do_list.R_)
+        # print()
 
+        # pprint(to_do_list.get_q_values())
+        # print()
+        
+        # pprint(to_do_list.get_pseudo_rewards())
+        # print()
+
+    # opt_P = to_do_list.run_optimal_policy(run_goal_policy=False, verbose=True)
+    
     # for a, t_end in opt_P:
     #     goal = to_do_list.goals[a]
-    #     pprint(goal.Q)
-
-    # goal_order = [s for s, t in opt_P]
-    # print(goal_order)
-
-    # pprint(to_do_list.P[((0, 0, 0, 0, 0, 0), 0)])
-
-    # t = 0  # Starting time
-
-    # for goal_idx in goal_order:
-    #     goal = to_do_list.goals[goal_idx]
-    #     print(f"{goal.get_description()}, Time: {t}")
+    #     goal.compute_pseudo_rewards(loc=0, scale=2.)
     #
-    #     pprint(goal.get_q_values())
-    #     print()
-    #
-    #     # opt_P, t = get_policy(goal, t=t, verbose=True)
-    #     # print()
-    #
-    #     # t += goal.get_time_est()
+    #     if verbose:
+    #         print(goal.get_description())
+    #         pprint(goal.get_q_values())
+    #         pprint(goal.get_pseudo_rewards())
 
 
 if __name__ == '__main__':
     # goals = [generate_goal(n_tasks=3, deadline_time=np.PINF) for s in range(1)]
-    # goals = [generate_goal(n_tasks=2, time_scale=2*s+1) for s in range(1)]
-    goals = d_bm
+    # goals = [generate_goal(n_tasks=25, deadline_time=np.PINF,
+    #                        time_scale=2*s+1) for s in range(3)]
+    # goals = d_bm
     # goals = [d_bm[2]]
-    # goals = test_1
+    goals = test_1
     
-    # goals = generate_discrepancy_test(n_goals=3, n_tasks=3)
+    # goals = generate_discrepancy_test(n_goals=N_GOALS, n_tasks=N_TASKS)
     
     run(goals=goals, verbose=False)
     
     # multi_test(
-    #     num_goals=[2, 3, 4, 5, 6, 7, 8],
-    #     num_tasks=[75],
+    #     num_goals=[1, 2, 3, 4, 5, 6, 7, 8, 9],
+    #     num_tasks=[50],
     #     num_samples=3,
     #     verbose=False
     # )
