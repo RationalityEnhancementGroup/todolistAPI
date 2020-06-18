@@ -7,13 +7,15 @@ from json_generator.utils import *
 
 # Number of goals
 # N_GOALS = [10, 50, 100, 500, 1000, 2500, 5000, 7500, 10000]
-# N_GOALS = [11]
-N_GOALS = list(range(1, 11))
+# N_GOALS = [1]
+N_GOALS = list(range(2, 11))
 
 # Number of tasks
 # N_TASKS = [1]
 # N_TASKS = [10, 50, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000]
-N_TASKS = [25, 50, 75, 125, 150]
+# N_TASKS = [25, 50, 75, 100, 125, 150, 250, 500, 750, 1000]
+N_TASKS = [1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000,
+           3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000]
 
 # Today and typical working hours
 HOURS_TODAY = 12

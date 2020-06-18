@@ -6,65 +6,15 @@ import pandas as pd
 import requests
 import time
 
+from datetime import datetime
 from pprint import pprint
 from pymongo import MongoClient
 from tqdm import tqdm
 
-#%% sending post request and saving response as response object
-
-LOCAL = 1
-HEROKU_STAGING = 2
-VERBOSE = False
-
-MODE = LOCAL
-
-# ALGORITHM = "dp"
-ALGORITHM = "smdp"
-
-TEST_TYPE = "smdp"
-USER_ID = "__test__"
-
-PATH_NAME = f"data/{TEST_TYPE}"
-OUTPUT_PATH = f"output/{ALGORITHM}/{TEST_TYPE}"
-os.makedirs(OUTPUT_PATH, exist_ok=True)
-
-DB = None
-URI = None
-
-SERVER = None
-SERVER_ABBR = None
-
-if MODE == LOCAL:
-    SERVER = f"http://127.0.0.1:6789/"
-    SERVER_ABBR = "local"
-
-    URI = "mongodb://ai4productivity:ai4productivity@127.0.0.1/ai4productivity"
-    CONN = MongoClient(URI)
-    DB = CONN["ai4productivity"]
-
-if MODE == HEROKU_STAGING:
-    URI = "mongodb://hC2P81mItQ16:a1R9ydF01dih@ds341557.mlab.com:41557/heroku_g6l4lr9d?retryWrites=false"  # os.environ['MONGODB_URI']
-    CONN = MongoClient(URI)
-    DB = CONN.heroku_g6l4lr9d
-
-    SERVER = f"https://aqueous-hollows-34193.herokuapp.com/"
-    SERVER_ABBR = "heroku_staging"
-
-#%% Check number of entries in the DB
-
-# Clean-up database
-DB.request_log.delete_many({"user_id": USER_ID})
-DB.trees.delete_many({"user_id": USER_ID})
-
-print("Request log collection count:",
-      DB.request_log.find({"user_id": USER_ID}).count())
-print("Trees collection count:",
-      DB.trees.find({"user_id": USER_ID}).count())
-
 
 def test_speed_mdp(n_goals, n_tasks, deadline_years, mixing_params, n_trials=1):
     time_results = dict()
-
+    
     time_df = pd.DataFrame()
     tout_df = pd.DataFrame()
 
@@ -159,6 +109,10 @@ def test_speed_mdp(n_goals, n_tasks, deadline_years, mixing_params, n_trials=1):
 def test_speed_smdp(n_goals, n_tasks, n_trials=1, worst=True):
     time_results = dict()
 
+    date = datetime.now()
+    timestamp = f"{date.year:04d}_{date.month:02d}_{date.day:02d}_" \
+                f"{date.hour:02d}_{date.minute:02d}_{date.second:02d}"
+    
     time_df = pd.DataFrame()
     tout_df = pd.DataFrame()
 
@@ -189,8 +143,8 @@ def test_speed_smdp(n_goals, n_tasks, n_trials=1, worst=True):
                 if not worst:
                     test_mode = "bestSpeedTestSMDP"
 
-                PARAMS = f"api/smdp/mdp/30/14/inf/0/3000/0/60/0.9999/1000/" \
-                         f"0.0001/0/2/10/2/tree/u123/{test_mode}"
+                PARAMS = f"api/smdp/mdp/30/14/inf/0/1000000/0/60/0.9999/" \
+                         f"1000000/0.0001/0/2/10/2/tree/u123/{test_mode}"
                 API_ENDPOINT = SERVER + PARAMS
 
                 for _ in tqdm(range(n_trials)):
@@ -209,9 +163,12 @@ def test_speed_smdp(n_goals, n_tasks, n_trials=1, worst=True):
                     elif output[0] == '<':
                         print(output)
                         
-                    else:
+                    elif "The API has encountered an error" in output:
                         print('\nTimeout!')
                         tout_log[nt] += 1
+                        
+                    else:
+                        print(output)
 
                     # Clean-up database
                     DB.request_log.delete_many({"user_id": USER_ID})
@@ -222,7 +179,6 @@ def test_speed_smdp(n_goals, n_tasks, n_trials=1, worst=True):
                 print(f"\nNumber of goals: {ng}\n"
                       f"Number of tasks per goal: {nt}\n"
                       f"Total number of tasks: {ng * nt}\n"
-                      f"Mixing parameter: {nt:.2f}\n"
                       f"Average time: {time_log[nt]:.4f}\n"
                       f"Timeouts: {tout_log[nt]}\n"
                       f"Time results: {time_results[nt]}\n")
@@ -236,9 +192,9 @@ def test_speed_smdp(n_goals, n_tasks, n_trials=1, worst=True):
             tout_df[ng] = tout_log
 
             time_df.to_csv(f"{OUTPUT_PATH}/"
-                           f"{test_mode}_{SERVER_ABBR}_time.csv")
+                           f"{timestamp}_{test_mode}_{SERVER_ABBR}_time.csv")
             tout_df.to_csv(f"{OUTPUT_PATH}/"
-                           f"{test_mode}_{SERVER_ABBR}_tout.csv")
+                           f"{timestamp}_{test_mode}_{SERVER_ABBR}_tout.csv")
 
             if break_flag:
                 print("Done!\n")
@@ -251,8 +207,67 @@ def test_speed_smdp(n_goals, n_tasks, n_trials=1, worst=True):
 
 
 if __name__ == '__main__':
+    
+    LOCAL = 1
+    HEROKU_STAGING = 2
+    VERBOSE = False
+    
+    MODE = LOCAL
+    
+    # ALGORITHM = "dp"
+    ALGORITHM = "smdp"
+    
+    TEST_TYPE = "smdp"
+    USER_ID = "__test__"
+    
+    PATH_NAME = f"data/{TEST_TYPE}"
+    OUTPUT_PATH = f"output/{ALGORITHM}/{TEST_TYPE}"
+    os.makedirs(OUTPUT_PATH, exist_ok=True)
+    
+    DB = None
+    URI = None
+    
+    SERVER = None
+    SERVER_ABBR = None
+    
+    if MODE == LOCAL:
+        SERVER = f"http://127.0.0.1:6789/"
+        SERVER_ABBR = "local"
+        
+        URI = "mongodb://ai4productivity:ai4productivity@127.0.0.1/ai4productivity"
+        CONN = MongoClient(URI)
+        DB = CONN["ai4productivity"]
+    
+    if MODE == HEROKU_STAGING:
+        URI = "mongodb://hC2P81mItQ16:a1R9ydF01dih@ds341557.mlab.com:41557/heroku_g6l4lr9d?retryWrites=false"  # os.environ['MONGODB_URI']
+        CONN = MongoClient(URI)
+        DB = CONN.heroku_g6l4lr9d
+        
+        SERVER = f"https://aqueous-hollows-34193.herokuapp.com/"
+        SERVER_ABBR = "heroku_staging"
 
-    # Tests for different number of goals, tasks and mixing-parameter values
+    # %% Check number of entries in the DB
+    
+    # Clean-up database
+    DB.request_log.delete_many({"user_id": USER_ID})
+    DB.trees.delete_many({"user_id": USER_ID})
+    
+    print("Request log collection count:",
+          DB.request_log.find({"user_id": USER_ID}).count())
+    print("Trees collection count:",
+          DB.trees.find({"user_id": USER_ID}).count())
+
+    N_GOALS = list(range(1, 11))
+    # N_GOALS = [1]
+    
+    N_TASKS = [
+        25, 50, 75, 100, 125, 150,
+        250, 500, 750, 1000,
+        1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000,
+        3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000
+    ]
+
+    # Test DP for different number of goals, tasks and mixing-parameter values
     # test_speed_mdp(
     #     n_goals=[10],
     #     n_tasks=[2500, 7500, 10000],  # 10, 50, 100, 250, 500, 750, 1000,
@@ -261,11 +276,11 @@ if __name__ == '__main__':
     #     n_trials=3
     # )
 
-    # Tests for different number of goals and tasks for the SMDP method
+    # Test SMDP for different number of goals and tasks
     test_speed_smdp(
         # n_goals=list(range(1, 11)),
-        n_goals=[1],
-        n_tasks=[25, 50, 75, 125, 150],
-        n_trials=1,
+        n_goals=N_GOALS,
+        n_tasks=N_TASKS,
+        n_trials=5,
         worst=True
     )

@@ -11,24 +11,25 @@ from todolistMDP.to_do_list import Task, Goal, ToDoList
 
 def print_item(item):
     for s in sorted(list(item.Q.keys())):
-        for t in item.Q[s].keys():
-            for a in item.Q[s][t].keys():
-                if a is None:
-                    print_a = '-'
-                else:
-                    print_a = str(a)
+        for t in sorted(list(item.Q[s].keys())):
+            for a in sorted(list(item.Q[s][t].keys()), key=lambda x: (x is None, x)):
                 # for t_ in to_do_list.Q[s][t][a].keys():
                 #     if t_ != "E":
                 # print(s, t, a, t_, to_do_list.Q[s][t][a][t_])
                 print(f"s: {s} | ", end="")
-                print(f"t: {t:6d} | ", end="")
-                print(f"a: {print_a} | ", end="")
+                print(f"t: {str(t) if t != np.PINF else 'inf':6s} | ", end="")
+                print(f"a: {'-' if a is None else str(a):>3s} | ", end="")
                 # print(f"t': {t_} | ", end="")
                 print(f"Q: {item.Q[s][t][a]['E']:10.3f} | ", end="")
                 print(f"f: {item.F[s][t][a]['E']:10.3f} | ", end="")
                 print(f"r: {item.R[s][t][a]['E']:10.3f} | ", end="")
-                print(f"r': {item.R_[s][t][a]['E']:10.3f} | ", end="")
+                print(f"r': {item.PR[s][t][a]['E']:10.3f} | ", end="")
+                # print(f"Q: {item.Q[s][t][a]['E']} | ", end="")
+                # print(f"f: {item.F[s][t][a]['E']} | ", end="")
+                # print(f"r: {item.R[s][t][a]['E']} | ", end="")
+                # print(f"r': {item.PR[s][t][a]['E']} | ", end="")
                 print()
+        print()
 
 
 # ===== Constants =====
@@ -36,9 +37,11 @@ def print_item(item):
 LOSS_RATE = -1
 # LOSS_RATE = -1e-3
 
-GAMMA = 0.9999  # Default
+# GAMMA = 0.9999  # Default
+GAMMA = 0.99
 # GAMMA = 1 - 1e-3
 
+N_BINS = 2
 N_GOALS = 10
 N_TASKS = 50
 START_TIME = 0  # Default
@@ -49,15 +52,25 @@ TIME_SCALE = 1  # Default
 VALUE_SCALE = 1  # Default
 # VALUE_SCALE = 10
 
-SLACK_REWARD = -np.NINF
+PLANNING_FALACY_CONST = 1  # Default
+# PLANNING_FALACY_CONST = 1.39
+
+# SLACK_REWARD = np.NINF
+# SLACK_REWARD = 1
+# SLACK_REWARD = 1e-1
+SLACK_REWARD = 1e-2
 # SLACK_REWARD = 1e-3
 
 TIME_PRECISION = 1
 TIME_SUPPORT = None
 
 HARD_DEADLINE = False
-TASK_UNIT_PENALTY = 0.
-UNIT_PENALTY = 0.
+
+# TASK_UNIT_PENALTY = 1
+TASK_UNIT_PENALTY = .1
+
+# UNIT_PENALTY = 1
+UNIT_PENALTY = .1
 
 sys.setrecursionlimit(10000)
 
@@ -68,6 +81,7 @@ d_bm = [
         hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         # penalty=-10,
+        planning_fallacy_const=PLANNING_FALACY_CONST,
         # reward=100,
         rewards={TIME_SCALE * 10: VALUE_SCALE * 100},
         tasks=[
@@ -85,6 +99,7 @@ d_bm = [
         hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         # penalty=0,
+        planning_fallacy_const=PLANNING_FALACY_CONST,
         # reward=10,
         # rewards={TIME_SCALE * 10: 10},  # Simplified
         rewards={TIME_SCALE * 1: VALUE_SCALE * 10,
@@ -103,6 +118,7 @@ d_bm = [
          hard_deadline=HARD_DEADLINE,
          loss_rate=LOSS_RATE,
          # penalty=-1,
+         planning_fallacy_const=PLANNING_FALACY_CONST,
          # reward=100,
          # rewards={TIME_SCALE * 6: 100},  # Simplified
          rewards={TIME_SCALE * 1: VALUE_SCALE * 10,
@@ -121,6 +137,7 @@ d_bm = [
          hard_deadline=HARD_DEADLINE,
          loss_rate=LOSS_RATE,
          # penalty=-10,
+         planning_fallacy_const=PLANNING_FALACY_CONST,
          # reward=10,
          # rewards={TIME_SCALE * 40: 10},  # Simplified
          rewards={TIME_SCALE * 20: VALUE_SCALE * 100,
@@ -140,6 +157,7 @@ d_bm = [
         hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         # penalty=-110,
+        planning_fallacy_const=PLANNING_FALACY_CONST,
         # reward=10,
         # rewards={70: 10},  # Simplified
         rewards={TIME_SCALE * 60: VALUE_SCALE * 100,
@@ -159,6 +177,7 @@ d_bm = [
         hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         # penalty=-110,
+        planning_fallacy_const=PLANNING_FALACY_CONST,
         # reward=10,
         # rewards={70: 10},  # Simplified
         rewards={TIME_SCALE * 60: VALUE_SCALE * 100,
@@ -194,7 +213,57 @@ test_1 = [
         description="G1",
         hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
-        rewards={2000: 1000},
+        rewards={6: 1000},
+        tasks=[
+            Task("Task 1", time_est=1, deadline=6),
+            Task("Task 2", time_est=2, deadline=5),
+            Task("Task 3", time_est=3, deadline=4)
+        ],
+        task_unit_penalty=TASK_UNIT_PENALTY,
+        time_precision=TIME_PRECISION,
+        time_support=TIME_SUPPORT,
+        unit_penalty=UNIT_PENALTY,
+    ),
+    # Goal(
+    #     description="G2",
+    #     hard_deadline=HARD_DEADLINE,
+    #     loss_rate=LOSS_RATE,
+    #     rewards={300: 500},
+    #     tasks=[
+    #         Task("Task 1", time_est=30, deadline=303),
+    #         Task("Task 2", time_est=40, deadline=302),
+    #         Task("Task 3", time_est=50, deadline=301)
+    #     ],
+    #     task_unit_penalty=TASK_UNIT_PENALTY,
+    #     time_precision=TIME_PRECISION,
+    #     time_support=TIME_SUPPORT,
+    #     unit_penalty=UNIT_PENALTY,
+    # ),
+    # Goal(
+    #     description="G3",
+    #     hard_deadline=HARD_DEADLINE,
+    #     loss_rate=LOSS_RATE,
+    #     rewards={30: 30},
+    #     tasks=[
+    #         Task("Task 1", time_est=8, deadline=33),
+    #         Task("Task 2", time_est=9, deadline=32),
+    #         Task("Task 3", time_est=10, deadline=31)
+    #     ],
+    #     task_unit_penalty=TASK_UNIT_PENALTY,
+    #     time_precision=TIME_PRECISION,
+    #     time_support=TIME_SUPPORT,
+    #     unit_penalty=UNIT_PENALTY,
+    # )
+]
+
+
+test_2 = [
+    Goal(
+        description="G1",
+        hard_deadline=HARD_DEADLINE,
+        loss_rate=LOSS_RATE,
+        planning_fallacy_const=PLANNING_FALACY_CONST,
+        rewards={2000: 5000},
         tasks=[
             Task("Task 1", time_est=100),
             Task("Task 2", time_est=200),
@@ -211,6 +280,7 @@ test_1 = [
         description="G2",
         hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
+        planning_fallacy_const=PLANNING_FALACY_CONST,
         rewards={3000: 3000},
         tasks=[
             Task("Task 1", time_est=100),
@@ -228,13 +298,86 @@ test_1 = [
         description="G3",
         hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
-        rewards={4000: 5000},
+        planning_fallacy_const=PLANNING_FALACY_CONST,
+        rewards={4000: 10000},
         tasks=[
             Task("Task 1", time_est=100),
             Task("Task 2", time_est=200),
             Task("Task 3", time_est=300),
             Task("Task 4", time_est=400),
             Task("Task 5", time_est=500)
+        ],
+        task_unit_penalty=TASK_UNIT_PENALTY,
+        time_precision=TIME_PRECISION,
+        time_support=TIME_SUPPORT,
+        unit_penalty=UNIT_PENALTY,
+    )
+]
+
+
+single_goal = Goal(
+    description="Single goal",
+    hard_deadline=HARD_DEADLINE,
+    loss_rate=LOSS_RATE,
+    num_bins=N_BINS,
+    planning_fallacy_const=PLANNING_FALACY_CONST,
+    rewards={100: 100},
+    # tasks=[
+    #     Task("Task 1", time_est=1, deadline=10),
+    #     Task("Task 2", time_est=2, deadline=9),
+    #     Task("Task 3", time_est=3, deadline=8),
+    #     Task("Task 4", time_est=4, deadline=7),
+    #     Task("Task 5", time_est=5, deadline=6),
+    #     Task("Task 5", time_est=6, deadline=5),
+    #     Task("Task 5", time_est=7, deadline=4),
+    #     Task("Task 5", time_est=8, deadline=3),
+    #     Task("Task 5", time_est=9, deadline=2),
+    #     Task("Task 5", time_est=10, deadline=1)
+    # ],
+    # tasks=[
+    #     Task("Task 1", time_est=1, deadline=6),
+    #     Task("Task 2", time_est=1, deadline=3),
+    #     Task("Task 3", time_est=2, deadline=5),
+    #     Task("Task 4", time_est=2, deadline=2),
+    # ],
+    tasks=[
+        Task("Task 1", time_est=1, deadline=6),
+        Task("Task 2", time_est=2, deadline=5),
+        Task("Task 3", time_est=3, deadline=3),
+    ],
+    task_unit_penalty=TASK_UNIT_PENALTY,
+    time_precision=TIME_PRECISION,
+    time_support=TIME_SUPPORT,
+    unit_penalty=UNIT_PENALTY,
+)
+
+two_goals = [
+    Goal(
+        description="Goal 1",
+        hard_deadline=HARD_DEADLINE,
+        loss_rate=LOSS_RATE,
+        planning_fallacy_const=PLANNING_FALACY_CONST,
+        rewards={100: 100},
+        tasks=[
+            Task("Task 1", time_est=1, deadline=6),
+            Task("Task 2", time_est=2, deadline=5),
+            Task("Task 3", time_est=3, deadline=3),
+        ],
+        task_unit_penalty=TASK_UNIT_PENALTY,
+        time_precision=TIME_PRECISION,
+        time_support=TIME_SUPPORT,
+        unit_penalty=UNIT_PENALTY,
+    ),
+    Goal(
+        description="Goal 2",
+        hard_deadline=HARD_DEADLINE,
+        loss_rate=LOSS_RATE,
+        planning_fallacy_const=PLANNING_FALACY_CONST,
+        rewards={100: 100},
+        tasks=[
+            Task("Task 1", time_est=1, deadline=6),
+            Task("Task 2", time_est=2, deadline=5),
+            Task("Task 3", time_est=3, deadline=3),
         ],
         task_unit_penalty=TASK_UNIT_PENALTY,
         time_precision=TIME_PRECISION,
@@ -251,6 +394,7 @@ def generate_discrepancy_test(n_goals, n_tasks):
             description=f"G{g+1}",
             hard_deadline=True,
             loss_rate=LOSS_RATE,
+            planning_fallacy_const=PLANNING_FALACY_CONST,
             rewards={deadline: 10000},
             # rewards={deadline: (g + 1) * 150},
             # rewards={deadline: (g + 1) * 1000},
@@ -274,6 +418,7 @@ def generate_goal(n_tasks, deadline_time, reward=100, time_scale=TIME_SCALE):
     return Goal(
         description="__GOAL__",
         loss_rate=LOSS_RATE,
+        planning_fallacy_const=PLANNING_FALACY_CONST,
         rewards={deadline_time: reward},
         tasks=[
             Task(f"T{i}", deadline=n_tasks-i+1, time_est=i * time_scale)
@@ -362,28 +507,45 @@ def run(goals, gamma=GAMMA, verbose=False):
     to_do_list.solve(start_time=0, verbose=verbose)
     toc = time.time()
 
+    # to_do_list.run_optimal_policy(run_goal_policy=True)
+    
     print_stats(to_do_list)
     print()
     
     print(f"Recursive procedure took {toc - tic:.2f} seconds!")
     print()
     
-    
     # if verbose:
     if True:
         to_do_list.compute_pseudo_rewards(loc=0, scale=1.)
+        
+        # to_do_list.run_optimal_policy()
+        
+        # pprint(to_do_list.P)
+        # print()
+        
+        # pprint(to_do_list.R)
 
         print(f"===== Goal level =====")
         print_item(to_do_list)
         print()
         
         for goal in to_do_list.goals:
-            goal.compute_pseudo_rewards(start_time=1500, loc=0, scale=1.)
+            # pprint(goal.P)
+            # print()
+            
+            # pprint(goal.Q)
+            # print()
+            
+            # pprint(goal.R)
+            # print()
+            
+            goal.compute_pseudo_rewards(start_time=0, loc=0, scale=1.)
             
             print(f"===== {goal.description} =====")
             print_item(goal)
             print()
-        
+            
         # pprint(to_do_list.Q)
         # print()
         # pprint(to_do_list.F)
@@ -417,7 +579,11 @@ if __name__ == '__main__':
     #                        time_scale=2*s+1) for s in range(3)]
     # goals = d_bm
     # goals = [d_bm[2]]
-    goals = test_1
+    # goals = [d_bm[2], d_bm[3]]
+    # goals = test_1
+    # goals = test_2
+    goals = [single_goal]
+    # goals = two_goals
     
     # goals = generate_discrepancy_test(n_goals=N_GOALS, n_tasks=N_TASKS)
     
