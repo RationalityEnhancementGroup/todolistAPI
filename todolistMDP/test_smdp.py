@@ -6,7 +6,7 @@ from math import factorial
 from pprint import pprint
 from tqdm import tqdm
 
-from todolistMDP.to_do_list import Task, Goal, ToDoList
+from todolistMDP.to_do_list import Task, Goal, ToDoList, compute_pseudo_rewards
 
 
 def print_item(item):
@@ -356,6 +356,7 @@ two_goals = [
         description="Goal 1",
         hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
+        num_bins=N_BINS,
         planning_fallacy_const=PLANNING_FALACY_CONST,
         rewards={100: 100},
         tasks=[
@@ -372,6 +373,7 @@ two_goals = [
         description="Goal 2",
         hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
+        num_bins=N_BINS,
         planning_fallacy_const=PLANNING_FALACY_CONST,
         rewards={100: 100},
         tasks=[
@@ -507,8 +509,6 @@ def run(goals, gamma=GAMMA, verbose=False):
     to_do_list.solve(start_time=0, verbose=verbose)
     toc = time.time()
 
-    # to_do_list.run_optimal_policy(run_goal_policy=True)
-    
     print_stats(to_do_list)
     print()
     
@@ -517,9 +517,8 @@ def run(goals, gamma=GAMMA, verbose=False):
     
     # if verbose:
     if True:
-        to_do_list.compute_pseudo_rewards(loc=0, scale=1.)
-        
-        # to_do_list.run_optimal_policy()
+        # to_do_list.compute_pseudo_rewards(loc=0, scale=1.)
+        compute_pseudo_rewards(to_do_list)
         
         # pprint(to_do_list.P)
         # print()
@@ -540,7 +539,8 @@ def run(goals, gamma=GAMMA, verbose=False):
             # pprint(goal.R)
             # print()
             
-            goal.compute_pseudo_rewards(start_time=0, loc=0, scale=1.)
+            # goal.compute_pseudo_rewards(start_time=0, loc=0, scale=1.)
+            compute_pseudo_rewards(goal)
             
             print(f"===== {goal.description} =====")
             print_item(goal)
@@ -561,8 +561,6 @@ def run(goals, gamma=GAMMA, verbose=False):
         # pprint(to_do_list.get_pseudo_rewards())
         # print()
 
-    # opt_P = to_do_list.run_optimal_policy(run_goal_policy=False, verbose=True)
-    
     # for a, t_end in opt_P:
     #     goal = to_do_list.goals[a]
     #     goal.compute_pseudo_rewards(loc=0, scale=2.)

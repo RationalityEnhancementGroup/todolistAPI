@@ -13,6 +13,174 @@ from scipy.stats import poisson
 from todolistMDP import mdp
 
 
+def compute_pseudo_rewards(obj, start_time=0, loc=0., scale=1.):
+    """
+    Computes pseudo-rewards.
+
+    TODO: Add transformation here.
+    """
+    standardizing_reward = obj.highest_negative_reward
+    if obj.highest_negative_reward == np.NINF:
+        standardizing_reward = 0
+    
+    # Get time-shift discount
+    discount = ToDoList.get_discount(start_time)
+    
+    for s in obj.Q.keys():
+        
+        obj.PR.setdefault(s, dict())
+        obj.F.setdefault(s, dict())
+        
+        for t in obj.Q[s].keys():
+            
+            obj.PR[s].setdefault(t, dict())
+            obj.F[s].setdefault(t, dict())
+            
+            """ Incorporate slack action for (state, time) """
+            # Add slack reward to the dictionary
+            slack_reward = obj.compute_slack_reward(0)
+            
+            # Add slack reward in the Q-values
+            obj.Q[s][t].setdefault(-1, dict())
+            obj.Q[s][t][-1]["E"] = slack_reward
+            
+            # Add slack reward in the rewards
+            obj.R[s][t].setdefault(-1, dict())
+            obj.R[s][t][-1]["E"] = slack_reward
+            
+            # The best possible (a)ction and (q)-value in state s
+            best_a, best_q = ToDoList.max_from_dict(obj.Q[s][t])
+            best_q *= discount
+            
+            # Update optimal policy
+            obj.P[s][t] = best_a
+            
+            for a in obj.Q[s][t].keys():
+                
+                obj.PR[s][t].setdefault(a, dict())
+                obj.F[s][t].setdefault(a, dict())
+                
+                if a is None or a == -1:
+                    
+                    # Set pseudo-reward of terminal state to 0 [Ng, 1999]
+                    # obj.PR[s][t][a].setdefault("E", 0)
+                    # obj.F[s][t][a].setdefault("E", 0)
+                    # obj.R[s][t][a].setdefault("E", 0)
+                    
+                    # TODO: Comment this part
+                    s_ = s
+                    t_ = np.PINF
+                    gamma = 1.
+                    
+                    if a == -1:
+                        curr_obj = obj.slack_action
+                    else:
+                        curr_obj = None
+                    
+                    a_ = None
+                    v_ = 0
+                    q_ = 0
+                
+                else:
+                    if type(obj) is Goal:
+                        curr_obj = obj.tasks[a]
+
+                        # Get current Task object
+                        curr_task = obj.tasks[a]
+
+                        # Move to the next state
+                        s_ = ToDoList.exec_action(s, a)
+
+                        # Get expected task time estimate
+                        # time_est = curr_task.get_time_est()
+
+                        # TODO: Expected future reward as a function
+                        if "E" not in obj.Q[s_].keys():
+                            # TODO: Implement this
+                            pass
+
+                        # Get time transitions to the next state
+                        time_transitions = curr_task.get_time_transition_prob().items()
+
+                        # Initialize expected state value
+                        v_ = 0
+
+                        for time_est, prob_t_ in time_transitions:
+                            # Make time transition
+                            t_ = t + time_est
+    
+                            # Get gamma for the next transition
+                            gamma = ToDoList.get_discount(time_est)
+    
+                            # Get optimal action and value in the next state
+                            a_, q_ = ToDoList.max_from_dict(obj.Q[s_][t_])
+    
+                            # Update expected value of the next state
+                            v_ += prob_t_ * gamma * q_
+
+                    elif type(obj) is ToDoList:
+                        # Get current object
+                        curr_obj = obj.goals[a]
+
+                        # Move to the next state
+                        s_ = ToDoList.exec_action(s, a)
+    
+                        # Get expected goal time estimate
+                        time_est = curr_obj.get_time_est()
+    
+                        # Make time transition
+                        t_ = t + time_est
+    
+                        # Get gamma for the next transition
+                        gamma = ToDoList.get_discount(time_est)
+    
+                        # Get optimal action in the next state
+                        a_, v_ = ToDoList.max_from_dict(obj.Q[s_][t_])
+                        
+                        # Compute discounted action value
+                        v_ *= gamma
+                        
+                    else:
+                        raise NotImplementedError(f"Unknown object type {type(obj)}")
+
+                # Expected Q-value of the next state
+                v_ *= discount  # * gamma  # TODO: Check (!)
+                # q_ = self.Q[s_][t_][a_]["E"] * discount * gamma
+                
+                # Expected Q-value of the current state
+                # q = self.Q[s][t][a]["E"] * discount
+                
+                # Compute value of the reward-shaping function
+                # f = q_ - q
+                f = v_ - best_q
+                
+                # Standardize rewards s.t. negative rewards <= 0
+                # f -= standardizing_reward * discount
+                
+                # Make affine transformation of the reward-shaping function
+                f = scale * f + loc
+                
+                # Get expected reward for (state, time, action)
+                r = obj.R[s][t][a]["E"]
+                
+                # Store reward-shaping value
+                obj.F[s][t][a]["E"] = f
+                
+                # Calculate pseudo-reward
+                pr = f + r
+                
+                # Set pseudo-reward to 0 in case of numerical instability
+                if np.isclose(pr, 0, atol=1e-6):
+                    pr = 0
+                
+                # Store pseudo-reward
+                obj.PR[s][t][a]["E"] = pr
+                
+                # Set optimal pseudo-reward for current goal
+                if curr_obj is not None:
+                    curr_obj.set_optimal_reward(obj.PR[s][t][a]["E"])
+
+
 class Item:
     def __init__(self, description, hard_deadline=True, idx=None, item_id=None,
                  loss_rate=None, num_bins=None, planning_fallacy_const=None,
@@ -100,7 +268,7 @@ class Item:
 
     def get_num_bins(self):
         return self.num_bins
-
+    
     def get_optimal_reward(self):
         return self.optimal_reward
     
@@ -308,7 +476,7 @@ class Task(Item):
         
     def get_highest_time_est(self):
         return self.highest_time_est
-        
+
     def get_lowest_time_est(self):
         return self.lowest_time_est
 
@@ -488,134 +656,6 @@ class Goal(Item):
     #
     #     return total_penalty
 
-    def compute_pseudo_rewards(self, start_time=0, loc=0., scale=1.):
-        """
-        Computes pseudo-rewards.
-        
-        TODO: Add transformation here.
-        """
-        standardizing_reward = self.highest_negative_reward
-        if self.highest_negative_reward == np.NINF:
-            standardizing_reward = 0
-        
-        # Get time-shift discount
-        discount = ToDoList.get_discount(start_time)
-
-        for s in self.Q.keys():
-    
-            self.PR.setdefault(s, dict())
-            self.F.setdefault(s, dict())
-
-            for t in self.Q[s].keys():
-    
-                self.PR[s].setdefault(t, dict())
-                self.F[s].setdefault(t, dict())
-                
-                """ Incorporate slack action for (state, time) """
-                # Add slack reward to the dictionary
-                slack_reward = self.compute_slack_reward(0)
-    
-                # Add slack reward in the Q-values
-                self.Q[s][t].setdefault(-1, dict())
-                self.Q[s][t][-1]["E"] = slack_reward
-    
-                # Add slack reward in the rewards
-                self.R[s][t].setdefault(-1, dict())
-                self.R[s][t][-1]["E"] = slack_reward
-                
-                # The best possible (a)ction and (q)-value in state s
-                best_a, best_q = ToDoList.max_from_dict(self.Q[s][t])
-                best_q *= discount
-                
-                for a in self.Q[s][t].keys():
-                    
-                    self.PR[s][t].setdefault(a, dict())
-                    self.F[s][t].setdefault(a, dict())
-    
-                    if a is None or a == -1:
-
-                        # Set pseudo-reward of terminal state to 0 [Ng, 1999]
-                        self.PR[s][t][a].setdefault("E", 0)
-                        self.F[s][t][a].setdefault("E", 0)
-                        self.R[s][t][a].setdefault("E", 0)
-                        
-                        # TODO: Comment this part
-                        s_ = s
-                        t_ = np.PINF
-                        gamma = 1.
-                        
-                        if a == -1:
-                            curr_task = self.slack_action
-                        else:
-                            curr_task = None
-                        
-                        a_ = None
-                        q_ = 0
-                        
-                    else:
-                        
-                        # Get current Task object
-                        curr_task = self.tasks[a]
-                        
-                        # Move to the next state
-                        s_ = ToDoList.exec_action(s, a)
-    
-                        # Get expected task time estimate
-                        time_est = curr_task.get_time_est()
-    
-                        # Make time transition
-                        t_ = t + time_est
-    
-                        # Get gamma for the next transition
-                        gamma = ToDoList.get_discount(time_est)
-                        
-                        print(s, t, a, s_, t_)
-                        pprint(self.Q)
-                        print()
-    
-                        # Get optimal action in the next state
-                        a_, q_ = ToDoList.max_from_dict(self.Q[s_][t_])
-                        
-                    # self.R.setdefault(s_, dict())
-                    self.R[s_].setdefault(t_, dict())
-                    self.R[s_][t_].setdefault(a_, dict())
-    
-                    # Expected Q-value of the next state
-                    q_ *= discount * gamma
-                    # q_ = self.Q[s_][t_][a_]["E"] * discount * gamma
-    
-                    # Expected Q-value of the current state
-                    # q = self.Q[s][t][a]["E"] * discount
-                    
-                    # Compute value of the reward-shaping function
-                    # f = q_ - q
-                    f = q_ - best_q
-                    
-                    # Standardize rewards s.t. negative rewards <= 0
-                    # f -= standardizing_reward * discount
-                    
-                    # Make affine transformation of the reward-shaping function
-                    f = scale * f + loc
-                    
-                    # Get expected reward for (state, time, action)
-                    r = self.R[s][t][a]["E"]
-
-                    # Store reward-shaping value
-                    self.F[s][t][a]["E"] = f
-
-                    # Calculate pseudo-reward
-                    pr = f + r
-                    
-                    # Set pseudo-reward to 0 in case of numerical instability
-                    if np.isclose(pr, 0, atol=1e-6):
-                        pr = 0
-                    
-                    self.PR[s][t][a]["E"] = pr
-                
-                    # Set optimal pseudo-reward for current task
-                    if curr_task is not None:
-                        curr_task.set_optimal_reward(self.PR[s][t][a]["E"])
-                    
     def compute_slack_reward(self, t=0):
         if self.slack_reward == 0:
             return 0
@@ -689,99 +729,6 @@ class Goal(Item):
 
     def get_tasks(self):
         return self.tasks
-
-    def run_optimal_policy(self, s=None, t=0, t_end=np.PINF, verbose=False):
-        """
-        
-        Args:
-            s: Starting state (binary vector of task completion).
-            t: Starting time (non-negative integer).
-            t_end: Ending time.
-            verbose:
-
-        Returns:
-            TODO: ...
-        """
-        # TODO: Write abbreviation description
-        
-        # If no state was provided, get start state
-        if s is None:
-            s = tuple(0 for _ in range(self.num_tasks))
-            
-        # Check whether the state has a valid length
-        assert len(s) == self.num_tasks
-        
-        # Initialize optimal-policy actions list
-        opt_P = []
-
-        # Initialize reward placeholder (for printing purposes)
-        r = None
-
-        if verbose:
-            print(f"\n===== {self.description} =====\n")
-            
-        while t <= t_end:
-            
-            # if verbose:
-            #     print(self.Q[s][t])
-
-            # Get {actions: {time': reward}} dictionary
-            q = self.Q[s][t]
-            
-            # Get best action and its reward from the dictionary
-            a, r_ = ToDoList.max_from_dict(q)
-            
-            # If next action is not termination
-            if a is not None:
-                
-                # Get next task to "work on"
-                goal = self.tasks[a]
-                
-                # Compute time transition
-                t_ = t + goal.get_time_est()
-
-            # Set optimal action for policy in (s)tate and (t)ime
-            self.P[s][t] = a
-
-            if verbose:
-
-                # Prepare print if action is termination or slack-off
-                print_a = '-' if a is None else a
-                print_t_ = '-' if a is None or a == -1 else t_
-                print_pr = '-' if a == -1 else self.PR[s][t][a]['E']
-    
-                if r is not None:
-                    print(f"Current reward: {r_ - r} | "
-                          # f"Reward difference: {r - r_} | "
-                    )
-                print(f"Taken action: {print_a} | "
-                      f"From time: {t} | "
-                      f"To time: {print_t_} | "
-                      f"PR: {print_pr} | "
-                      f"Future reward: {r_} | "
-                      , end=""
-                      )
-
-            # If next action is termination or slack-off, terminate
-            if a is None or a == -1:
-                break
-
-            # Append (action, time') to the optimal-policy actions list
-            opt_P.append((a, t_))
-
-            # Move to the next (s)tate
-            s = ToDoList.exec_action(s, a)
-            
-            # Move to the next time step
-            t = t_
-
-            # Store reward for printing purposes
-            r = r_
-    
-        if verbose:
-            print()
-    
-        return opt_P, t
 
     # def scale_rewards(self, min_value=1, max_value=100, print_values=False):
     #     """
@@ -912,8 +859,8 @@ class Goal(Item):
                 # print(time_transitions)
                 
                 # TODO: Trial to fix computing pseudo-rewards...
-                mean_time_est = next_task.get_time_est()
-                mean_t_ = t + mean_time_est
+                # mean_time_est = next_task.get_time_est()
+                # mean_t_ = t + mean_time_est
                 
                 for time_est, prob_t_ in time_transitions:
                 # for time_est, prob_t_ in zip(time_ests, probs):
@@ -1310,132 +1257,6 @@ class ToDoList:
             if goal.get_slack_reward() is None:
                 goal.set_slack_reward(self.slack_reward)
 
-    def compute_pseudo_rewards(self, start_time=0, loc=0., scale=1.):
-        """
-        Computes pseudo-rewards.
-
-        TODO: Add transformation here.
-        """
-        standardizing_reward = self.highest_negative_reward
-        if self.highest_negative_reward == np.NINF:
-            standardizing_reward = 0
-            
-        # Get time-shift discount
-        discount = ToDoList.get_discount(start_time)
-
-        for s in self.Q.keys():
-        
-            self.PR.setdefault(s, dict())
-            self.F.setdefault(s, dict())
-        
-            for t in self.Q[s].keys():
-    
-                self.PR[s].setdefault(t, dict())
-                self.F[s].setdefault(t, dict())
-    
-                """ Incorporate slack action for (state, time) """
-                # Add slack reward to the dictionary
-                slack_reward = self.compute_slack_reward(0)
-    
-                # Add slack reward in the Q-values
-                self.Q[s][t].setdefault(-1, dict())
-                self.Q[s][t][-1]["E"] = slack_reward
-    
-                # Add slack reward in the rewards
-                self.R[s][t].setdefault(-1, dict())
-                self.R[s][t][-1]["E"] = slack_reward
-    
-                # The best possible (a)ction and (q)-value in state s
-                best_a, best_q = ToDoList.max_from_dict(self.Q[s][t])
-                best_q *= discount
-                
-                # Store optimal policy
-                self.P[s][t] = best_a
-                
-                for a in self.Q[s][t].keys():
-                
-                    self.PR[s][t].setdefault(a, dict())
-                    self.F[s][t].setdefault(a, dict())
-                
-                    if a is None or a == -1:
-    
-                        # Set pseudo-reward of terminal state to 0 [Ng, 1999]
-                        self.PR[s][t][a].setdefault("E", 0)
-                        self.F[s][t][a].setdefault("E", 0)
-                        self.R[s][t][a].setdefault("E", 0)
-                        
-                        # TODO: Comment this part
-                        s_ = s
-                        t_ = np.PINF
-                        gamma = 1.
-
-                        if a == -1:
-                            curr_goal = self.slack_action
-                        else:
-                            curr_goal = None
-
-                        a_ = None
-                        q_ = 0
-
-                    else:
-                        # Get current Task object
-                        curr_goal = self.goals[a]
-                    
-                        # Move to the next state
-                        s_ = ToDoList.exec_action(s, a)
-                        
-                        # Get expected goal time estimate
-                        time_est = curr_goal.get_time_est()
-                    
-                        # Make time transition
-                        t_ = t + time_est
-
-                        # Get gamma for the next transition
-                        gamma = ToDoList.get_discount(time_est)
-
-                        # Get optimal action in the next state
-                        a_, q_ = ToDoList.max_from_dict(self.Q[s_][t_])
-
-                    # self.R.setdefault(s_, dict())
-                    self.R[s_].setdefault(t_, dict())
-                    self.R[s_][t_].setdefault(a_, dict())
-
-                    # Expected Q-value of the next state
-                    q_ *= discount * gamma
-                    # q_ = self.Q[s_][t_][a_]["E"] * discount * gamma
-                    
-                    # Expected Q-value of the current state
-                    # q = self.Q[s][t][a]["E"] * discount
-                    
-                    # Compute value of the reward-shaping function
-                    # f = q_ - q
-                    f = q_ - best_q
-                    
-                    # Standardize rewards s.t. negative rewards <= 0
-                    # f -= standardizing_reward * discount
-
-                    # Make affine transformation of the reward-shaping function
-                    f = scale * f + loc
-
-                    # Get expected reward for (state, time, action)
-                    r = self.R[s][t][a]["E"]
-
-                    # Store reward-shaping value
-                    self.F[s][t][a]["E"] = f
-
-                    # Calculate pseudo-reward
-                    pr = f + r
-
-                    # Set pseudo-reward to 0 in case of numerical instability
-                    if np.isclose(pr, 0, atol=1e-6):
-                        pr = 0
-
-                    self.PR[s][t][a]["E"] = pr
-
-                    # Set optimal pseudo-reward for current goal
-                    if curr_goal is not None:
-                        curr_goal.set_optimal_reward(self.PR[s][t][a]["E"])
-
     def compute_slack_reward(self, t=0):
         if self.slack_reward == 0:
             return 0
@@ -1506,119 +1327,6 @@ class ToDoList:
 
     def get_slack_reward(self):
         return self.slack_reward
-
-    def run_optimal_policy(self, s=None, t=0,
-                           run_goal_policy=True, verbose=False):
-        # TODO: Write abbreviation description
-        
-        if s is None:
-            s = tuple(0 for _ in range(self.num_goals))
-        assert len(s) == self.num_goals
-        
-        # Initialize optimal-policy actions list
-        opt_P = []
-        
-        # Initialize reward placeholder (for printing purposes)
-        r = None
-        
-        if verbose:
-            print("\n===== Goal-level policy =====\n")
-            
-        while True:
-            
-            # Add slack reward to the dictionary
-            slack_reward = self.compute_slack_reward(0)  # TODO: t or 0 (?)
-            
-            self.Q[s][t].setdefault(-1, dict())
-            self.Q[s][t][-1]["E"] = slack_reward
-    
-            # if verbose:
-            #     print(self.Q[(s, t)])
-
-            # Get {actions: {time': reward}} dictionary
-            q = self.Q[s][t]
-            
-            # Get best action and its reward from the dictionary
-            a, r_ = ToDoList.max_from_dict(q)
-            
-            # If next action is not termination
-            if a is not None:
-                
-                # Get next goal to "work on"
-                goal = self.goals[a]
-                
-                # Compute time transition
-                t_ = t + goal.get_time_est()
-
-            # Set optimal action for policy in (s)tate and (t)ime
-            self.P[s][t] = a
-            
-            if verbose:
-                
-                # Prepare print if action is termination or slack-off
-                print_a = '-' if a is None else a
-                print_t_ = '-' if a is None or a == -1 else t_
-                print_pr = '-' if a == -1 else self.PR[s][t][a]['E']
-                
-                if r is not None:
-                    print(f"Q: {r} | "
-                #           f"Reward difference: {r - r_} | "
-                    )
-                print(f"Taken action: {print_a} | "
-                      f"From time: {t} | "
-                      f"To time: {print_t_} | "
-                      f"F: {print_pr} | "
-                      , end=""
-                )
-
-            # If next action is termination or slack-off, terminate
-            if a is None or a == -1:
-                break
-                
-            # Append (action, time') to the optimal-policy actions list
-            opt_P.append((a, t_))
-
-            # Move to the next (s)tate
-            s = ToDoList.exec_action(s, a)
-            
-            # Move to the next time step
-            t = t_
-            
-            # Store reward for printing purposes
-            r = r_
-
-        if verbose:
-            print("\n")
-            print(opt_P)
-
-        """
-        Run task-level optimal policy in the order as computed by the goal-level
-        optimal policy
-        """
-        if run_goal_policy:
-            
-            # Set index of the list of optimal action
-            idx = 0
-            
-            # Set initial time
-            t = 0
-            
-            while idx < len(opt_P):
-                # Get action and next time step from the optimal-policy actions list
-                a, t_end = opt_P[idx]
-                
-                # Get next goal
-                goal = self.goals[a]
-                
-                # Compute pseudo-rewards for the next goal
-                goal.compute_pseudo_rewards(start_time=t, loc=0, scale=1)
-                
-                # Run task-level optimal policy for the next goal
-                st_, t = goal.run_optimal_policy(t=t, t_end=t_end, verbose=verbose)
-                
-                idx += 1
-            
-        return opt_P
 
     def set_gamma(self, gamma):
         assert 0 < gamma <= 1
