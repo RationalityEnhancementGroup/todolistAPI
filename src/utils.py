@@ -1,4 +1,5 @@
 import cherrypy
+import numpy as np
 import re
 
 from collections import deque
@@ -885,8 +886,7 @@ def task_list_from_projects(projects):
     return task_list
 
 
-def tree_to_old_structure(projects, hard_deadline=True, loss_rate=-1,
-                          time_precision=1, task_unit_penalty=0, unit_penalty=0):
+def tree_to_old_structure(projects, params):
     """
     input: parsed tree
     output: structure that can be inputted to old project code
@@ -917,14 +917,14 @@ def tree_to_old_structure(projects, hard_deadline=True, loss_rate=-1,
                 description=goal["nm"],
                 goal_id=goal["id"],
                 # effective_deadline=goal["effective_deadline"],
-                hard_deadline=hard_deadline,
+                hard_deadline=params["hard_deadline"],
                 # latest_start_time=goal["latest_start_time"],
-                loss_rate=loss_rate,
+                loss_rate=params["loss_rate"],
+                num_bins=params["num_bins"],
                 rewards={goal["deadline"]: goal["value"]},
+                slack_reward=np.NINF,
                 tasks=list(tasks),
-                task_unit_penalty=task_unit_penalty,
-                time_precision=time_precision,
-                unit_penalty=unit_penalty
+                unit_penalty=params["unit_penalty"]
             )
         )
         

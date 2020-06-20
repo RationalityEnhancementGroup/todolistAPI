@@ -1,6 +1,7 @@
 from collections import deque
 from datetime import datetime, timedelta
 
+from pprint import pprint
 from src.schedulers.helpers import *
 from src.utils import task_dict_from_projects
 
@@ -104,12 +105,13 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
     # Get information on current day and weekday
     current_day = datetime.utcnow() + timedelta(minutes=time_zone)
     current_weekday = current_day.weekday()
-    
+
     for task in ordered_tasks:
         task_id = task.get_id()
         task_item = task_dict[task_id]
-        task_item["val"] = task.get_optimal_reward()
         
+        task_item["val"] = task.get_optimal_reward()
+
         # If the task is not completed and not indefinitely postponed (future)
         if not task_item["completed"] and not task_item["future"]:
             

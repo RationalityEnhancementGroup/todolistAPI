@@ -6,7 +6,7 @@ from src.schedulers.schedulers import schedule_tasks_for_today
 
 from todolistMDP.scheduling_solvers import run_algorithm
 from todolistMDP.to_do_list import *
-from todolistMDP.test_smdp import d_bm
+from todolistMDP.test_smdp import d_bm, print_item, print_stats
 
 
 def assign_constant_points(projects, default_task_value=10):
@@ -164,83 +164,93 @@ def assign_random_points(projects, distribution_fxn=np.random.normal,
     return projects
 
 
-def assign_smdp_points(projects, day_duration, scaling_inputs,
-                       gamma=1., json=True, start_time=0, time_zone=0,
-                       goal_pr_loc=0., goal_pr_scale=1.,
-                       task_pr_loc=0., task_pr_scale=1., verbose=False):
+def assign_smdp_points(projects, day_duration, smdp_params, json=True,
+                       start_time=0, time_zone=0, verbose=False):
     
     # Separate tasks with deadlines from real goals
     # goals = separate_tasks_with_deadlines(deepcopy(projects))
     
     # Convert real goals from JSON to Goal class objects (if necessary)
     if json:
-        goals = tree_to_old_structure(projects)
+        goals = tree_to_old_structure(projects, smdp_params)
     else:
         goals = projects
-
+        
     # Add them together into a single list
-    to_do_list = ToDoList(goals, gamma=gamma, start_time=start_time)
+    to_do_list = ToDoList(goals,
+                          gamma=smdp_params["gamma"],
+                          slack_reward=smdp_params["slack_reward"],
+                          start_time=start_time)
     
     # Solve to-do list
     to_do_list.solve(verbose=verbose)
 
     # Compute goal-level pseudo-rewards
-    to_do_list.compute_pseudo_rewards(start_time=start_time,
-                                      loc=goal_pr_loc, scale=goal_pr_scale)
-
-    # Run goal-level optimal policy
-    opt_P = to_do_list.run_optimal_policy(run_goal_policy=False,
-                                          verbose=verbose)
-
-    # Initialize time
-    t = 0
+    compute_pseudo_rewards(to_do_list, start_time=start_time,
+                           loc=smdp_params["goal_pr_loc"],
+                           scale=smdp_params["goal_pr_scale"])
+    
+    if verbose:
+        print_item(to_do_list)
+    
+    # Get optimal goal-level policy
+    P, t = run_optimal_policy(to_do_list,
+                              choice_mode=smdp_params["choice_mode"])
     
     # Initialize list of all tasks
     tasks = deque()
     
-    for idx in range(len(opt_P)):
+    for entry in P:
         
-        # Get next (a)ction and time step after executing that (a)ction
-        a, t_end = opt_P[idx]
+        # Get next (a)ction and initial (t)ime
+        a = entry["a"]
+        t = entry["t"]
 
-        # Get next goal
-        goal = goals[a]  # TODO: Check whether the order is correct!
-
-        # Compute pseudo-rewards for the next goal
-        goal.compute_pseudo_rewards(start_time=t,
-                                    loc=task_pr_loc, scale=task_pr_scale)
-
-        # Run task-level optimal policy for the next goal
-        _, t = goal.run_optimal_policy(t=t, t_end=t_end, verbose=verbose)
-
-        # Get all tasks to be scheduled today
-        tasks.extend(goal.get_tasks())
-        # tasks.extend(goal.get_scheduled_tasks())  # TODO: ???
-       
+        # If next action is not slack-off action
+        if a != -1:
+            
+            # Get goal that correspond to that (a)ction
+            goal = goals[a]
+            
+            # Compute pseudo-rewards at initial (t)time
+            compute_pseudo_rewards(goal, start_time=start_time,
+                                   loc=smdp_params["task_pr_loc"],
+                                   scale=smdp_params["task_pr_scale"])
+            
+            # Run optimal policy at initial (t)ime
+            P_, t = run_optimal_policy(goal, t=t,
+                                       choice_mode=smdp_params["choice_mode"])
+            
+            # Add tasks to the list of all tasks
+            tasks.extend(P_)
+            
+            if verbose:
+                print_item(goal)
+                
     # Convert tasks queue to list
-    tasks = list(tasks)
-    
+    tasks = [task["obj"] for task in tasks]
+
     # Sort tasks w.r.t. optimal reward (pseudo-reward)
     tasks.sort(key=lambda task: -task.get_optimal_reward())
-
+    
     if verbose:
         for task in tasks:
             print(task.get_id(), task.get_optimal_reward())
-        
-    # Add additional tasks to be scheduled
-    # tasks.extend(ordered_tasks)  # TODO: ???
-    
-    # Scale task values according to the provided scaling function
-    scale_optimal_rewards(tasks, **scaling_inputs)
 
+    # Scale task values according to the provided scaling function
+    scale_optimal_rewards(tasks,
+                          scale_min=smdp_params["scale_min"],
+                          scale_max=smdp_params["scale_max"],
+                          scale_type=smdp_params["scale_type"])
+    
     # Schedule tasks for today
     if json:
         today_tasks = schedule_tasks_for_today(projects, tasks,
                                                duration_remaining=day_duration,
                                                time_zone=time_zone)
     else:
-        today_tasks = None
-
+        today_tasks = tasks
+        
     return today_tasks
 
 
@@ -284,11 +294,12 @@ def get_actions_and_rewards(mdp, verbose=False):
 
 
 if __name__ == '__main__':
-    gamma = 0.9999
-    goal_pr_loc = 1000
-    goal_pr_scale = 1 - gamma
+    choice_mode = "max"
+    gamma = 0.99
+    goal_pr_loc = 0
+    goal_pr_scale = 1.
     task_pr_loc = 0
-    task_pr_scale = 10
+    task_pr_scale = 1.
     verbose = False
     
     day_duration = 600
@@ -296,9 +307,15 @@ if __name__ == '__main__':
         "time_zone": 0
     }
 
+    scaling_inputs = {
+        'scale_type': "no_scaling",
+        'scale_min':  None,
+        'scale_max':  None
+    }
+
     assign_smdp_points(
-        d_bm, day_duration=day_duration, gamma=gamma,
-        json=False, verbose=verbose,
+        d_bm, choice_mode=choice_mode, day_duration=day_duration, gamma=gamma,
+        json=False, scaling_inputs=scaling_inputs, verbose=verbose,
         goal_pr_loc=goal_pr_loc, goal_pr_scale=goal_pr_scale,
         task_pr_loc=task_pr_loc, task_pr_scale=task_pr_scale
     )
