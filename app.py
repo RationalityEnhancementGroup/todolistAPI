@@ -76,8 +76,15 @@ class PostResource(RESTResource):
             log_dict = {
                 "start_time": datetime.now(),
             }
+            
+            # Initialize dictionary that inspects time taken by each method
+            times = dict()
 
             try:
+                
+                # Start timer: reading parameters
+                tic = time.time()
+                
                 # Compulsory parameters
                 method = vpath[0]
                 scheduler = vpath[1]
@@ -236,8 +243,69 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
 
+                # Parse today hours
+                try:
+                    today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
+                    log_dict["today_hours"] = today_hours
+                except:
+                    status = "Something is wrong with the hours in " \
+                             "HOURS_TODAY. Please take a look and try again."
+                    store_log(db.request_log, log_dict, status=status)
+    
+                    cherrypy.response.status = 403
+                    return json.dumps(status + " " + CONTACT)
+
+                # Parse typical hours
+                try:
+                    typical_hours = parse_hours(
+                        jsonData["typical_hours"][0]["nm"])
+                    log_dict["typical_hours"] = typical_hours
+                except:
+                    status = "Something is wrong with the hours in " \
+                             "HOURS_TYPICAL. Please take a look and try again."
+                    store_log(db.request_log, log_dict, status=status)
+    
+                    cherrypy.response.status = 403
+                    return json.dumps(status + " " + CONTACT)
+
+                # Check whether typical hours is in the pre-defined range
+                if not (0 < typical_hours <= 24):
+                    store_log(db.request_log, log_dict,
+                              status="Invalid typical hours value.")
+    
+                    status = "Please edit the hours you typically work on Workflowy. " \
+                             "The hours you work should be between 0 and 24."
+                    cherrypy.response.status = 403
+                    return json.dumps(status)
+
+                # Check whether today hours is in the pre-defined range
+                # 0 is an allowed value in case users want to skip a day
+                if not (0 <= today_hours <= 24):
+                    store_log(db.request_log, log_dict,
+                              status="Invalid today hours value.")
+    
+                    status = "Please edit the hours you can work today on Workflowy. " \
+                             "The hours you work should be between 0 and 24."
+                    cherrypy.response.status = 403
+                    return json.dumps(status)
+
+                # Convert today hours into minutes
+                today_minutes = today_hours * 60
+
+                # Convert typical hours into typical minutes for each weekday
+                typical_minutes = [typical_hours * 60 for _ in range(7)]
+
                 # Update last modified
                 log_dict["lm"] = jsonData["updated"]
+                
+                # Stop timer: reading parameters
+                toc = time.time()
+                
+                # Store time: reading parameters
+                times["Reading parameters"] = toc - tic
+                
+                # Start timer: parsing current intentions
+                tic = time.time()
                 
                 # Parse current intentions
                 try:
@@ -254,9 +322,18 @@ class PostResource(RESTResource):
 
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
-
+                
                 # Store current intentions
                 log_dict["current_intentions"] = current_intentions
+
+                # Stop timer: parsing current intentions
+                toc = time.time()
+
+                # Store time: parsing current intentions
+                times["Parsing current intentions"] = toc - tic
+                
+                # Start timer: parsing hierarchical structure
+                tic = time.time()
 
                 # New calculation + Save updated, user id, and skeleton
                 try:
@@ -280,56 +357,14 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
                 
-                # Parse today hours
-                try:
-                    today_hours = parse_hours(jsonData["today_hours"][0]["nm"])
-                    log_dict["today_hours"] = today_hours
-                except:
-                    status = "Something is wrong with the hours in " \
-                             "HOURS_TODAY. Please take a look and try again."
-                    store_log(db.request_log, log_dict, status=status)
-                    
-                    cherrypy.response.status = 403
-                    return json.dumps(status + " " + CONTACT)
+                # Stop timer: parsing hierarchical structure
+                toc = time.time()
                 
-                # Parse typical hours
-                try:
-                    typical_hours = parse_hours(jsonData["typical_hours"][0]["nm"])
-                    log_dict["typical_hours"] = typical_hours
-                except:
-                    status = "Something is wrong with the hours in " \
-                             "HOURS_TYPICAL. Please take a look and try again."
-                    store_log(db.request_log, log_dict, status=status)
-                    
-                    cherrypy.response.status = 403
-                    return json.dumps(status + " " + CONTACT)
-
-                # Check whether typical hours is in the pre-defined range
-                if not (0 < typical_hours <= 24):
-                    store_log(db.request_log, log_dict,
-                              status="Invalid typical hours value.")
-                    
-                    status = "Please edit the hours you typically work on Workflowy. " \
-                             "The hours you work should be between 0 and 24."
-                    cherrypy.response.status = 403
-                    return json.dumps(status)
+                # Store time: parsing hierarchical structure
+                times["Parsing hierarchical structure"] = toc - tic
                 
-                # Check whether today hours is in the pre-defined range
-                # 0 is an allowed value in case users want to skip a day
-                if not (0 <= today_hours <= 24):
-                    store_log(db.request_log, log_dict,
-                              status="Invalid today hours value.")
-                    
-                    status = "Please edit the hours you can work today on Workflowy. " \
-                             "The hours you work should be between 0 and 24."
-                    cherrypy.response.status = 403
-                    return json.dumps(status)
-                
-                # Convert today hours into minutes
-                today_minutes = today_hours * 60
-
-                # Convert typical hours into typical minutes for each weekday
-                typical_minutes = [typical_hours * 60 for _ in range(7)]
+                # Start timer: parsing scheduling tags
+                tic = time.time()
                 
                 # Get information about daily tasks time estimation
                 daily_tasks_time_est = \
@@ -339,8 +374,15 @@ class PostResource(RESTResource):
                 # Subtract daily tasks time estimation from typical working hours
                 for weekday in range(len(typical_minutes)):
                     typical_minutes[weekday] -= daily_tasks_time_est[weekday]
+                    
                 log_dict["typical_daily_minutes"] = typical_minutes
                 
+                # Stop timer: parsing scheduling tags
+                toc = time.time()
+
+                # Store time: parsing scheduling tags
+                times["Parsing scheduling tags"] = toc - tic
+
                 # Check whether users have assigned more tasks than their time allows.
                 # for weekday in range(len(typical_minutes)):
                 #     if typical_minutes[weekday] < 0:
@@ -356,6 +398,9 @@ class PostResource(RESTResource):
                 #         cherrypy.response.status = 403
                 #         return json.dumps(status + CONTACT)
 
+                # Start timer: subtracting times
+                tic = time.time()
+
                 # Subtract time estimation of current intentions from available time
                 for tasks in current_intentions.values():
                     for task in tasks:
@@ -370,6 +415,15 @@ class PostResource(RESTResource):
                 
                 # Make 0 if the number of minutes is negative
                 today_minutes = max(today_minutes, 0)
+
+                # Stop timer: subtracting times
+                toc = time.time()
+
+                # Store time: subtracting times
+                times["Subtracting times"] = toc - tic
+
+                # Start timer: parsing to-do list
+                tic = time.time()
 
                 # Parse to-do list
                 try:
@@ -398,9 +452,24 @@ class PostResource(RESTResource):
                 
                 log_dict["tree"] = create_projects_to_save(projects)
 
+                # Stop timer: parsing to-do list
+                toc = time.time()
+
+                # Store time: parsing to-do list
+                times["Parsing to-do list"] = toc - tic
+
+                # Start timer: storing parsed to-do list in database
+                tic = time.time()
+
                 # Save the data if there was a change, removing nm fields so
                 # that we keep participant data anonymous
                 store_log(db.request_log, log_dict, status="Save parsed tree")
+                
+                # Stop timer: storing parsed to-do list in database
+                toc = time.time()
+                
+                # Stop timer: storing parsed to-do list in database
+                times["Storing parsed to-do list in database"] = toc - tic
                 
                 if method == "constant":
                     # Parse default task value
@@ -549,71 +618,107 @@ class PostResource(RESTResource):
                 #         return json.dumps(str(error) + " " + CONTACT)
                 
                 elif method == "smdp":
+                    
+                    # Start timer: reading SMDP parameters
+                    tic = time.time()
+                    
+                    smdp_params = {
+                        "choice_mode": parameters[0],
+                        "gamma": float(parameters[1]),  # 0.9999
+                        "hard_deadline": bool(int(parameters[2])),  # True
+                        "loss_rate": - float(parameters[3]),  # -1
+                        "num_bins": int(parameters[4]),  # 1
+                        "planning_fallacy_const": float(parameters[5]),  # 1.39
+                        "slack_reward": float(parameters[6]),  # 1e-3
+                        "unit_penalty": float(parameters[7]),  # 1e-1
     
-                    gamma = float(parameters[0])  # 0.9999
-                    goal_pr_loc = float(parameters[1])  # 1000
-                    goal_pr_scale = float(parameters[2])  # 1 - gamma
-                    task_pr_loc = float(parameters[3])  # 0
-                    task_pr_scale = float(parameters[4])  # 2
-    
-                    scaling_inputs = {
+                        "goal_pr_loc": float(parameters[8]),  # 1000
+                        "goal_pr_scale": float(parameters[9]),  # 1 - gamma
+                        "task_pr_loc": float(parameters[10]),  # 0
+                        "task_pr_scale": float(parameters[11]),  # 2
+                        
                         'scale_type': "no_scaling",
                         'scale_min':  None,
                         'scale_max':  None
                     }
-    
-                    if len(parameters) >= 8:
-                        scaling_inputs['scale_type'] = parameters[5]
-                        scaling_inputs['scale_min'] = float(parameters[6])
-                        scaling_inputs['scale_max'] = float(parameters[7])
-        
-                        if scaling_inputs["scale_min"] == float("inf"):
-                            scaling_inputs["scale_min"] = None
-                        if scaling_inputs["scale_max"] == float("inf"):
-                            scaling_inputs["scale_max"] = None
-    
-                    final_tasks = None
-
-                    if api_method == "bestSpeedTestSMDP":
-                        test_goals = generate_test_case(
-                            n_goals=jsonData["n_goals"],
-                            n_tasks=jsonData["n_tasks"],
-                            worst=False
-                        )
-    
-                        assign_smdp_points(
-                            projects=test_goals,
-                            scaling_inputs=scaling_inputs,
-                            day_duration=today_minutes,
-                            json=False
-                        )
-    
-                        simulate_task_scheduling(test_goals)
-    
-                    elif api_method == "worstSpeedTestSMDP":
-                        test_goals = generate_test_case(
-                            n_goals=jsonData["n_goals"],
-                            n_tasks=jsonData["n_tasks"],
-                            worst=True
-                        )
-                        
-                        assign_smdp_points(
-                            projects=test_goals,
-                            scaling_inputs=scaling_inputs,
-                            day_duration=today_minutes,
-                            json=False
-                        )
-                        
-                        simulate_task_scheduling(test_goals)
                     
-                    else:
+                    if smdp_params["slack_reward"] == 0:
+                        smdp_params["slack_reward"] = np.NINF
+    
+                    if len(parameters) >= 15:
+                        smdp_params['scale_type'] = parameters[12]
+                        smdp_params['scale_min'] = float(parameters[13])
+                        smdp_params['scale_max'] = float(parameters[14])
+        
+                        if smdp_params["scale_min"] == float("inf"):
+                            smdp_params["scale_min"] = None
+                        if smdp_params["scale_max"] == float("inf"):
+                            smdp_params["scale_max"] = None
+
+                    # Stop timer: reading SMDP parameters
+                    toc = time.time()
+
+                    # Store time: reading SMDP parameters
+                    times["Reading SMDP parameters"] = toc - toc
+                    
+                    if api_method == "getTasksForToday":
                         final_tasks = assign_smdp_points(
-                            projects, day_duration=today_minutes, gamma=gamma,
-                            goal_pr_loc=goal_pr_loc, goal_pr_scale=goal_pr_scale,
-                            task_pr_loc=task_pr_loc, task_pr_scale=task_pr_scale,
-                            scaling_inputs=scaling_inputs, time_zone=time_zone
+                            projects, day_duration=today_minutes,
+                            smdp_params=smdp_params, time_zone=time_zone
                         )
 
+                    else:
+                        
+                        # Start timer: generating test case
+                        tic = time.time()
+
+                        if api_method == "bestSpeedTestSMDP":
+                            test_goals = generate_test_case(
+                                n_goals=jsonData["n_goals"],
+                                n_tasks=jsonData["n_tasks"],
+                                worst=False
+                            )
+
+                        if api_method == "worstSpeedTestSMDP":
+                            test_goals = generate_test_case(
+                                n_goals=jsonData["n_goals"],
+                                n_tasks=jsonData["n_tasks"],
+                                worst=True
+                            )
+
+                        # Stop timer: generating test case
+                        toc = time.time()
+                        
+                        # Store time: generating test case
+                        times["Generating test case"] = toc - tic
+    
+                        # Start timer: Run SMDP
+                        tic = time.time()
+    
+                        final_tasks = assign_smdp_points(
+                            projects=test_goals,
+                            day_duration=today_minutes,
+                            smdp_params=smdp_params,
+                            time_zone=time_zone,
+                            json=False
+                        )
+                        
+                        # Stop timer: Run SMDP
+                        toc = time.time()
+                        
+                        # Store time: Run SMDP
+                        times["Run SMDP"] = toc - tic
+
+                        # Start timer: Simulating task scheduling
+                        tic = time.time()
+
+                        simulate_task_scheduling(test_goals)
+                        
+                        # Stop timer: Simulating task scheduling
+                        toc = time.time()
+                        
+                        times["Simulating task scheduling"] = toc - tic
+    
                 # TODO: Test and fix potential bugs!
                 # elif method == "old-report":
                 #     final_tasks = \
@@ -627,15 +732,24 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status)
                 
+                # Start timer: Anonymizing data
+                tic = time.time()
+                
                 # Update values in the tree
                 log_dict["tree"] = create_projects_to_save(projects)
+
+                # Stop timer: Anonymizing data
+                toc = time.time()
                 
-                # Get task list from the tree
-                task_list = task_list_from_projects(projects)
-                
+                # Store time: Anonymizing date
+                times["Anonymize data"] = toc - tic
+
                 # Schedule tasks for today
                 if scheduler == "basic":
                     try:
+                        # Get task list from the tree
+                        task_list = task_list_from_projects(projects)
+    
                         final_tasks = \
                             basic_scheduler(task_list, time_zone=time_zone,
                                             duration_remaining=today_minutes)
@@ -650,6 +764,9 @@ class PostResource(RESTResource):
 
                 elif scheduler == "deadline":
                     try:
+                        # Get task list from the tree
+                        task_list = task_list_from_projects(projects)
+    
                         final_tasks = \
                             deadline_scheduler(task_list, time_zone=time_zone,
                                                today_duration=today_minutes)
@@ -671,7 +788,16 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status)
                 
+                # Start timer: Storing incentivized tree in database
+                tic = time.time()
+                
                 store_log(db.trees, log_dict, status="Save tree!")
+                
+                # Stop timer: Storing incentivized tree in database
+                toc = time.time()
+                
+                # Store time: Storing incentivized tree in database
+                times["Storing incentivized tree in database"] = toc - tic
 
                 if api_method == "updateTree":
                     cherrypy.response.status = 204
@@ -690,36 +816,57 @@ class PostResource(RESTResource):
                         cherrypy.response.status = 403
                         return json.dumps(status + " " + CONTACT)
                     try:
+                        
+                        # Start timer: Storing human-readable output
+                        tic = time.time()
+                        
                         final_tasks = get_final_output(
                             final_tasks, round_param, points_per_hour,
                             user_datetime=user_datetime)
+                        
+                        # Stop timer: Storing human-readable output
+                        toc = time.time()
+                        
+                        # Store time: Storing human-readable output
+                        times["Storing human-readable output"] = toc - tic
+                        
                     except NameError as error:
                         store_log(db.request_log, log_dict,
                                   status="Task has no name!")
                         cherrypy.response.status = 403
                         return json.dumps(str(error) + " " + CONTACT)
+                    
                     except:
                         status = "Error while preparing final output."
                         store_log(db.request_log, log_dict, status=status)
                         cherrypy.response.status = 403
                         return json.dumps(status + " " + CONTACT)
 
+                    # Start timer: Storing successful pull in database
+                    tic = time.time()
+
                     store_log(db.request_log, log_dict, status="Successful pull!")
+
+                    # Stop timer: Storing successful pull in database
+                    toc = time.time()
+                    
+                    # Store time: Storing successful pull in database
+                    times["Storing successful pull in database"] = toc - tic
 
                     # Return scheduled tasks
                     return json.dumps(final_tasks)
                 
                 elif api_method in ["bestSpeedTestSMDP", "worstSpeedTestSMDP"]:
                     
-                    # Stop timer
-                    toc = time.time()
+                    status = f"Testing {api_method} with " \
+                             f"{jsonData['n_goals']} goals and " \
+                             f"{jsonData['n_tasks']} tasks per goal " \
+                             f"took {toc - tic:.3f} seconds!"
                     
-                    return json.dumps(
-                        f"Testing {api_method} with "
-                        f"{jsonData['n_goals']} goals and "
-                        f"{jsonData['n_tasks']} tasks per goal "
-                        f"took {toc - tic:.3f} seconds!"
-                    )
+                    return json.dumps({
+                        "status": status,
+                        "times": times
+                    })
                 
                 else:
                     status = "API Method not implemented. Please contact us " \
