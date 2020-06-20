@@ -4,8 +4,7 @@ from todolistMDP.to_do_list import Goal, Task
 
 
 def generate_test_case(n_goals, n_tasks, deadline_time=1000000, reward=1000000,
-                       time_precision=1, time_scale=1, time_support=None,
-                       worst=True):
+                       time_scale=1, worst=True):
     return [
         Goal(
             description=f"G{goal_idx}",
@@ -19,8 +18,6 @@ def generate_test_case(n_goals, n_tasks, deadline_time=1000000, reward=1000000,
                 )
                 for task_idx in range(1, n_tasks+1)
             ],
-            time_precision=time_precision,
-            time_support=time_support
         )
         for goal_idx in range(1, n_goals+1)
     ]

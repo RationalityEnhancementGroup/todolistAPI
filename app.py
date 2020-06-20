@@ -251,10 +251,10 @@ class PostResource(RESTResource):
                     status = "Something is wrong with the hours in " \
                              "HOURS_TODAY. Please take a look and try again."
                     store_log(db.request_log, log_dict, status=status)
-                    
+    
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
-                
+
                 # Parse typical hours
                 try:
                     typical_hours = parse_hours(
@@ -264,7 +264,7 @@ class PostResource(RESTResource):
                     status = "Something is wrong with the hours in " \
                              "HOURS_TYPICAL. Please take a look and try again."
                     store_log(db.request_log, log_dict, status=status)
-                    
+    
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
 
@@ -272,23 +272,23 @@ class PostResource(RESTResource):
                 if not (0 < typical_hours <= 24):
                     store_log(db.request_log, log_dict,
                               status="Invalid typical hours value.")
-                    
+    
                     status = "Please edit the hours you typically work on Workflowy. " \
                              "The hours you work should be between 0 and 24."
                     cherrypy.response.status = 403
                     return json.dumps(status)
-                
+
                 # Check whether today hours is in the pre-defined range
                 # 0 is an allowed value in case users want to skip a day
                 if not (0 <= today_hours <= 24):
                     store_log(db.request_log, log_dict,
                               status="Invalid today hours value.")
-                    
+    
                     status = "Please edit the hours you can work today on Workflowy. " \
                              "The hours you work should be between 0 and 24."
                     cherrypy.response.status = 403
                     return json.dumps(status)
-                
+
                 # Convert today hours into minutes
                 today_minutes = today_hours * 60
 

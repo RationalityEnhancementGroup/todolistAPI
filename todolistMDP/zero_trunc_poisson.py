@@ -86,6 +86,23 @@ def get_bin_intervals(lb, ub, num_bins=1):
 
 
 def get_binned_distrib(mu, num_bins, std=3):
+    
+    if num_bins == 1:
+        return {
+            "bin_bounds":     np.array([1, np.PINF]),
+            "bin_means":      np.array([mu]),
+            "bin_probs":      np.array([1.]),
+            "binned_mean":    mu,
+        
+            "distrib_cdf":    None,
+            "distrib_mean":   mu,
+            "distrib_pmf":    None,
+            "distrib_values": None,
+            "distrib_var":    mu,
+        
+            "range":          (1, np.PINF)
+        }
+
     # Get lower and upper value of the interval that supports 3 stds
     low_idx, high_idx = get_std_indices(mu, std=std)
     
@@ -111,7 +128,7 @@ def get_binned_distrib(mu, num_bins, std=3):
     bin_means = compute_bin_means(bin_bounds, distrib_pmf, distrib_values)
     
     binned_mean = bin_expected_value(bin_probs, bin_means)
-    
+
     return {
         "bin_bounds":     bin_bounds,
         "bin_means":      bin_means,
