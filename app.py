@@ -20,7 +20,7 @@ CONTACT = "If you continue to encounter this issue, please contact us at " \
           "reg.experiments@tuebingen.mpg.de."
 TIMEOUT_SECONDS = 28
 
-# Extend recusion limit
+# Extend recursion limit
 sys.setrecursionlimit(10000)
 
 
@@ -659,7 +659,7 @@ class PostResource(RESTResource):
                     toc = time.time()
 
                     # Store time: reading SMDP parameters
-                    times["Reading SMDP parameters"] = toc - toc
+                    times["Reading SMDP parameters"] = toc - tic
                     
                     if api_method == "getTasksForToday":
                         final_tasks = assign_smdp_points(
@@ -881,6 +881,9 @@ class PostResource(RESTResource):
                     
                     cherrypy.response.status = 405
                     return json.dumps(status)
+
+            except stopit.utils.TimeoutException:
+                return json.dumps("Timeout!")
                 
             except Exception as error:
                 status = "The API has encountered an error, please try again."
