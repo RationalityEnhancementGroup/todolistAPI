@@ -258,11 +258,10 @@ def run_optimal_policy(obj, s=None, t=0, choice_mode="random"):
 
 
 class Item:
-    def __init__(self, description, hard_deadline=True, idx=None, item_id=None,
-                 loss_rate=None, num_bins=None, planning_fallacy_const=None,
-                 rewards=None, time_est=None, unit_penalty=None):
+    def __init__(self, description, idx=None, item_id=None, loss_rate=None,
+                 num_bins=None, planning_fallacy_const=None, rewards=None,
+                 time_est=None, unit_penalty=None):
         self.description = description
-        self.hard_deadline = hard_deadline
         self.idx = idx
         self.unit_penalty = unit_penalty
         
@@ -349,21 +348,23 @@ class Item:
 
     def get_reward(self, beta=0., discount=1., t=0):
         # If the latest deadline has not been met, return no reward
+        if beta == np.PINF:
+            return 0
+        
         if t > self.latest_deadline_time:
-            if self.hard_deadline or beta == np.PINF:
-                return 0
-            else:
-                # Add penalty for not attaining goal's deadline
-                beta += self.unit_penalty
-                
-                # Get discounted reward
-                reward = discount * self.rewards[self.latest_deadline_time]
-                
-                return reward / (1 + beta * (t - self.latest_deadline_time))
+            
+            # Get discounted reward
+            reward = discount * self.rewards[self.latest_deadline_time]
+            
+            return reward / (1 + beta * (t - self.latest_deadline_time))
 
         # Otherwise, get the reward for the next deadline that has been met
         deadline = self.get_deadline(t=t)
-        return self.rewards[deadline] * discount / (1 + beta)
+        
+        # Get discounted reward that meets the deadline
+        reward = self.rewards[deadline] * discount
+        
+        return reward / (1 + beta)
 
     def get_time_est(self):
         return self.time_est
@@ -381,9 +382,6 @@ class Item:
     
     def get_unit_penalty(self):
         return self.unit_penalty
-    
-    def is_hard_deadline(self):
-        return self.hard_deadline
     
     def set_idx(self, idx):
         self.idx = idx
@@ -491,13 +489,11 @@ class Task(Item):
 
 class Goal(Item):
     
-    def __init__(self, description, gamma=None, goal_id=None,
-                 hard_deadline=True, loss_rate=0, num_bins=1, rewards=None,
-                 planning_fallacy_const=1., slack_reward=None, tasks=None,
-                 unit_penalty=0.):
+    def __init__(self, description, gamma=None, goal_id=None, loss_rate=0,
+                 num_bins=1, rewards=None, planning_fallacy_const=1.,
+                 slack_reward=None, tasks=None, unit_penalty=np.PINF):
         super().__init__(
             description=description,
-            hard_deadline=hard_deadline,
             item_id=goal_id,
             loss_rate=loss_rate,
             num_bins=num_bins,
@@ -552,7 +548,7 @@ class Goal(Item):
             
             # If task has no deadline, set goal's deadline
             if task.get_deadline() is None:
-                task.set_deadline(self.latest_deadline_time)  # TODO: Check (!)
+                task.set_deadline(self.latest_deadline_time)
                 
             if task.get_loss_rate() is None:
                 task.set_loss_rate(self.loss_rate)
@@ -609,28 +605,6 @@ class Goal(Item):
 
     def check_missed_task_deadline(self, deadline, t):
         return t > deadline != self.latest_deadline_time
-
-    # def compute_penalties(self, missed_deadlines, t):
-    #     self.deadline_mode = "hard"  # "soft"
-    #
-    #     # Initialize total penalty
-    #     total_penalty = 0
-    #
-    #     cum_discount_t = ToDoList.get_cum_discount(t)
-    #
-    #     for deadline in missed_deadlines:
-    #
-    #         # TODO: Calculate penalty | Sum over all times?!
-    #         if t > curr_state["missed_deadlines"]:
-    #             penalty = self.penalty
-    #         cum_discount_deadline = ToDoList.get_cum_discount(deadline)
-    #
-    #         if t > deadline:
-    #             # penalty = self.penalty * (cum_discount_t - cum_discount_deadline)
-    #             penalty = - self.get_reward(self.latest_deadline_time-1) / (1 + t - deadline)
-    #             penalty *= (cum_discount_t - cum_discount_deadline)
-    #
-    #     return total_penalty
 
     def compute_slack_reward(self, t=0):
         if self.slack_reward == 0:
@@ -892,7 +866,6 @@ class Goal(Item):
                             total_penalty = next_task.get_unit_penalty() * \
                                             (t_ - task_deadline)
                             
-                            # next_state["missed_deadlines"].append(task_deadline)
                             next_state["penalty_factor"] += total_penalty
                             
                         if mode == "deadline":
@@ -958,17 +931,6 @@ class Goal(Item):
                 # Get discount value
                 # discount_t = ToDoList.get_discount(t)
                 
-                # Add goal deadline to the missed deadlines if not attained
-                # if t > self.latest_deadline_time:
-                #     curr_state["missed_deadlines"].append(
-                #         self.latest_deadline_time
-                #     )
-                
-                # Compute penalties for reaching terminal state by this path
-                # penalty = self.compute_penalties(
-                #     curr_state["missed_deadlines"], t
-                # )
-                
                 # Get total penalty factor
                 beta = curr_state["penalty_factor"]
                 
@@ -1015,7 +977,6 @@ class Goal(Item):
             "t": t,
             "idx_deadlines": 0,
             "idx_time_est":  0,
-            # "missed_deadlines": deque(),
             "penalty_factor": 0.,
         }
 

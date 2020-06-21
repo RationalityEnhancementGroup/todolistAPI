@@ -625,17 +625,16 @@ class PostResource(RESTResource):
                     smdp_params = {
                         "choice_mode": parameters[0],
                         "gamma": float(parameters[1]),  # 0.9999
-                        "hard_deadline": bool(int(parameters[2])),  # True
-                        "loss_rate": - float(parameters[3]),  # -1
-                        "num_bins": int(parameters[4]),  # 1
-                        "planning_fallacy_const": float(parameters[5]),  # 1.39
-                        "slack_reward": float(parameters[6]),  # 1e-3
-                        "unit_penalty": float(parameters[7]),  # 1e-1
+                        "loss_rate": - float(parameters[2]),  # -1
+                        "num_bins": int(parameters[3]),  # 1
+                        "planning_fallacy_const": float(parameters[4]),  # 1.39
+                        "slack_reward": float(parameters[5]),  # 1e-3
+                        "unit_penalty": float(parameters[6]),  # 1e-1
     
-                        "goal_pr_loc": float(parameters[8]),  # 1000
-                        "goal_pr_scale": float(parameters[9]),  # 1 - gamma
-                        "task_pr_loc": float(parameters[10]),  # 0
-                        "task_pr_scale": float(parameters[11]),  # 2
+                        "goal_pr_loc": float(parameters[7]),  # 1000
+                        "goal_pr_scale": float(parameters[8]),  # 1 - gamma
+                        "task_pr_loc": float(parameters[9]),  # 0
+                        "task_pr_scale": float(parameters[10]),  # 2
                         
                         'scale_type': "no_scaling",
                         'scale_min':  None,
@@ -645,10 +644,10 @@ class PostResource(RESTResource):
                     if smdp_params["slack_reward"] == 0:
                         smdp_params["slack_reward"] = np.NINF
     
-                    if len(parameters) >= 15:
-                        smdp_params['scale_type'] = parameters[12]
-                        smdp_params['scale_min'] = float(parameters[13])
-                        smdp_params['scale_max'] = float(parameters[14])
+                    if len(parameters) >= 14:
+                        smdp_params['scale_type'] = parameters[11]
+                        smdp_params['scale_min'] = float(parameters[12])
+                        smdp_params['scale_max'] = float(parameters[13])
         
                         if smdp_params["scale_min"] == float("inf"):
                             smdp_params["scale_min"] = None
