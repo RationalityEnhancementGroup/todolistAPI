@@ -210,7 +210,8 @@ def test_speed_smdp(n_bins, n_goals, n_tasks, n_trials=1, worst=True):
     
                     # Print results
                     time_log[nt] = np.mean(time_results[nt])
-                    print(f"\nNumber of goals: {ng}\n"
+                    print(f"\nNumber of bins: {nb}\n"
+                          f"Number of goals: {ng}\n"
                           f"Number of tasks per goal: {nt}\n"
                           f"Total number of tasks: {ng * nt}\n"
                           f"Average time: {time_log[nt]:.4f}\n"
