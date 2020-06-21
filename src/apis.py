@@ -164,42 +164,92 @@ def assign_random_points(projects, distribution_fxn=np.random.normal,
     return projects
 
 
-def assign_smdp_points(projects, day_duration, smdp_params, json=True,
-                       start_time=0, time_zone=0, verbose=False):
+def assign_smdp_points(projects, day_duration, smdp_params, timer,
+                       json=True, start_time=0, time_zone=0, verbose=False):
     
     # Separate tasks with deadlines from real goals
     # goals = separate_tasks_with_deadlines(deepcopy(projects))
     
-    # Convert real goals from JSON to Goal class objects (if necessary)
     if json:
+        
+        # Start timer: Run SMDP - Converting JSON to objects
+        tic = time.time()
+
+        # Convert real goals from JSON to Goal class objects
         goals = tree_to_old_structure(projects, smdp_params)
+
+        # Stop timer: Run SMDP - Converting JSON to objects
+        toc = time.time()
+
+        # Store time: Run SMDP - Converting JSON to objects
+        timer["Run SMDP - Converting JSON to objects"] = toc - tic
+
     else:
         goals = projects
-        
+
+    # Start timer: Run SMDP - Creating ToDoList object
+    tic = time.time()
+
     # Add them together into a single list
     to_do_list = ToDoList(goals,
                           gamma=smdp_params["gamma"],
                           slack_reward=smdp_params["slack_reward"],
                           start_time=start_time)
     
+    # Stop timer: Run SMDP - Creating ToDoList object
+    toc = time.time()
+
+    # Store timer: Run SMDP - Creating ToDoList object
+    timer["Run SMDP - Creating ToDoList object"] = toc - tic
+
+    # Start timer: Run SMDP - Solving SMDP
+    tic = time.time()
+
     # Solve to-do list
     to_do_list.solve(verbose=verbose)
+
+    # Stop timer: Run SMDP - Solving SMDP
+    toc = time.time()
+
+    # Store time: Run SMDP - Solving SMDP
+    timer["Run SMDP - Solving SMDP"] = toc - tic
+
+    # Start timer: Run SMDP - Computing goal-level pseudo-rewards
+    tic = time.time()
 
     # Compute goal-level pseudo-rewards
     compute_pseudo_rewards(to_do_list, start_time=start_time,
                            loc=smdp_params["goal_pr_loc"],
                            scale=smdp_params["goal_pr_scale"])
     
+    # Stop timer: Run SMDP - Computing goal-level pseudo-rewards
+    toc = time.time()
+
+    # Store time: Run SMDP - Computing goal-level pseudo-rewards
+    timer["Run SMDP - Computing goal-level pseudo-rewards"] = toc - tic
+
     if verbose:
         print_item(to_do_list)
     
+    # Start timer: Run SMDP - Running goal-level optimal policy
+    tic = time.time()
+
     # Get optimal goal-level policy
     P, t = run_optimal_policy(to_do_list,
                               choice_mode=smdp_params["choice_mode"])
     
+    # Stop timer: Run SMDP - Running goal-level optimal policy
+    toc = time.time()
+
+    # Store time: Run SMDP - Running goal-level optimal policy
+    timer["Run SMDP - Running goal-level optimal policy"] = toc - tic
+
     # Initialize list of all tasks
     tasks = deque()
     
+    # Start timer: Run SMDP - Task-level optimal policy & pseudo-rewards
+    tic = time.time()
+
     for entry in P:
         
         # Get next (a)ction and initial (t)ime
@@ -227,15 +277,42 @@ def assign_smdp_points(projects, day_duration, smdp_params, json=True,
             if verbose:
                 print_item(goal)
                 
+    # Stop timer: Run SMDP - Task-level optimal policy & pseudo-rewards
+    toc = time.time()
+    
+    # Store time: Run SMDP - Task-level optimal policy & pseudo-rewards
+    timer["Run SMDP - Task-level optimal policy & pseudo-rewards"] = toc - tic
+
+    # Start timer: Run SMDP - Converting tasks queue to list
+    tic = time.time()
+
     # Convert tasks queue to list
     tasks = [task["obj"] for task in tasks]
+
+    # Stop timer: Run SMDP - Converting tasks queue to list
+    toc = time.time()
+
+    # Store time: Run SMDP - Converting tasks queue to list
+    timer["Run SMDP - Task-level optimal policy & pseudo-rewards"] = toc - tic
+
+    # Start timer: Run SMDP - Sorting tasks w.r.t. optimal reward
+    tic = time.time()
 
     # Sort tasks w.r.t. optimal reward (pseudo-reward)
     tasks.sort(key=lambda task: -task.get_optimal_reward())
     
+    # Stop timer: Run SMDP - Sorting tasks w.r.t. optimal reward
+    toc = time.time()
+
+    # Store time: Run SMDP - Sorting tasks w.r.t. optimal reward
+    timer["Sorting tasks w.r.t. optimal reward"] = toc - tic
+
     if verbose:
         for task in tasks:
             print(task.get_id(), task.get_optimal_reward())
+
+    # Start timer: Run SMDP - Scaling rewards
+    tic = time.time()
 
     # Scale task values according to the provided scaling function
     scale_optimal_rewards(tasks,
@@ -243,11 +320,28 @@ def assign_smdp_points(projects, day_duration, smdp_params, json=True,
                           scale_max=smdp_params["scale_max"],
                           scale_type=smdp_params["scale_type"])
     
-    # Schedule tasks for today
+    # Stop timer: Run SMDP - Scaling rewards
+    toc = time.time()
+
+    # Store time: Run SMDP - Scaling rewards
+    timer["Run SMDP - Scaling rewards"] = toc - tic
+
     if json:
+        
+        # Start timer: Run SMDP - Scheduling tasks
+        tic = time.time()
+
+        # Schedule tasks for today
         today_tasks = schedule_tasks_for_today(projects, tasks,
                                                duration_remaining=day_duration,
                                                time_zone=time_zone)
+        
+        # Stop timer: Run SMDP - Scheduling tasks
+        toc = time.time()
+        
+        # Start timer: Run SMDP - Scheduling tasks
+        timer["Run SMDP - Scheduling tasks"] = toc - tic
+
     else:
         today_tasks = tasks
         
@@ -312,10 +406,12 @@ if __name__ == '__main__':
         'scale_min':  None,
         'scale_max':  None
     }
+    
+    timer = dict()
 
     assign_smdp_points(
-        d_bm, choice_mode=choice_mode, day_duration=day_duration, gamma=gamma,
-        json=False, scaling_inputs=scaling_inputs, verbose=verbose,
+        d_bm, timer=timer, choice_mode=choice_mode, day_duration=day_duration,
+        gamma=gamma, json=False, scaling_inputs=scaling_inputs, verbose=verbose,
         goal_pr_loc=goal_pr_loc, goal_pr_scale=goal_pr_scale,
         task_pr_loc=task_pr_loc, task_pr_scale=task_pr_scale
     )

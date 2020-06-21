@@ -171,8 +171,8 @@ def test_speed_smdp(n_bins, n_goals, n_tasks, n_trials=1, worst=True):
                         if "Testing" in output[:30]:
                             json_output = json.loads(output)
                             
-                            json_output.update(json_output["times"])
-                            del json_output["times"]
+                            json_output.update(json_output["timer"])
+                            del json_output["timer"]
                             
                             log_info.update(json_output)
                             

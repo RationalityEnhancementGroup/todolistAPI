@@ -78,7 +78,7 @@ class PostResource(RESTResource):
             }
             
             # Initialize dictionary that inspects time taken by each method
-            times = dict()
+            timer = dict()
 
             try:
                 
@@ -302,7 +302,7 @@ class PostResource(RESTResource):
                 toc = time.time()
                 
                 # Store time: reading parameters
-                times["Reading parameters"] = toc - tic
+                timer["Reading parameters"] = toc - tic
                 
                 # Start timer: parsing current intentions
                 tic = time.time()
@@ -330,7 +330,7 @@ class PostResource(RESTResource):
                 toc = time.time()
 
                 # Store time: parsing current intentions
-                times["Parsing current intentions"] = toc - tic
+                timer["Parsing current intentions"] = toc - tic
                 
                 # Start timer: parsing hierarchical structure
                 tic = time.time()
@@ -361,7 +361,7 @@ class PostResource(RESTResource):
                 toc = time.time()
                 
                 # Store time: parsing hierarchical structure
-                times["Parsing hierarchical structure"] = toc - tic
+                timer["Parsing hierarchical structure"] = toc - tic
                 
                 # Start timer: parsing scheduling tags
                 tic = time.time()
@@ -381,7 +381,7 @@ class PostResource(RESTResource):
                 toc = time.time()
 
                 # Store time: parsing scheduling tags
-                times["Parsing scheduling tags"] = toc - tic
+                timer["Parsing scheduling tags"] = toc - tic
 
                 # Check whether users have assigned more tasks than their time allows.
                 # for weekday in range(len(typical_minutes)):
@@ -420,7 +420,7 @@ class PostResource(RESTResource):
                 toc = time.time()
 
                 # Store time: subtracting times
-                times["Subtracting times"] = toc - tic
+                timer["Subtracting times"] = toc - tic
 
                 # Start timer: parsing to-do list
                 tic = time.time()
@@ -456,7 +456,7 @@ class PostResource(RESTResource):
                 toc = time.time()
 
                 # Store time: parsing to-do list
-                times["Parsing to-do list"] = toc - tic
+                timer["Parsing to-do list"] = toc - tic
 
                 # Start timer: storing parsed to-do list in database
                 tic = time.time()
@@ -469,7 +469,7 @@ class PostResource(RESTResource):
                 toc = time.time()
                 
                 # Stop timer: storing parsed to-do list in database
-                times["Storing parsed to-do list in database"] = toc - tic
+                timer["Storing parsed to-do list in database"] = toc - tic
                 
                 if method == "constant":
                     # Parse default task value
@@ -659,11 +659,11 @@ class PostResource(RESTResource):
                     toc = time.time()
 
                     # Store time: reading SMDP parameters
-                    times["Reading SMDP parameters"] = toc - tic
+                    timer["Reading SMDP parameters"] = toc - tic
                     
                     if api_method == "getTasksForToday":
                         final_tasks = assign_smdp_points(
-                            projects, day_duration=today_minutes,
+                            projects, timer=timer, day_duration=today_minutes,
                             smdp_params=smdp_params, time_zone=time_zone
                         )
 
@@ -690,13 +690,14 @@ class PostResource(RESTResource):
                         toc = time.time()
                         
                         # Store time: generating test case
-                        times["Generating test case"] = toc - tic
+                        timer["Generating test case"] = toc - tic
     
                         # Start timer: Run SMDP
                         tic = time.time()
     
                         final_tasks = assign_smdp_points(
                             projects=test_goals,
+                            timer=timer,
                             day_duration=today_minutes,
                             smdp_params=smdp_params,
                             time_zone=time_zone,
@@ -707,7 +708,7 @@ class PostResource(RESTResource):
                         toc = time.time()
                         
                         # Store time: Run SMDP
-                        times["Run SMDP"] = toc - tic
+                        timer["Run SMDP"] = toc - tic
 
                         # Start timer: Simulating task scheduling
                         tic = time.time()
@@ -717,7 +718,7 @@ class PostResource(RESTResource):
                         # Stop timer: Simulating task scheduling
                         toc = time.time()
                         
-                        times["Simulating task scheduling"] = toc - tic
+                        timer["Simulating task scheduling"] = toc - tic
     
                 # TODO: Test and fix potential bugs!
                 # elif method == "old-report":
@@ -742,7 +743,7 @@ class PostResource(RESTResource):
                 toc = time.time()
                 
                 # Store time: Anonymizing date
-                times["Anonymize data"] = toc - tic
+                timer["Anonymize data"] = toc - tic
 
                 # Schedule tasks for today
                 if scheduler == "basic":
@@ -797,7 +798,7 @@ class PostResource(RESTResource):
                 toc = time.time()
                 
                 # Store time: Storing incentivized tree in database
-                times["Storing incentivized tree in database"] = toc - tic
+                timer["Storing incentivized tree in database"] = toc - tic
 
                 if api_method == "updateTree":
                     cherrypy.response.status = 204
@@ -828,7 +829,7 @@ class PostResource(RESTResource):
                         toc = time.time()
                         
                         # Store time: Storing human-readable output
-                        times["Storing human-readable output"] = toc - tic
+                        timer["Storing human-readable output"] = toc - tic
                         
                     except NameError as error:
                         store_log(db.request_log, log_dict,
@@ -851,7 +852,7 @@ class PostResource(RESTResource):
                     toc = time.time()
                     
                     # Store time: Storing successful pull in database
-                    times["Storing successful pull in database"] = toc - tic
+                    timer["Storing successful pull in database"] = toc - tic
 
                     # Return scheduled tasks
                     return json.dumps(final_tasks)
@@ -867,11 +868,11 @@ class PostResource(RESTResource):
                              f"took {main_toc - main_tic:.3f} seconds!"
                     
                     # Stop timer: Complete SMDP procedure
-                    times["Complete SMDP procedure"] = main_toc - main_tic
+                    timer["Complete SMDP procedure"] = main_toc - main_tic
 
                     return json.dumps({
                         "status": status,
-                        "times": times
+                        "timer": timer
                     })
                 
                 else:
