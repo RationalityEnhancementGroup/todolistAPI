@@ -857,14 +857,14 @@ class PostResource(RESTResource):
                     return json.dumps(final_tasks)
                 
                 elif api_method in ["bestSpeedTestSMDP", "worstSpeedTestSMDP"]:
-                    
+    
+                    # Stop timer: Complete SMDP procedure
+                    main_toc = time.time()
+    
                     status = f"Testing {api_method} with " \
                              f"{jsonData['n_goals']} goals and " \
                              f"{jsonData['n_tasks']} tasks per goal " \
-                             f"took {toc - tic:.3f} seconds!"
-                    
-                    # Stop timer: Complete SMDP procedure
-                    main_toc = time.time()
+                             f"took {main_toc - main_tic:.3f} seconds!"
                     
                     # Stop timer: Complete SMDP procedure
                     times["Complete SMDP procedure"] = main_toc - main_tic
