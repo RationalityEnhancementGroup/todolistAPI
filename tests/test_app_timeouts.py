@@ -106,7 +106,7 @@ def test_speed_mdp(n_goals, n_tasks, deadline_years, mixing_params, n_trials=1):
     return time_df, tout_df
 
 
-def test_speed_smdp(n_goals, n_tasks, n_trials=1, worst=True):
+def test_speed_smdp(n_bins, n_goals, n_tasks, n_trials=1, worst=True):
     time_results = dict()
 
     date = datetime.now()
@@ -115,95 +115,129 @@ def test_speed_smdp(n_goals, n_tasks, n_trials=1, worst=True):
     
     time_df = pd.DataFrame()
     tout_df = pd.DataFrame()
-
-    break_flag = False
-
-    for ng in n_goals:
-        
-        time_log = pd.Series(index=n_tasks)
-        tout_log = pd.Series(index=n_tasks, dtype=np.int)
-        
-        print(os.getcwd())
     
-        for nt in n_tasks:
+    break_flag = False
+    
+    main_df = pd.DataFrame()
 
-            idx_name = f"{ng}_goals_{nt}_tasks" + "_1_years"
+    for nb in n_bins:
 
-            with open(f"{PATH_NAME}/{idx_name}.json", "r") as file:
-                data = json.load(file)
-
-                time_results[nt] = list()
-                tout_log[nt] = 0
-
-                print(f"Number of goals: {ng} | "
-                      f"Number of tasks per goal: {nt}"
-                )
+        for ng in n_goals:
+            
+            time_log = pd.Series(index=n_tasks)
+            tout_log = pd.Series(index=n_tasks, dtype=np.int)
+            
+            print(os.getcwd())
+        
+            for nt in n_tasks:
                 
-                test_mode = "worstSpeedTestSMDP"
-                if not worst:
-                    test_mode = "bestSpeedTestSMDP"
-
-                PARAMS = f"api/smdp/mdp/30/14/inf/0/1000000/0/60/0.9999/" \
-                         f"1000000/0.0001/0/2/10/2/tree/u123/{test_mode}"
-                API_ENDPOINT = SERVER + PARAMS
-
-                for _ in tqdm(range(n_trials)):
-
-                    start_time = time.time()
-                    r = requests.post(url=API_ENDPOINT, data=json.dumps(data))
-                    end_time = time.time()
-
-                    output = r.text
-
-                    if output[:8] == '"Testing':
-                        if VERBOSE:
-                            pprint(json.loads(output))
-                        time_results[nt].append(end_time - start_time)
+                idx_name = f"{ng}_goals_{nt}_tasks" + "_1_years"
+    
+                with open(f"{PATH_NAME}/{idx_name}.json", "r") as file:
+                    data = json.load(file)
+    
+                    time_results[nt] = list()
+                    tout_log[nt] = 0
+    
+                    print(f"Number of bins: {nb} | "
+                          f"Number of goals: {ng} | "
+                          f"Number of tasks per goal: {nt}"
+                    )
                     
-                    elif output[0] == '<':
-                        print(output)
+                    test_mode = "worstSpeedTestSMDP"
+                    if not worst:
+                        test_mode = "bestSpeedTestSMDP"
                         
-                    elif "The API has encountered an error" in output:
-                        print('\nTimeout!')
-                        tout_log[nt] += 1
+                    PARAMS = f"api/smdp/mdp/30/14/inf/0/inf/0/inf/" \
+                             f"max/{1-1e-9}/1/1/{nb}/1.39/0/0/0/1/0/1/" \
+                             f"10/2/tree/u123/{test_mode}"
+                    API_ENDPOINT = SERVER + PARAMS
+    
+                    for trial in tqdm(range(n_trials)):
+    
+                        start_time = time.time()
+                        r = requests.post(url=API_ENDPOINT, data=json.dumps(data))
+                        end_time = time.time()
+    
+                        output = r.text
                         
-                    else:
-                        print(output)
-
-                    # Clean-up database
-                    DB.request_log.delete_many({"user_id": USER_ID})
-                    DB.trees.delete_many({"user_id": USER_ID})
-
-                # Print results
-                time_log[nt] = np.mean(time_results[nt])
-                print(f"\nNumber of goals: {ng}\n"
-                      f"Number of tasks per goal: {nt}\n"
-                      f"Total number of tasks: {ng * nt}\n"
-                      f"Average time: {time_log[nt]:.4f}\n"
-                      f"Timeouts: {tout_log[nt]}\n"
-                      f"Time results: {time_results[nt]}\n")
-
-                if n_trials == tout_log[nt]:
-                    break_flag = True
-                    print("Breaking...", end=" ")
-                    # break
-
-            time_df[ng] = time_log
-            tout_df[ng] = tout_log
-
-            time_df.to_csv(f"{OUTPUT_PATH}/"
-                           f"{timestamp}_{test_mode}_{SERVER_ABBR}_time.csv")
-            tout_df.to_csv(f"{OUTPUT_PATH}/"
-                           f"{timestamp}_{test_mode}_{SERVER_ABBR}_tout.csv")
-
-            if break_flag:
-                print("Done!\n")
-                break
-
-        # Reset break flag
-        break_flag = False
-
-    return time_df, tout_df
+                        log_info = {
+                            "n_goals": ng,
+                            "n_tasks": nt,
+                            "n_bins": nb,
+                            "trial": trial
+                        }
+                        
+                        if "Testing" in output[:30]:
+                            json_output = json.loads(output)
+                            
+                            json_output.update(json_output["times"])
+                            del json_output["times"]
+                            
+                            log_info.update(json_output)
+                            
+                            if VERBOSE:
+                                pprint(json_output)
+                            time_results[nt].append(end_time - start_time)
+                        
+                        elif "Timeout!" in output[:10]:
+                            
+                            log_info.update({
+                                "status": "Timeout!"
+                            })
+                            
+                            print('\nTimeout!')
+                            tout_log[nt] += 1
+                            
+                        # elif "The API has encountered an error" in output:
+                        #     print(output)
+                        
+                        else:
+                            log_info.update({
+                                "status": output
+                            })
+        
+                            print(output)
+    
+                        # Clean-up database
+                        DB.request_log.delete_many({"user_id": USER_ID})
+                        DB.trees.delete_many({"user_id": USER_ID})
+                        
+                        main_df = main_df.append(log_info, ignore_index=True)
+                        main_df.to_csv(f"{OUTPUT_PATH}/"
+                                       f"{timestamp}_{test_mode}_"
+                                       f"{SERVER_ABBR}_main.csv")
+    
+                    # Print results
+                    time_log[nt] = np.mean(time_results[nt])
+                    print(f"\nNumber of goals: {ng}\n"
+                          f"Number of tasks per goal: {nt}\n"
+                          f"Total number of tasks: {ng * nt}\n"
+                          f"Average time: {time_log[nt]:.4f}\n"
+                          f"Timeouts: {tout_log[nt]}\n"
+                          f"Time results: {time_results[nt]}\n")
+    
+                    if n_trials == tout_log[nt]:
+                        break_flag = True
+                        print("Breaking...", end=" ")
+                        # break
+    
+                time_df[ng] = time_log
+                tout_df[ng] = tout_log
+    
+                time_df.to_csv(f"{OUTPUT_PATH}/"
+                               f"{timestamp}_{test_mode}_{SERVER_ABBR}_time.csv")
+                tout_df.to_csv(f"{OUTPUT_PATH}/"
+                               f"{timestamp}_{test_mode}_{SERVER_ABBR}_tout.csv")
+    
+                if break_flag:
+                    print("Done!\n")
+                    break
+    
+            # Reset break flag
+            break_flag = False
+    
+    return main_df, time_df, tout_df
 
 
 if __name__ == '__main__':
@@ -239,7 +273,8 @@ if __name__ == '__main__':
         DB = CONN["ai4productivity"]
     
     if MODE == HEROKU_STAGING:
-        URI = "mongodb://hC2P81mItQ16:a1R9ydF01dih@ds341557.mlab.com:41557/heroku_g6l4lr9d?retryWrites=false"  # os.environ['MONGODB_URI']
+        # URI = os.environ['MONGODB_URI']
+        URI = "mongodb://hC2P81mItQ16:a1R9ydF01dih@ds341557.mlab.com:41557/heroku_g6l4lr9d?retryWrites=false"
         CONN = MongoClient(URI)
         DB = CONN.heroku_g6l4lr9d
         
@@ -257,16 +292,35 @@ if __name__ == '__main__':
     print("Trees collection count:",
           DB.trees.find({"user_id": USER_ID}).count())
 
-    N_GOALS = list(range(1, 11))
-    # N_GOALS = [1]
+    N_BINS = [
+        # 1,
+        2
+    ]
+
+    # N_GOALS = list(range(1, 11))
+    N_GOALS = [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+    ]
     
     N_TASKS = [
-        25, 50, 75, 100, 125, 150,
-        250, 500, 750, 1000,
+        25,
+        50,
+        75,
+        100,
+        125, 150, 250, 500, 750, 1000,
         1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000,
         3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000
     ]
-
+    
     # Test DP for different number of goals, tasks and mixing-parameter values
     # test_speed_mdp(
     #     n_goals=[10],
@@ -278,6 +332,7 @@ if __name__ == '__main__':
 
     # Test SMDP for different number of goals and tasks
     test_speed_smdp(
+        n_bins=N_BINS,
         # n_goals=list(range(1, 11)),
         n_goals=N_GOALS,
         n_tasks=N_TASKS,
