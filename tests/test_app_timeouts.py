@@ -244,10 +244,10 @@ def test_speed_smdp(n_bins, n_goals, n_tasks, n_trials=1, worst=True):
 if __name__ == '__main__':
     
     LOCAL = 1
-    HEROKU_STAGING = 2
+    HEROKU = 2
     VERBOSE = False
     
-    MODE = LOCAL
+    MODE = HEROKU
     
     # ALGORITHM = "dp"
     ALGORITHM = "smdp"
@@ -273,14 +273,14 @@ if __name__ == '__main__':
         CONN = MongoClient(URI)
         DB = CONN["ai4productivity"]
     
-    if MODE == HEROKU_STAGING:
+    if MODE == HEROKU:
         # URI = os.environ['MONGODB_URI']
         URI = "mongodb://hC2P81mItQ16:a1R9ydF01dih@ds341557.mlab.com:41557/heroku_g6l4lr9d?retryWrites=false"
         CONN = MongoClient(URI)
         DB = CONN.heroku_g6l4lr9d
         
         SERVER = f"https://aqueous-hollows-34193.herokuapp.com/"
-        SERVER_ABBR = "heroku_staging"
+        SERVER_ABBR = "heroku"
 
     # %% Check number of entries in the DB
     
