@@ -1,4 +1,3 @@
-#%%
 import json
 import numpy as np
 import os
@@ -282,20 +281,19 @@ if __name__ == '__main__':
         SERVER = f"https://aqueous-hollows-34193.herokuapp.com/"
         SERVER_ABBR = "heroku"
 
-    # %% Check number of entries in the DB
-    
     # Clean-up database
     DB.request_log.delete_many({"user_id": USER_ID})
     DB.trees.delete_many({"user_id": USER_ID})
-    
+
+    # Check number of entries in the DB
     print("Request log collection count:",
           DB.request_log.find({"user_id": USER_ID}).count())
     print("Trees collection count:",
           DB.trees.find({"user_id": USER_ID}).count())
 
     N_BINS = [
-        # 1,
-        2
+        1,
+        # 2
     ]
 
     # N_GOALS = list(range(1, 11))
@@ -334,7 +332,6 @@ if __name__ == '__main__':
     # Test SMDP for different number of goals and tasks
     test_speed_smdp(
         n_bins=N_BINS,
-        # n_goals=list(range(1, 11)),
         n_goals=N_GOALS,
         n_tasks=N_TASKS,
         n_trials=5,

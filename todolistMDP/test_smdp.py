@@ -56,18 +56,15 @@ VALUE_SCALE = 1  # Default
 PLANNING_FALLACY_CONST = 1  # Default
 # PLANNING_FALLACY_CONST = 1.39
 
-SLACK_REWARD = np.NINF
+# SLACK_REWARD = np.NINF
 # SLACK_REWARD = 1
 # SLACK_REWARD = 1e-1
 # SLACK_REWARD = 1e-2
-# SLACK_REWARD = 1e-3
-
-# HARD_DEADLINE = False
-HARD_DEADLINE = True
+SLACK_REWARD = 1e-3
 
 # UNIT_PENALTY = 1
-UNIT_PENALTY = .1
-# UNIT_PENALTY = np.PINF
+# UNIT_PENALTY = .1
+UNIT_PENALTY = np.PINF
 
 sys.setrecursionlimit(10000)
 
@@ -75,7 +72,6 @@ d_bm = [
     Goal(
         description="Goal A",
         # deadline=10,
-        hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         num_bins=N_BINS,
         # penalty=-10,
@@ -91,7 +87,6 @@ d_bm = [
     Goal(
         description="Goal B",
         # deadline=10,
-        hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         num_bins=N_BINS,
         # penalty=0,
@@ -108,7 +103,6 @@ d_bm = [
     ),
     Goal(description="Goal C",
          # deadline=6,
-         hard_deadline=HARD_DEADLINE,
          loss_rate=LOSS_RATE,
          num_bins=N_BINS,
          # penalty=-1,
@@ -125,7 +119,6 @@ d_bm = [
          ),
     Goal(description="Goal D",
          # deadline=40,
-         hard_deadline=HARD_DEADLINE,
          loss_rate=LOSS_RATE,
          num_bins=N_BINS,
          # penalty=-10,
@@ -143,7 +136,6 @@ d_bm = [
     Goal(
         description="Goal E",
         # deadline=70,
-        hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         num_bins=N_BINS,
         # penalty=-110,
@@ -161,7 +153,6 @@ d_bm = [
     Goal(
         description="Goal F",
         # deadline=70,
-        hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         num_bins=N_BINS,
         # penalty=-110,
@@ -196,7 +187,6 @@ d_bm = [
 test_1 = [
     Goal(
         description="G1",
-        hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         rewards={6: 1000},
         tasks=[
@@ -208,7 +198,6 @@ test_1 = [
     ),
     # Goal(
     #     description="G2",
-    #     hard_deadline=HARD_DEADLINE,
     #     loss_rate=LOSS_RATE,
     #     rewards={300: 500},
     #     tasks=[
@@ -220,7 +209,6 @@ test_1 = [
     # ),
     # Goal(
     #     description="G3",
-    #     hard_deadline=HARD_DEADLINE,
     #     loss_rate=LOSS_RATE,
     #     rewards={30: 30},
     #     tasks=[
@@ -236,7 +224,6 @@ test_1 = [
 test_2 = [
     Goal(
         description="G1",
-        hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         planning_fallacy_const=PLANNING_FALLACY_CONST,
         rewards={2000: 5000},
@@ -251,7 +238,6 @@ test_2 = [
     ),
     Goal(
         description="G2",
-        hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         planning_fallacy_const=PLANNING_FALLACY_CONST,
         rewards={3000: 3000},
@@ -266,7 +252,6 @@ test_2 = [
     ),
     Goal(
         description="G3",
-        hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         planning_fallacy_const=PLANNING_FALLACY_CONST,
         rewards={4000: 10000},
@@ -284,7 +269,6 @@ test_2 = [
 
 single_goal = Goal(
     description="Single goal",
-    hard_deadline=HARD_DEADLINE,
     loss_rate=LOSS_RATE,
     num_bins=N_BINS,
     planning_fallacy_const=PLANNING_FALLACY_CONST,
@@ -318,11 +302,10 @@ single_goal = Goal(
 two_goals = [
     Goal(
         description="Goal 1",
-        hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         num_bins=N_BINS,
         planning_fallacy_const=PLANNING_FALLACY_CONST,
-        rewards={100: 100},
+        rewards={10: 100},
         tasks=[
             Task("Task 1", time_est=1, deadline=10),
             Task("Task 2", time_est=2, deadline=9),
@@ -333,11 +316,10 @@ two_goals = [
     ),
     Goal(
         description="Goal 2",
-        hard_deadline=HARD_DEADLINE,
         loss_rate=LOSS_RATE,
         num_bins=N_BINS,
         planning_fallacy_const=PLANNING_FALLACY_CONST,
-        rewards={12: 100},
+        rewards={10: 100},
         tasks=[
             Task("Task 1", time_est=1, deadline=6),
             Task("Task 2", time_est=2, deadline=5),
@@ -353,7 +335,6 @@ def generate_discrepancy_test(n_goals, n_tasks):
     return [
         Goal(
             description=f"G{g+1}",
-            hard_deadline=True,
             loss_rate=LOSS_RATE,
             planning_fallacy_const=PLANNING_FALLACY_CONST,
             rewards={deadline: 10000},
@@ -366,7 +347,7 @@ def generate_discrepancy_test(n_goals, n_tasks):
                 # Task(f"T{t+1}", time_est=1)
                 for t in range(n_tasks)
             ],
-            unit_penalty=0,
+            unit_penalty=np.PINF,
         )
         for g in range(n_goals)
     ]
