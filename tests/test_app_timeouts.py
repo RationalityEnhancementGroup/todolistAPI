@@ -130,7 +130,7 @@ def test_speed_smdp(n_bins, n_goals, n_tasks, n_trials=1, worst=True):
         
             for nt in n_tasks:
                 
-                idx_name = f"{ng}_goals_{nt}_tasks" + "_1_years"
+                idx_name = f"{nb}_bins_{ng}_goals_{nt}_tasks" + "_1_years"
     
                 with open(f"{PATH_NAME}/{idx_name}.json", "r") as file:
                     data = json.load(file)
@@ -292,8 +292,8 @@ if __name__ == '__main__':
           DB.trees.find({"user_id": USER_ID}).count())
 
     N_BINS = [
-        1,
-        # 2
+        # 1,
+        2
     ]
 
     # N_GOALS = list(range(1, 11))
@@ -335,5 +335,5 @@ if __name__ == '__main__':
         n_goals=N_GOALS,
         n_tasks=N_TASKS,
         n_trials=5,
-        worst=True
+        worst=False
     )

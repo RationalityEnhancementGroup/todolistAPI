@@ -673,6 +673,7 @@ class PostResource(RESTResource):
 
                         if api_method == "bestSpeedTestSMDP":
                             test_goals = generate_test_case(
+                                n_bins=jsonData["n_bins"],
                                 n_goals=jsonData["n_goals"],
                                 n_tasks=jsonData["n_tasks"],
                                 worst=False
@@ -680,6 +681,7 @@ class PostResource(RESTResource):
 
                         if api_method == "worstSpeedTestSMDP":
                             test_goals = generate_test_case(
+                                n_bins=jsonData["n_bins"],
                                 n_goals=jsonData["n_goals"],
                                 n_tasks=jsonData["n_tasks"],
                                 worst=True

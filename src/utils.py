@@ -917,7 +917,6 @@ def tree_to_old_structure(projects, params):
                 description=goal["nm"],
                 goal_id=goal["id"],
                 # effective_deadline=goal["effective_deadline"],
-                hard_deadline=params["hard_deadline"],
                 # latest_start_time=goal["latest_start_time"],
                 loss_rate=params["loss_rate"],
                 num_bins=params["num_bins"],
