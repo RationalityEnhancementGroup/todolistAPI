@@ -785,7 +785,7 @@ class Goal(Item):
                     cum_discount = ToDoList.get_cum_discount(time_est)
                     
                     # Calculate total loss for next action (immediate "reward")
-                    r = next_task.get_total_loss(discount=cum_discount)
+                    r = next_task.get_total_loss(cum_discount=cum_discount)
                     
                     if verbose:
                         print(f"Current reward {r} | ", end="")
