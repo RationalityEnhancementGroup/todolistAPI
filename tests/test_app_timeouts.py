@@ -147,9 +147,9 @@ def test_speed_smdp(n_bins, n_goals, n_tasks, n_trials=1, worst=True):
                     if not worst:
                         test_mode = "bestSpeedTestSMDP"
                         
-                    PARAMS = f"api/smdp/mdp/30/14/inf/0/inf/0/inf/" \
+                    PARAMS = f"api/smdp/mdp/30/14/inf/0/inf/0/inf/false/2/" \
                              f"max/{1-1e-9}/1/1/{nb}/1.39/0/0/0/1/0/1/" \
-                             f"10/2/tree/u123/{test_mode}"
+                             f"tree/u123/{test_mode}"
                     API_ENDPOINT = SERVER + PARAMS
     
                     for trial in tqdm(range(n_trials)):
@@ -292,8 +292,8 @@ if __name__ == '__main__':
           DB.trees.find({"user_id": USER_ID}).count())
 
     N_BINS = [
-        # 1,
-        2
+        1,
+        # 2
     ]
 
     # N_GOALS = list(range(1, 11))
@@ -301,23 +301,23 @@ if __name__ == '__main__':
         1,
         2,
         3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10
+        # 4,
+        # 5,
+        # 6,
+        # 7,
+        # 8,
+        # 9,
+        # 10
     ]
     
     N_TASKS = [
-        25,
-        50,
-        75,
-        100,
-        125, 150, 250, 500, 750, 1000,
+        # 25,
+        # 50,
+        # 75,
+        # 100,
+        # 125, 150, 250, 500, 750, 1000,
         1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000,
-        3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000
+        # 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000
     ]
     
     # Test DP for different number of goals, tasks and mixing-parameter values
