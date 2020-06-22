@@ -95,11 +95,17 @@ class PostResource(RESTResource):
                 max_sum_of_goal_values = vpath[6]
                 min_goal_value_per_goal_duration = vpath[7]
                 max_goal_value_per_goal_duration = vpath[8]
+                points_per_hour = vpath[9]
+                rounding = vpath[10]
                 
-                points_per_hour = vpath[-5]
-                rounding = vpath[-4]
+                # tree = vpath[-3]  # Dummy parameter
                 user_key = vpath[-2]
                 api_method = vpath[-1]
+                
+                # Additional parameters (the order of URL input matters!)
+                # Casting to other data types is done in the functions that use
+                # these parameters
+                parameters = [item for item in vpath[11:-3]]
                 
                 # JSON tree parameters
                 try:
@@ -139,11 +145,6 @@ class PostResource(RESTResource):
                 # Set up current time and date according to the user (UTC + TZ)
                 user_datetime = datetime.utcnow() + timedelta(minutes=time_zone)
                 log_dict["user_datetime"] = user_datetime
-
-                # Additional parameters (the order of URL input matters!)
-                # Casting to other data types is done in the functions that use
-                # these parameters
-                parameters = [item for item in vpath[9:-5]]
 
                 log_dict.update({
                     "api_method": api_method,

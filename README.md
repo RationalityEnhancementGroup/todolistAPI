@@ -23,10 +23,10 @@ After installing MongoDB, you should do the following steps:
 For successful communication with the API, a `POST` request should be sent via the following URLs with a pre-defined body structure (described in detail in the report).
 
 The general URL for local testing looks like this: 
-`http://127.0.0.1:6789/api/<compulsoryParameters>/<additionalParameters>/<roundParameter>/tree/<userID>/<functionName>`
+`http://127.0.0.1:6789/api/<compulsoryParameters>/<additionalParameters>/tree/<userID>/<functionName>`
 
 The general URL for testing the server online (on Heroku) looks like this
-`https://<HerokuAppCode>.herokuapp.com/api/<method>/<scheduler>/<parameters>/tree/<userID>/<functionName>`
+`https://<HerokuAppCode>.herokuapp.com/api/<compulsoryParameters>/<additionalParameters>/tree/<userID>/<functionName>`
 
 Description of the URL parameters:
 - `<method>`: Method by which points are assigned
@@ -44,21 +44,21 @@ Description of the URL parameters:
         - `deadline`: Deadline scheduler
     - Schedulers for `smdp` <!-- `dp` and `greedy` --> point-assignment method:
         - `mdp`: Method used by the SMDP incentivizing method.
-- `default_time_est`: Default task time estimate (in minutes) to fill in if it is not provided by the user.
-- `default_deadline`: Default deadline (number of days, starting from today) to fill in if it is not provided by the user.
-- `allowed_task_time`: Time-estimation restriction for tasks, so that users do not enter long time estimations. If no restriction to impose is necessary, then the input should be `inf`.
-- `min_sum_of_goal_values`: Lower interval bound on the sum of goal values. 
-- `max_sum_of_goal_values`: Upper interval bound on the sum of goal values.
-- `min_goal_value_per_goal_duration`: Lower interval bound on the ratio between a goal value and its duration (in minutes).
-- `max_goal_value_per_goal_duration`: Upper interval bound on the ratio between a goal value and its duration (in minutes).
+- `<compulsoryParameters>`
+    - `default_time_est`: Default task time estimate (in minutes) to fill in if it is not provided by the user.
+    - `default_deadline`: Default deadline (number of days, starting from today) to fill in if it is not provided by the user.
+    - `allowed_task_time`: Time-estimation restriction for tasks, so that users do not enter long time estimations. If no restriction to impose is necessary, then the input should be `inf`.
+    - `min_sum_of_goal_values`: Lower interval bound on the sum of goal values. 
+    - `max_sum_of_goal_values`: Upper interval bound on the sum of goal values.
+    - `min_goal_value_per_goal_duration`: Lower interval bound on the ratio between a goal value and its duration (in minutes).
+    - `max_goal_value_per_goal_duration`: Upper interval bound on the ratio between a goal value and its duration (in minutes).
+    - `points_per_hour`: if 'true'-valued (`true`, `t`, `1`), we assign points per hour. otherwise, we assign points for task completion.
+    - `rounding`: The number of decimals to round to. For input of 0, the points will be rounded to the closest integer.
 - `<additionalParameters>`: (Differ for each method. Described in their own section.)
-- `points_per_hour`: if 'true'-valued (`true`, `t`, `1`), we assign points per hour. otherwise, we assign points for task completion.
-- `rounding`: The number of decimals to round to. For input of 0, the points will be rounded to the closest integer.
 - `<userID>`: Unique user identification code.
 - `<functionName>`: Type of request.
-  - `updateTree`: Updates the stored tree.
-  - `getTasksForToday`: Outputs list of task for today.
-  - Running speed test. Return dictionary with timing values.
+    - `updateTree`: Updates the stored tree.
+    - `getTasksForToday`: Outputs list of task for today.
     - `bestSpeedTestSMDP`: Speed test of the SMDP method in the best-case scenario.
     - `worstSpeedTestSMDP`: Speed test of the SMDP method in the worst-case scenario.  
 
@@ -73,7 +73,7 @@ You can use our [URL generator](https://aqueous-hollows-34193.herokuapp.com/stat
 
 
 ```
-URL example: http://127.0.0.1:6789/api/constant/basic/30/14/inf/0/3000/0/60/10/t/2/tree/user123/getTasksForToday
+URL example: http://127.0.0.1:6789/api/constant/basic/30/14/inf/0/3000/0/60/t/2/10/tree/user123/getTasksForToday
 
 <method>: constant
 <scheduler>: basic
@@ -84,9 +84,9 @@ min_sum_of_goal_values: 0
 max_sum_of_goal_values: 3000
 min_goal_value_per_goal_duration: 0
 max_goal_value_per_goal_duration: 60
-default_task_value: 10
 points_per_hour: t
 rounding: 2
+default_task_value: 10
 <userID>: user123
 <functionName>: getTasksForToday
 ```
@@ -142,7 +142,7 @@ rounding: 0
     - `normal`: Normal (Gaussian) distribution with parameters `loc` (mean value) and `scale` (standard deviation)
 
 ```
-URL Example: http://127.0.0.1:6789/api/random/deadline/30/14/inf/0/10000/0/10/normal/1/100/false/2/tree/user123/getTasksForToday
+URL Example: http://127.0.0.1:6789/api/random/deadline/30/14/inf/0/10000/0/10/false/2/normal/1/100/tree/user123/getTasksForToday
 
 <method>: random
 <scheduler>: deadline
@@ -153,11 +153,11 @@ min_sum_of_goal_values: 0
 max_sum_of_goal_values: 10000
 min_goal_value_per_goal_duration: 0
 max_goal_value_per_goal_duration: 10
+points_per_hour: false
+rounding: 2
 distribution: normal
 loc: 1
 scale: 100
-points_per_hour: false
-rounding: 2
 <userID>: user123
 <functionName>: getTasksForToday
 ```
@@ -191,7 +191,7 @@ Notation:
 - `(lower_bound, upper_bound)`: open interval
 
 ```
-URL example: http://127.0.0.1:6789/api/smdp/mdp/30/14/inf/0/inf/0/inf/max/0.9999/1/2/1.39/0/0/0/1/0/1/min_max/1/2/false/2/tree/u123/bestSpeedTestSMDP
+URL example: http://127.0.0.1:6789/api/smdp/mdp/30/14/inf/0/inf/0/inf/false/2/max/0.9999/1/2/1.39/0/0/0/1/0/1/min_max/1/2/tree/u123/bestSpeedTestSMDP
 
 <method>: random
 <scheduler>: deadline
@@ -202,6 +202,8 @@ min_sum_of_goal_values: 0
 max_sum_of_goal_values: inf
 min_goal_value_per_goal_duration: 0
 max_goal_value_per_goal_duration: inf
+points_per_hour: false
+rounding: 2
 choice_mode: max
 gamma: 0.9999
 loss_rate: 1
@@ -216,8 +218,6 @@ task_pr_scale: 1
 scale_type: min_max
 scale_min: 1
 scale_max: 2
-points_per_hour: false
-rounding: 2
 <userID>: user123
 <functionName>: getTasksForToday
 ```
