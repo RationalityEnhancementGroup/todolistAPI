@@ -1,23 +1,25 @@
-import itertools
 import numpy as np
-import random
 import time
 
-from abc import abstractmethod
-from collections import defaultdict, deque
+from collections import deque
 from copy import deepcopy
-from math import ceil, gcd
+from math import ceil
 from todolistMDP.zero_trunc_poisson import get_binned_distrib
 from pprint import pprint
-from scipy.stats import poisson
-from todolistMDP import mdp
 
 
 def compute_pseudo_rewards(obj, start_time=0, loc=0., scale=1.):
     """
     Computes pseudo-rewards.
+    
+    Args:
+        obj: Object for which pseudo-rewards are computed. Eg. Goal or ToDoList
+        start_time: Initial SMDP time.
+        loc: Bias parameter of the linear transformation.
+        scale: Scaling parameter of the linear transformation.
 
-    TODO: Add transformation here.
+    Returns:
+        /
     """
     standardizing_reward = obj.highest_negative_reward
     if obj.highest_negative_reward == np.NINF:
@@ -36,18 +38,6 @@ def compute_pseudo_rewards(obj, start_time=0, loc=0., scale=1.):
             obj.PR[s].setdefault(t, dict())
             obj.F[s].setdefault(t, dict())
             
-            # """ Incorporate slack action for (state, time) """
-            # # Add slack reward to the dictionary
-            # slack_reward = obj.compute_slack_reward(0)
-            #
-            # # Add slack reward in the Q-values
-            # obj.Q[s][t].setdefault(-1, dict())
-            # obj.Q[s][t][-1]["E"] = slack_reward
-            #
-            # # Add slack reward in the rewards
-            # obj.R[s][t].setdefault(-1, dict())
-            # obj.R[s][t][-1]["E"] = slack_reward
-
             # The best possible (a)ction and (q)-value in state s
             best_a, best_q = ToDoList.max_from_dict(obj.Q[s][t])
             best_q *= discount
@@ -72,12 +62,8 @@ def compute_pseudo_rewards(obj, start_time=0, loc=0., scale=1.):
                         # Move to the next state
                         s_ = ToDoList.exec_action(s, a)
 
-                        # Get expected task time estimate
-                        # time_est = curr_task.get_time_est()
-
-                        # TODO: Expected future reward as a function
+                        # TODO: Compute expected future reward as a function
                         if "E" not in obj.Q[s_].keys():
-                            # TODO: Implement this
                             pass
 
                         # Get time transitions to the next state
@@ -133,14 +119,9 @@ def compute_pseudo_rewards(obj, start_time=0, loc=0., scale=1.):
                             f"Unknown object type {type(obj)}")
 
                 # Expected Q-value of the next state
-                v_ *= discount  # * gamma  # TODO: Check (!)
-                # q_ = self.Q[s_][t_][a_]["E"] * discount * gamma
-                
-                # Expected Q-value of the current state
-                # q = self.Q[s][t][a]["E"] * discount
+                v_ *= discount
                 
                 # Compute value of the reward-shaping function
-                # f = q_ - q
                 f = v_ - best_q
                 
                 # Standardize rewards s.t. negative rewards <= 0
@@ -168,18 +149,19 @@ def compute_pseudo_rewards(obj, start_time=0, loc=0., scale=1.):
 
 def run_optimal_policy(obj, s=None, t=0, choice_mode="random"):
     """
-    TODO: ...
+    Runs optimal policy.
 
     Args:
         obj: {Goal, ToDoList}
-        s: Starting state (binary vector of task completion).
-        t: Starting time (non-negative integer).
+        s: Initial state (binary vector of task completion).
+        t: Initial time (non-negative integer).
         choice_mode: {"max", "random"}
         
     Returns:
-        TODO: ...
+        (Optimal policy, Time after executing policy)
     """
     
+    # Get items that belong to the given objects
     if type(obj) is Goal:
         items = obj.get_tasks()
     elif type(obj) is ToDoList:
@@ -226,6 +208,7 @@ def run_optimal_policy(obj, s=None, t=0, choice_mode="random"):
             "PR": obj.PR[s][t][a]["E"]
         })
 
+        # Break if next action is slack-off
         if a == -1:
             break
         
@@ -234,7 +217,7 @@ def run_optimal_policy(obj, s=None, t=0, choice_mode="random"):
         times = sorted(list(time_transitions.keys()))
         values = [time_transitions[t] for t in times]
         
-        # Get item time estimate
+        # Get item time estimate in a most-likely or random manner
         if choice_mode == "max":
             idx = int(np.argmax(values))
             time_est = times[idx]
@@ -263,23 +246,19 @@ class Item:
                  time_est=None, unit_penalty=None):
         self.description = description
         self.idx = idx
+        self.loss_rate = loss_rate
+        self.num_bins = num_bins
+        self.planning_fallacy_const = planning_fallacy_const
+        self.rewards = rewards
+        self.time_est = time_est
         self.unit_penalty = unit_penalty
         
         self.item_id = item_id
         if self.item_id is None:
             self.item_id = self.description
             
-        self.loss_rate = loss_rate
-        self.num_bins = num_bins
-        self.optimal_reward = np.NINF
-        self.planning_fallacy_const = planning_fallacy_const
-        self.rewards = rewards
-        self.time_est = time_est
-        
         self.latest_deadline_time = max(rewards.keys())
-
-        self.lowest_time_est = self.time_est
-        self.highest_time_est = self.time_est
+        self.optimal_reward = np.NINF
 
         self.time_transitions = {
             self.time_est: None
@@ -296,8 +275,6 @@ class Item:
                f"Time estimate: {self.time_est}\n"
 
     def compute_binning(self, num_bins=None):
-        # TODO: Comment function...
-        
         binned_distrib = get_binned_distrib(mu=self.time_est,
                                             num_bins=num_bins)
     
@@ -374,11 +351,11 @@ class Item:
             return self.time_transitions
         return self.time_transitions[t]
     
-    def get_total_loss(self, discount=None):
+    def get_total_loss(self, cum_discount=None):
         # TODO: Find a better implementation.
-        if discount is None:
+        if cum_discount is None:
             return self.loss_rate * self.time_est
-        return self.loss_rate * discount
+        return self.loss_rate * cum_discount
     
     def get_unit_penalty(self):
         return self.unit_penalty
@@ -455,12 +432,6 @@ class Task(Item):
     def add_goal(self, goal):
         self.goals.add(goal)
         
-    def get_highest_time_est(self):
-        return self.highest_time_est
-
-    def get_lowest_time_est(self):
-        return self.lowest_time_est
-
     def get_prob(self):
         return self.prob
     
@@ -625,9 +596,6 @@ class Goal(Item):
     def get_num_tasks(self):
         return self.num_tasks
 
-    # def get_penalty(self):
-    #     return self.penalty
-    
     def get_planning_fallacy_const(self):
         return self.planning_fallacy_const
     
@@ -680,17 +648,6 @@ class Goal(Item):
     def get_tasks(self):
         return self.tasks
 
-    # def scale_rewards(self, min_value=1, max_value=100, print_values=False):
-    #     """
-    #     Linear transform we might want to use with Complice
-    #     """
-    #     dict_values = np.asarray([*self.PR.values()])
-    #     minimum = np.min(dict_values)
-    #     ptp = np.ptp(dict_values)
-    #     for trans in self.PR:
-    #         self.tPR[trans] = \
-    #             max_value * (self.PR[trans] - minimum)/(ptp)
-    
     def set_gamma(self, gamma):
         self.gamma = gamma
         
@@ -928,15 +885,10 @@ class Goal(Item):
                 if verbose:
                     print(f"(s, t) {(s, t)} is a terminal state.")
 
-                # Get discount value
-                # discount_t = ToDoList.get_discount(t)
-                
                 # Get total penalty factor
                 beta = curr_state["penalty_factor"]
                 
                 # Compute reward
-                # term_value = self.get_reward(t, discount=discount_t) + penalty
-                # term_value = self.get_reward(beta=beta, t=t, discount=discount_t)
                 term_value = self.get_reward(beta=beta, t=t, discount=1.)
 
                 # Compute reward for reaching terminal state s in time t
@@ -1045,7 +997,7 @@ class ToDoList:
         # "Cut" horizon in order to reduce the number of computations
         self.end_time = min(self.end_time, self.total_time_est)
         
-        # Generate discounts | TODO: Implement epsilon (!)
+        # Generate discounts | TODO: Add epsilon as input parameter (!)
         ToDoList.generate_discounts(epsilon=0., gamma=self.gamma,
                                     horizon=self.end_time, verbose=False)
         
@@ -1233,20 +1185,6 @@ class ToDoList:
         assert 0 < gamma <= 1
         self.gamma = gamma
 
-    # def set_living_reward(self, living_reward):
-    #     """
-    #     The (negative) reward for exiting "normal" states. Note that in the R+N
-    #     text, this reward is on entering a state and therefore is not clearly
-    #     part of the state's future rewards.
-    #     """
-    #     self.living_reward = living_reward
-
-    # def set_noise(self, noise):
-    #     """
-    #     Sets the probability of moving in an unintended direction.
-    #     """
-    #     self.noise = noise
-
     def set_slack_reward(self, slack_reward):
         self.slack_action.set_reward(slack_reward)
         self.slack_reward = slack_reward
@@ -1426,8 +1364,6 @@ class ToDoList:
             # ===== Terminal state =====
             if next_goal is None:
                 
-                # TODO: Compute total penalty for missing goal deadlines (?!)
-
                 # Add slack reward in the Q-values
                 self.Q[s][t].setdefault(-1, dict())
                 self.Q[s][t][-1]["E"] = 0
