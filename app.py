@@ -671,22 +671,13 @@ class PostResource(RESTResource):
                         
                         # Start timer: generating test case
                         tic = time.time()
-
-                        if api_method == "bestSpeedTestSMDP":
-                            test_goals = generate_test_case(
-                                n_bins=jsonData["n_bins"],
-                                n_goals=jsonData["n_goals"],
-                                n_tasks=jsonData["n_tasks"],
-                                worst=False
-                            )
-
-                        if api_method == "worstSpeedTestSMDP":
-                            test_goals = generate_test_case(
-                                n_bins=jsonData["n_bins"],
-                                n_goals=jsonData["n_goals"],
-                                n_tasks=jsonData["n_tasks"],
-                                worst=True
-                            )
+                        
+                        test_goals = generate_test_case(
+                            api_method=api_method,
+                            n_bins=jsonData["n_bins"],
+                            n_goals=jsonData["n_goals"],
+                            n_tasks=jsonData["n_tasks"]
+                        )
 
                         # Stop timer: generating test case
                         toc = time.time()
@@ -859,7 +850,8 @@ class PostResource(RESTResource):
                     # Return scheduled tasks
                     return json.dumps(final_tasks)
                 
-                elif api_method in ["bestSpeedTestSMDP", "worstSpeedTestSMDP"]:
+                elif api_method in ["averageSpeedTestSMDP",
+                                    "bestSpeedTestSMDP", "worstSpeedTestSMDP"]:
     
                     # Stop timer: Complete SMDP procedure
                     main_toc = time.time()
