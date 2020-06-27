@@ -259,7 +259,7 @@ def assign_smdp_points(projects, day_duration, smdp_params, timer,
                 # Add tasks to the list of all tasks
                 tasks.extend(P_)
                 
-                if True:
+                if verbose:
                     print(goal.get_description())
                     print_item(goal)
                 
