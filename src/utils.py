@@ -192,8 +192,9 @@ def get_final_output(task_list, round_param, points_per_hour, user_datetime):
                 task_name += f"1 minute"
             else:
                 task_name += f"{minutes} minutes"
-        
-        if task["deadline_datetime"] is not None:
+
+        if hasattr(task, "deadline_datetime") and \
+                task["deadline_datetime"] is not None:
             task_name += ", due on "
 
             td = task["deadline_datetime"] - user_datetime
@@ -215,6 +216,7 @@ def get_final_output(task_list, round_param, points_per_hour, user_datetime):
     missing_keys = list(set(keys_needed) - current_keys)
     
     for task in task_list:
+        
         task["nm"] = get_human_readable_name(task)
         
         if points_per_hour:
@@ -273,6 +275,19 @@ def get_wf_task_id(task_name):
         return split[-1]  # Return the WorkFlowy ID
     else:
         return "__no_wf_id__"  # Return dummy WorkFlowy ID
+
+
+def incentivize_forced_pull(goals, default_value=0):
+    forced_tasks = deque()
+    
+    for goal in goals:
+        for task in goal["ch"]:
+            if task["today"] and not hasattr(task, "val"):
+                task["val"] = default_value
+                
+                forced_tasks.append(task)
+
+    return forced_tasks
 
 
 def misc_tasks_to_goals(real_goals, misc_goals, extra_time=0):
@@ -605,10 +620,10 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
         goal["ch"].sort(key=lambda task: task["deadline"])
 
         # Set latest start time
-        goal["latest_start_time"] = compute_latest_start_time(goal)
+        # goal["latest_start_time"] = compute_latest_start_time(goal)
 
         # Set estimated goal deadline
-        goal["effective_deadline"] = goal["latest_start_time"] + goal["est"]
+        # goal["effective_deadline"] = goal["latest_start_time"] + goal["est"]
         
         # Check goal value per duration
         value_per_duration = goal["value"] / goal["est"]
