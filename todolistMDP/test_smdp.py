@@ -42,7 +42,7 @@ LOSS_RATE = -1
 GAMMA = 0.9999
 # GAMMA = 1 - 1e-3
 
-N_BINS = 2
+N_BINS = 1
 N_GOALS = 10
 N_TASKS = 50
 START_TIME = 0  # Default
@@ -56,15 +56,15 @@ VALUE_SCALE = 1  # Default
 PLANNING_FALLACY_CONST = 1  # Default
 # PLANNING_FALLACY_CONST = 1.39
 
-# SLACK_REWARD = np.NINF
+SLACK_REWARD = np.NINF
 # SLACK_REWARD = 1
 # SLACK_REWARD = 1e-1
 # SLACK_REWARD = 1e-2
-SLACK_REWARD = 1e-3
+# SLACK_REWARD = 1e-3
 
-# UNIT_PENALTY = 1
-# UNIT_PENALTY = .1
-UNIT_PENALTY = np.PINF
+# UNIT_PENALTY = 10
+UNIT_PENALTY = .1
+# UNIT_PENALTY = np.PINF
 
 sys.setrecursionlimit(10000)
 
@@ -306,12 +306,21 @@ two_goals = [
         num_bins=N_BINS,
         planning_fallacy_const=PLANNING_FALLACY_CONST,
         rewards={10: 100},
+        # tasks=[
+        #     Task("Task 1", time_est=1, deadline=6),
+        #     Task("Task 2", time_est=2, deadline=5),
+        #     Task("Task 3", time_est=3, deadline=3),
+        # ],
         tasks=[
-            Task("Task 1", time_est=1, deadline=10),
-            Task("Task 2", time_est=2, deadline=9),
-            Task("Task 3", time_est=3, deadline=5),
-            Task("Task 4", time_est=4, deadline=8),
+            Task("G1 - T1", time_est=2, deadline=3),
+            Task("G1 - T2", time_est=4, deadline=10),
         ],
+        # tasks=[
+        #     Task("G1 - T1", time_est=10),
+        #     Task("G1 - T2", time_est=20),
+        #     # Task("Task 3", time_est=3, deadline=3),
+        #     # Task("Task 4", time_est=4, deadline=8),
+        # ],
         unit_penalty=UNIT_PENALTY,
     ),
     Goal(
@@ -321,11 +330,102 @@ two_goals = [
         planning_fallacy_const=PLANNING_FALLACY_CONST,
         rewards={10: 100},
         tasks=[
-            Task("Task 1", time_est=1, deadline=6),
-            Task("Task 2", time_est=2, deadline=5),
-            Task("Task 3", time_est=3, deadline=3),
+            Task("G2 - T1", time_est=1, deadline=1),
+            Task("G2 - T2", time_est=3, deadline=6),
         ],
+        # tasks=[
+        #     Task("G2 - T1", time_est=1, deadline=1),
+        #     Task("G2 - T2", time_est=2, deadline=2),
+        #     # Task("Task 3", time_est=3, deadline=3),
+        # ],
         unit_penalty=UNIT_PENALTY,
+    )
+]
+
+
+example_1 = [
+    Goal(
+        description="Presentation",
+        loss_rate=-1,
+        num_bins=1,
+        planning_fallacy_const=1,
+        rewards={15: 100},
+        tasks=[
+            Task("Create PowerPoint", time_est=10, deadline=10),
+            Task("Memorize lines", time_est=5, deadline=15),
+        ],
+        unit_penalty=1,
+    )
+]
+
+example_2 = [
+    Goal(
+        description="Mathematics",
+        loss_rate=-1,
+        num_bins=1,
+        planning_fallacy_const=1,
+        rewards={20: 100},
+        tasks=[
+            Task("Solve assignment", time_est=5, deadline=10),
+            Task("Prepare exam", time_est=15, deadline=20),
+        ],
+        unit_penalty=1,
+    )
+]
+
+example_3 = [
+    Goal(
+        description="Misc",
+        loss_rate=-1,
+        num_bins=1,
+        planning_fallacy_const=1,
+        rewards={3: 30},
+        tasks=[
+            Task("Add new goals", time_est=5, deadline=2),
+            Task("Write tasks in to-do list", time_est=10, deadline=1),
+            # Task("Task 3", time_est=3, deadline=3),
+        ],
+        unit_penalty=1,
+    )
+]
+
+merged_example = [
+    Goal(
+        description="Presentation",
+        loss_rate=-1,
+        num_bins=1,
+        planning_fallacy_const=1,
+        rewards={15: 100},
+        tasks=[
+            Task("Create PowerPoint", time_est=10, deadline=10),
+            Task("Memorize lines", time_est=5, deadline=15),
+        ],
+        unit_penalty=1,
+    ),
+    Goal(
+        description="Mathematics",
+        loss_rate=-1,
+        num_bins=1,
+        planning_fallacy_const=1,
+        rewards={20: 100},
+        tasks=[
+            Task("Solve assignment", time_est=5, deadline=10),
+            Task("Prepare exam", time_est=15, deadline=20),
+        ],
+        unit_penalty=1,
+    ),
+    Goal(
+        description="Misc",
+        loss_rate=-1,
+        num_bins=1,
+        planning_fallacy_const=1,
+        rewards={3: 30},
+        tasks=[
+            Task("Add new goals", time_est=5, deadline=2),
+            Task("Write tasks in to-do list", time_est=10, deadline=1),
+            # Task("Task 3", time_est=3, deadline=3),
+        ],
+        unit_penalty=1,
     )
 ]
 
@@ -482,7 +582,6 @@ def run(goals, gamma=GAMMA, verbose=False):
             compute_pseudo_rewards(goal)
             goal_optimal_policy = run_optimal_policy(goal, choice_mode="max")
             
-
             print(f"===== {goal.description} =====")
             # pprint(goal_optimal_policy)
             # print()
