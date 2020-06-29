@@ -525,7 +525,7 @@ class Task(Item):
 class Goal(Item):
     
     def __init__(self, description, gamma=None, goal_id=None, loss_rate=0,
-                 num_bins=1, rewards=None, planning_fallacy_const=1.,
+                 num_bins=1, planning_fallacy_const=1., rewards=None,
                  slack_reward=None, tasks=None, unit_penalty=np.PINF):
         super().__init__(
             description=description,
@@ -663,9 +663,6 @@ class Goal(Item):
     def get_num_tasks(self):
         return self.num_tasks
 
-    def get_planning_fallacy_const(self):
-        return self.planning_fallacy_const
-    
     def get_policy(self, s=None, t=None):
         if s is not None:
             if t is not None:
