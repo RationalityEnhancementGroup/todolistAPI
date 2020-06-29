@@ -1,38 +1,47 @@
 [
     {
-        "id": "g2-t1",
-        "nm": "2) Read the proposed paper (takes about 4 hours)",
+        "id": "g1-t1-t1",
+        "nm": "1) Meet with exercise partner at the library (takes about 21 minutes)",
         "lm": 0,
-        "est": 240,
-        "parentId": "g2",
+        "est": 21,
+        "parentId": "g1",
         "pcp": false,
-        "val": 403.11
+        "val": 46.81
     },
     {
         "id": "g1-t1-t2",
-        "nm": "1) Solve the exercises (takes about 4 hours)",
+        "nm": "1) Solve exercises (takes about 5 hours and 34 minutes)",
         "lm": 0,
-        "est": 240,
+        "est": 334,
         "parentId": "g1",
         "pcp": false,
-        "val": 237.15
+        "val": 726.24
     },
     {
-        "id": "gm-t1",
-        "nm": "&) Register for exams (takes about 25 minutes, due on 2030-03-05 23:59)",
+        "id": "g3-t3",
+        "nm": "3) Register for exams (takes about 35 minutes)",
         "lm": 0,
-        "est": 25,
-        "parentId": "gm",
+        "est": 35,
+        "parentId": "g3",
         "pcp": false,
-        "val": 107.35
+        "val": 62.14
     },
     {
-        "id": "g1-t1-t1",
-        "nm": "1) Meet with the exercise partner at the library (takes about 10 minutes)",
+        "id": "g3-t1",
+        "nm": "3) Read exam regulations (takes about 1 hour and 24 minutes)",
         "lm": 0,
-        "est": 10,
+        "est": 84,
+        "parentId": "g3",
+        "pcp": false,
+        "val": 147.88
+    },
+    {
+        "id": "g1-t2-t1",
+        "nm": "1) Read lecture notes on \"Probability\" (takes about 1 hour and 24 minutes)",
+        "lm": 0,
+        "est": 84,
         "parentId": "g1",
         "pcp": false,
-        "val": 11.32
+        "val": 183.89
     }
 ]

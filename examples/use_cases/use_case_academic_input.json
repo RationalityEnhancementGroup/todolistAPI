@@ -1,50 +1,41 @@
 {
-    "currentIntentionsList": [
-        {
-            "_c": "_",
-            "_id": "gm-t1",
-            "d": true,
-            "t": "Read exam regulations ~~1h $wf:code123",
-            "vd": 10
-        }
-    ],
+    "currentIntentionsList": [],
     "projects": [
         {
             "id": "g1",
-            "nm": "#CG1_Mathematics ==2000 DUE:2030-04-10",
+            "nm": "#CG1_Mathematics ==2000 DUE:2020-09-30",
             "lm": 0,
             "ch": [
                 {
                     "id": "g1-t1",
-                    "nm": "Complete weekly assignment ~~5h DUE:2030-03-31 12:00",
+                    "nm": "Complete weekly assignment ~~7h",
                     "lm": 0,
                     "ch": [
                         {
                             "id": "g1-t1-t1",
-                            "nm": "Meet with the exercise partner at the library ~~10min #today",
+                            "nm": "Meet with exercise partner at the library ~~15min #today",
                             "lm": 0
                         },
                         {
                             "id": "g1-t1-t2",
-                            "nm": "Solve the exercises ~~4h #today",
+                            "nm": "Solve exercises ~~4h #today",
                             "lm": 0
                         },
                         {
                             "id": "g1-t1-t3",
-                            "nm": "Write down the solutions in LaTeX ~~2h",
+                            "nm": "Write down solutions in LaTeX ~~2h",
                             "lm": 0
                         },
                         {
                             "id": "g1-t1-t4",
-                            "nm": "Send the solutions to the TA for evaluation ~~15min",
+                            "nm": "Revise and submit solutions ~~45min #sundays",
                             "lm": 0
                         }
-
                     ]
                 },
                 {
                     "id": "g1-t2",
-                    "nm": "Prepare for the next lecture ~~4h DUE:2030-02-27 14:00",
+                    "nm": "Prepare for the next lecture ~~4h",
                     "lm": 0,
                     "ch": [
                         {
@@ -69,51 +60,54 @@
         },
         {
             "id": "g2",
-            "nm": "#CG2_RNN_Seminar ==500 DUE:2030-03-03",
+            "nm": "#CG2_Causality_seminar ==1000 DUE:2020-07-31",
             "lm": 0,
             "ch": [
                 {
                     "id": "g2-t1",
-                    "nm": "Read the proposed paper ~~4h #today",
+                    "nm": "Read proposed paper ~~4h",
                     "lm": 0
                 },
                 {
                     "id": "g2-t2",
-                    "nm": "Compose slides for the presentation ~~2.5h",
-                    "lm": 0,
-                    "ch": [
-                        {
-                            "id": "g2-t2-t1",
-                            "nm": "Send the presentation to the professor ~~15min",
-                            "lm": 0
-                        }
-                    ]
+                    "nm": "Compose slides for presentation ~~2.5h",
+                    "lm": 0
                 },
                 {
                     "id": "g2-t3",
-                    "nm": "Write a summary paper ~~6h",
+                    "nm": "Send presentation ~~15min #weekends",
                     "lm": 0
                 },
                 {
                     "id": "g2-t4",
-                    "nm": "Review papers of 3 other participants in the seminar ~~1.5h",
+                    "nm": "Write a summary paper ~~6h",
+                    "lm": 0
+                },
+                {
+                    "id": "g2-t5",
+                    "nm": "Review papers of 2 other participants ~~1.5h",
                     "lm": 0
                 }
             ]
         },
         {
-            "id": "gm",
-            "nm": "#CG_Misc ==100 DUE:2030-03-30",
+            "id": "g3",
+            "nm": "#CG3_University ==500 DUE:2021-09-30",
             "lm": 0,
             "ch": [
                 {
-                    "id": "gm-t1",
-                    "nm": "Register for exams ~~25min #today DUE:2030-03-05",
+                    "id": "g3-t1",
+                    "nm": "Read exam regulations ~~1h #monday",
                     "lm": 0
                 },
                 {
-                    "id": "gm-t2",
-                    "nm": "Choose courses for the next semester ~~2.5h",
+                    "id": "g3-t2",
+                    "nm": "Choose courses for the next semester ~~2h",
+                    "lm": 0
+                },
+                {
+                    "id": "g3-t3",
+                    "nm": "Register for exams ~~25min #today DUE:2020-07-05",
                     "lm": 0
                 }
             ]
@@ -123,7 +117,7 @@
     "today_hours": [
         {
             "id": "_",
-            "nm": "#HOURS_TODAY ==8",
+            "nm": "#HOURS_TODAY ==10",
             "lm": 0
         }
     ],
