@@ -191,7 +191,7 @@ Notation:
 - `(lower_bound, upper_bound)`: open interval
 
 ```
-URL example: http://127.0.0.1:6789/api/smdp/mdp/30/14/inf/0/inf/0/inf/false/2/max/0.9999/1/2/1.39/0/0/0/1/0/1/min_max/1/2/tree/u123/bestSpeedTestSMDP
+URL example: http://127.0.0.1:6789/api/smdp/mdp/30/14/inf/0/inf/0/inf/false/2/max/0.9999/1/2/1.39/0/0/0/1/0/1/min_max/1/2/tree/u123/getTasksForToday
 
 <method>: random
 <scheduler>: deadline
