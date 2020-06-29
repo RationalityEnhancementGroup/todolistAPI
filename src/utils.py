@@ -934,8 +934,10 @@ def tree_to_old_structure(projects, params):
                 # effective_deadline=goal["effective_deadline"],
                 # latest_start_time=goal["latest_start_time"],
                 loss_rate=params["loss_rate"],
+                planning_fallacy_const=params["planning_fallacy_const"],
                 num_bins=params["num_bins"],
                 rewards={goal["deadline"]: goal["value"]},
+                slack_reward=params["slack_reward"],
                 tasks=list(tasks),
                 unit_penalty=params["unit_penalty"]
             )
