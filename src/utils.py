@@ -282,7 +282,7 @@ def incentivize_forced_pull(goals, default_value=0):
     
     for goal in goals:
         for task in goal["ch"]:
-            if task["today"] and not hasattr(task, "val"):
+            if task["today"] and "val" not in task.keys():
                 task["val"] = default_value
                 
                 forced_tasks.append(task)
@@ -936,7 +936,6 @@ def tree_to_old_structure(projects, params):
                 loss_rate=params["loss_rate"],
                 num_bins=params["num_bins"],
                 rewards={goal["deadline"]: goal["value"]},
-                slack_reward=np.NINF,
                 tasks=list(tasks),
                 unit_penalty=params["unit_penalty"]
             )

@@ -166,14 +166,12 @@ def assign_random_points(projects, distribution_fxn=np.random.normal,
 
 def assign_smdp_points(projects, day_duration, smdp_params, timer,
                        json=True, start_time=0, time_zone=0, verbose=False):
-    
     if json:
-        
+
         """ Convert real goals from JSON to Goal class objects """
         tic = time.time()
         goals = tree_to_old_structure(projects, smdp_params)
-        toc = time.time()
-        timer["Run SMDP - Converting JSON to objects"] = toc - tic
+        timer["Run SMDP - Converting JSON to objects"] = time.time() - tic
 
     else:
         goals = projects
@@ -184,193 +182,185 @@ def assign_smdp_points(projects, day_duration, smdp_params, timer,
                           gamma=smdp_params["gamma"],
                           slack_reward=smdp_params["slack_reward"],
                           start_time=start_time)
-    toc = time.time()
-    timer["Run SMDP - Creating ToDoList object"] = toc - tic
+    timer["Run SMDP - Creating ToDoList object"] = time.time() - tic
 
     """ Solve to-do list """
     tic = time.time()
-    to_do_list.solve(verbose=verbose)
-    toc = time.time()
-    timer["Run SMDP - Solving SMDP"] = toc - tic
+    to_do_list.solve(start_time=start_time, verbose=verbose)
+    timer["Run SMDP - Solving SMDP"] = time.time() - tic
 
     """ Compute goal-level pseudo-rewards """
     tic = time.time()
     compute_pseudo_rewards(to_do_list, start_time=start_time,
                            loc=smdp_params["goal_pr_loc"],
                            scale=smdp_params["goal_pr_scale"])
-    toc = time.time()
-    timer["Run SMDP - Computing goal-level pseudo-rewards"] = toc - tic
+    timer["Run SMDP - Computing goal-level pseudo-rewards"] = time.time() - tic
 
     if verbose:
         print_item(to_do_list)
-    
-    """ Run SMDP - Running goal-level optimal policy """
+
+    """ Get optimal goal-level policy """
     tic = time.time()
     P, t = run_optimal_policy(to_do_list,
                               choice_mode=smdp_params["choice_mode"])
-    toc = time.time()
-    timer["Run SMDP - Running goal-level optimal policy"] = toc - tic
-
+    timer["Run SMDP - Running goal-level optimal policy"] = time.time() - tic
+    
     # Initialize list of all tasks
     tasks = deque()
-    
-    """ Run SMDP - Task-level optimal policy & pseudo-rewards """
+
+    """ Run SMDP - Task-level pseudo-rewards """
     tic = time.time()
+
+    # Initialize minimum task pseudo-reward
+    min_task_PR = np.PINF
+
+    # Compute pseudo-rewards at initial (t)ime
+    for goal in to_do_list.get_goals():
+        
+        min_PR = compute_pseudo_rewards(goal, start_time=start_time,
+                                        loc=smdp_params["task_pr_loc"],
+                                        scale=smdp_params["task_pr_scale"])
+
+        # Update minimum pseudo-reward
+        min_task_PR = min(min_task_PR, min_PR)
+        
+        if verbose:
+            print_item(goal)
+
+    # Constrain minimum task pseudo-reward
+    # TODO: Make lower bound flexible (!)
+    min_task_PR = abs(min(max(-1000, min_task_PR), 0))
     
-    total_q = 0
-    for entry in P:
-        s = entry["s"]
-        t = entry["t"]
-        a = entry["a"]
-        total_q += to_do_list.get_q_values(s, t, a)["E"]
+    if verbose:
+        print(f"Minimum task PR: {min_task_PR}")
+    
+    timer["Run SMDP - Computing task-level pseudo-rewards"] = time.time() - tic
 
     # Initialize slack-reward
     slack_reward = to_do_list.compute_slack_reward(start_time)
-    
+
+    """ Run SMDP - Running task-level optimal policies """
+    tic = time.time()
+
     for entry in P:
-        
+
         # Get next (a)ction and initial (t)ime
-        s = entry["s"]
         t = entry["t"]
         a = entry["a"]
-        
+
+        # If next action is not slack-off action
         if a != -1:
-            q = to_do_list.get_q_values(s, t, a)["E"]
-    
-            # If next action is not slack-off action
-            if a != -1:
+
+            # Get goal that correspond to that (a)ction
+            goal = goals[a]
+
+            # Run optimal policy at initial (t)ime
+            P_, t_ = run_optimal_policy(
+                goal, t=t, choice_mode=smdp_params["choice_mode"])
+            
+            for task in P_:
                 
-                # Get goal that correspond to that (a)ction
-                goal = goals[a]
-                
-                # Compute pseudo-rewards at initial (t)time
-                compute_pseudo_rewards(goal, start_time=start_time,
-                                       loc=smdp_params["task_pr_loc"],
-                                       scale=smdp_params["task_pr_scale"])
-                
-                # Run optimal policy at initial (t)ime
-                P_, t_ = run_optimal_policy(goal, t=t,
-                                           choice_mode=smdp_params["choice_mode"])
-                
-                for entry_ in P_:
-                    pr = entry_["obj"].get_optimal_reward()
-                    entry_["obj"].set_optimal_reward(pr * q / total_q)
-                    
+                # Shift pseudo-rewards
+                # obj = task["obj"]
+                # pr = obj.get_optimal_reward()
+                # obj.set_optimal_reward(pr + min_task_PR)
+                # task["PR"] += min_task_PR
+
                 # Add tasks to the list of all tasks
-                tasks.extend(P_)
-                
-                if verbose:
-                    print(goal.get_description())
-                    print_item(goal)
-                
-    toc = time.time()
-    timer["Run SMDP - Task-level optimal policy & pseudo-rewards"] = toc - tic
+                tasks.append(task)
 
-    """ Run SMDP - Converting tasks queue to list """
+            if verbose:
+                print(goal.get_description())
+                print_item(goal)
+
+    timer["Run SMDP - Running task-level optimal policies"] = time.time() - tic
+
+    # Start timer: Run SMDP - Converting tasks queue to list
     tic = time.time()
+    
     tasks = [task["obj"] for task in tasks]
-    toc = time.time()
-    timer["Run SMDP - Task-level optimal policy & pseudo-rewards"] = toc - tic
-
-    """ Run SMDP - Sorting tasks w.r.t. optimal reward """
-    tic = time.time()
-    tasks.sort(key=lambda task: -task.get_optimal_reward())
-    toc = time.time()
-    timer["Sorting tasks w.r.t. optimal reward"] = toc - tic
+    # tasks = list(tasks)
+    
+    timer["Run SMDP - Converting tasks queue to list"] = time.time() - tic
 
     if verbose:
         for task in tasks:
             print(task.get_description(), task.get_optimal_reward())
 
-    """ Run SMDP - Scaling rewards """
+    """ Run SMDP - Scaling rewards
+        Scale task values according to the provided scaling function """
     tic = time.time()
+    
     if len(tasks) > 0:
         scale_optimal_rewards(tasks,
                               scale_min=smdp_params["scale_min"],
                               scale_max=smdp_params["scale_max"],
                               scale_type=smdp_params["scale_type"])
-    toc = time.time()
-    timer["Run SMDP - Scaling rewards"] = toc - tic
+        
+    timer["Run SMDP - Scaling rewards"] = time.time() - tic
     
     if json:
-        
+
         """ Run SMDP - Scheduling tasks """
         tic = time.time()
+        
         today_tasks = schedule_tasks_for_today(projects, tasks,
                                                duration_remaining=day_duration,
                                                time_zone=time_zone)
-        toc = time.time()
-        timer["Run SMDP - Scheduling tasks"] = toc - tic
-
+        
+        timer["Run SMDP - Scheduling tasks"] = time.time() - tic
+        
         """ Run SMDP - Incentivizing forced pull """
         tic = time.time()
+        
         forced_pull = incentivize_forced_pull(projects, slack_reward)
         today_tasks.extend(forced_pull)
-        toc = time.time()
-        timer["Run SMDP - Incentivizing forced pull"] = toc - tic
-
+        
+        timer["Run SMDP - Incentivizing forced pull"] = time.time() - tic
+        
     else:
         today_tasks = tasks
         
-        min_value = np.PINF
-        max_value = np.NINF
-        
-        for task in today_tasks:
-            value = task.get_optimal_reward()
-            min_value = min(min_value, value)
-            max_value = max(max_value, value)
-            # print(value)
-
-        # loc = to_do_list.compute_slack_reward(start_time)
-        # loc = max(loc, 0)
-        # scale = 30
-        # scale = max_value - min_value
-        
-        for task in today_tasks:
-            value = task.get_optimal_reward()
-            # value = (value - min_value) / (max_value - min_value) * scale + loc
-            # print(task.get_description(), task.get_optimal_reward(), value)
-
     return today_tasks
 
 
-def get_actions_and_rewards(mdp, verbose=False):
-    policy = mdp.get_optimal_policy()
-    values = mdp.get_value_function()
-    
-    state = sorted(list(policy.keys()))[0]
-    vec, tm = state
-    
-    action = policy[state]
-    value = values[state]
-    actions_and_rewards = [(action, value)]
-
-    if verbose:
-        print(state, action, value)
-    
-    # While there is an action to perform
-    while policy[state] is not None:
-        
-        # Get task
-        idx = policy[state]
-        task = mdp.index_to_task[idx]
-        
-        # Get next state
-        next_vec = list(vec)
-        next_vec[idx] = 1
-        
-        tm += task.get_time_est()
-        state = (tuple(next_vec), tm)
-        vec, tm = state
-        
-        action = policy[state]
-        value = values[state]
-    
-        if verbose:
-            print(state, action, value)
-        actions_and_rewards += [(action, value)]
-    
-    return actions_and_rewards
+# def get_actions_and_rewards(mdp, verbose=False):
+#     policy = mdp.get_optimal_policy()
+#     values = mdp.get_value_function()
+#
+#     state = sorted(list(policy.keys()))[0]
+#     vec, tm = state
+#
+#     action = policy[state]
+#     value = values[state]
+#     actions_and_rewards = [(action, value)]
+#
+#     if verbose:
+#         print(state, action, value)
+#
+#     # While there is an action to perform
+#     while policy[state] is not None:
+#
+#         # Get task
+#         idx = policy[state]
+#         task = mdp.index_to_task[idx]
+#
+#         # Get next state
+#         next_vec = list(vec)
+#         next_vec[idx] = 1
+#
+#         tm += task.get_time_est()
+#         state = (tuple(next_vec), tm)
+#         vec, tm = state
+#
+#         action = policy[state]
+#         value = values[state]
+#
+#         if verbose:
+#             print(state, action, value)
+#         actions_and_rewards += [(action, value)]
+#
+#     return actions_and_rewards
 
 
 if __name__ == '__main__':

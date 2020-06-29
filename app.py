@@ -620,7 +620,7 @@ class PostResource(RESTResource):
                 
                 elif method == "smdp":
                     
-                    # Start timer: reading SMDP parameters
+                    """ Reading SMDP parameters """
                     tic = time.time()
                     
                     smdp_params = {
@@ -655,10 +655,7 @@ class PostResource(RESTResource):
                         if smdp_params["scale_max"] == float("inf"):
                             smdp_params["scale_max"] = None
 
-                    # Stop timer: reading SMDP parameters
                     toc = time.time()
-
-                    # Store time: reading SMDP parameters
                     timer["Reading SMDP parameters"] = toc - tic
                     
                     if api_method == "getTasksForToday":
@@ -669,23 +666,21 @@ class PostResource(RESTResource):
 
                     else:
                         
-                        # Start timer: generating test case
+                        """ Generating test case """
                         tic = time.time()
                         
                         test_goals = generate_test_case(
                             api_method=api_method,
                             n_bins=jsonData["n_bins"],
                             n_goals=jsonData["n_goals"],
-                            n_tasks=jsonData["n_tasks"]
+                            n_tasks=jsonData["n_tasks"],
+                            unit_penalty=smdp_params["unit_penalty"]
                         )
 
-                        # Stop timer: generating test case
                         toc = time.time()
-                        
-                        # Store time: generating test case
                         timer["Generating test case"] = toc - tic
     
-                        # Start timer: Run SMDP
+                        """ Run SMDP """
                         tic = time.time()
     
                         final_tasks = assign_smdp_points(
@@ -697,20 +692,15 @@ class PostResource(RESTResource):
                             json=False
                         )
                         
-                        # Stop timer: Run SMDP
                         toc = time.time()
-                        
-                        # Store time: Run SMDP
                         timer["Run SMDP"] = toc - tic
 
-                        # Start timer: Simulating task scheduling
+                        """ Simulating task scheduling """
                         tic = time.time()
 
                         simulate_task_scheduling(test_goals)
                         
-                        # Stop timer: Simulating task scheduling
                         toc = time.time()
-                        
                         timer["Simulating task scheduling"] = toc - tic
     
                 # TODO: Test and fix potential bugs!
