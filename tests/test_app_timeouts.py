@@ -105,7 +105,7 @@ def test_speed_mdp(n_goals, n_tasks, deadline_years, mixing_params, n_trials=1):
     return time_df, tout_df
 
 
-def test_speed_smdp(n_bins, n_goals, n_tasks, n_trials=1, worst=True):
+def test_speed_smdp(test_mode, n_bins, n_goals, n_tasks, n_trials=1):
     time_results = dict()
 
     date = datetime.now()
@@ -143,12 +143,8 @@ def test_speed_smdp(n_bins, n_goals, n_tasks, n_trials=1, worst=True):
                           f"Number of tasks per goal: {nt}"
                     )
                     
-                    test_mode = "worstSpeedTestSMDP"
-                    if not worst:
-                        test_mode = "bestSpeedTestSMDP"
-                        
                     PARAMS = f"api/smdp/mdp/30/14/inf/0/inf/0/inf/false/2/" \
-                             f"max/{1-1e-9}/1/1/{nb}/1.39/0/0/0/1/0/1/" \
+                             f"max/{1-1e-9}/1/{nb}/1.39/0/0/0/1/0/1/" \
                              f"tree/u123/{test_mode}"
                     API_ENDPOINT = SERVER + PARAMS
     
@@ -292,8 +288,8 @@ if __name__ == '__main__':
           DB.trees.find({"user_id": USER_ID}).count())
 
     N_BINS = [
-        1,
-        # 2
+        # 1,
+        2
     ]
 
     # N_GOALS = list(range(1, 11))
@@ -301,21 +297,21 @@ if __name__ == '__main__':
         1,
         2,
         3,
-        # 4,
-        # 5,
-        # 6,
-        # 7,
-        # 8,
-        # 9,
-        # 10
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
     ]
     
     N_TASKS = [
-        # 25,
-        # 50,
-        # 75,
-        # 100,
-        # 125, 150, 250, 500, 750, 1000,
+        25,
+        50,
+        75,
+        100,
+        125, 150, 250, 500, 750, 1000,
         1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000,
         # 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000
     ]
@@ -335,5 +331,7 @@ if __name__ == '__main__':
         n_goals=N_GOALS,
         n_tasks=N_TASKS,
         n_trials=5,
-        worst=False
+        test_mode="averageSpeedTestSMDP",
+        # test_mode="bestSpeedTestSMDP",
+        # test_mode="worstSpeedTestSMDP",
     )
