@@ -3,8 +3,10 @@ from collections import deque
 from todolistMDP.to_do_list import Goal, Task
 
 
-def generate_test_case(api_method, n_bins, n_goals, n_tasks,
-                       deadline_time=1000000, reward=1000000, time_scale=1):
+def generate_test_case(api_method, n_bins, n_goals, n_tasks, deadline_time=1e6,
+                       time_scale=1, unit_penalty=0):
+    
+    reward = n_tasks * (n_tasks + 1)
     
     # Initialize list of goals
     goals = deque()
@@ -41,8 +43,9 @@ def generate_test_case(api_method, n_bins, n_goals, n_tasks,
             description=f"G{goal_idx}",
             loss_rate=-1,
             num_bins=n_bins,
-            rewards={deadline_time: reward},
-            tasks=list(tasks)
+            rewards={deadline_time: (goal_idx + 1) * reward},
+            tasks=list(tasks),
+            unit_penalty=unit_penalty
         )
         
         goals.append(goal)
