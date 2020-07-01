@@ -874,7 +874,9 @@ class PostResource(RESTResource):
                 return json.dumps("Timeout!")
                 
             except Exception as error:
-                status = "The API has encountered an error, please try again."
+                # status = "The API has encountered an error, please try again."
+                
+                status = str(error)
                 
                 # Store anonymous error info in DB collection
                 anonymous_error = parse_error_info(str(error))
