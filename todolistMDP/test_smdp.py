@@ -1,11 +1,15 @@
 import numpy as np
+import os
+import pandas as pd
 import sys
 import time
 
+from datetime import datetime
 from math import factorial
 from pprint import pprint
 from tqdm import tqdm
 
+from todolistMDP.smdp_test_generator import generate_test_case
 from todolistMDP.to_do_list import Task, Goal, ToDoList,\
     compute_pseudo_rewards, run_optimal_policy
 
@@ -430,50 +434,6 @@ merged_example = [
 ]
 
 
-def generate_discrepancy_test(n_goals, n_tasks):
-    deadline = (n_goals * n_tasks ** 2) * TIME_SCALE
-    return [
-        Goal(
-            description=f"G{g+1}",
-            loss_rate=LOSS_RATE,
-            planning_fallacy_const=PLANNING_FALLACY_CONST,
-            rewards={deadline: 10000},
-            # rewards={deadline: (g + 1) * 150},
-            # rewards={deadline: (g + 1) * 1000},
-            tasks=[
-                # Task(f"G{g+1} T{t+1}", time_est=g + 1 + (t + 1) * TIME_SCALE)
-                Task(f"G{g+1} T{t+1}",
-                     time_est=(g + 1) * n_goals + (t + 1) * TIME_SCALE)
-                # Task(f"T{t+1}", time_est=1)
-                for t in range(n_tasks)
-            ],
-            unit_penalty=np.PINF,
-        )
-        for g in range(n_goals)
-    ]
-
-
-def generate_goal(n_tasks, deadline_time, reward=100, time_scale=TIME_SCALE):
-    return Goal(
-        description="__GOAL__",
-        loss_rate=LOSS_RATE,
-        planning_fallacy_const=PLANNING_FALLACY_CONST,
-        rewards={deadline_time: reward},
-        tasks=[
-            Task(f"T{i}", deadline=n_tasks-i+1, time_est=i * time_scale)
-            for i in range(1, n_tasks+1)
-        ],
-        # tasks=[
-        #     Task(
-        #         description=f"T{i}",
-        #         deadline=n_tasks * 25,
-        #         time_est=25
-        #     )
-        #     for i in range(1, n_tasks+1)
-        # ],
-    )
-
-
 def print_stats(goal):  # TODO: Move this a Goal method!
     effective_computations = goal.total_computations - goal.already_computed_pruning - goal.small_reward_pruning
     
@@ -487,54 +447,61 @@ def print_stats(goal):  # TODO: Move this a Goal method!
     )
 
 
-def multi_test(num_goals: list, num_tasks: list, num_samples=1,
-               gamma=GAMMA, eval_dfs=False, verbose=False):
+def local_speed_test(test_mode, n_bins: list, n_goals: list, n_tasks: list,
+                     n_trials=1):
     
-    for n_goals in num_goals:
-        for n_tasks in num_tasks:
-            print(f"===== {n_goals} goals x {n_tasks} tasks =====")
+    OUTPUT_PATH = f"tests/smdp/"
+    os.makedirs(OUTPUT_PATH, exist_ok=True)
+    
+    time_results = dict()
+    
+    date = datetime.now()
+    timestamp = f"{date.year:04d}_{date.month:02d}_{date.day:02d}_" \
+                f"{date.hour:02d}_{date.minute:02d}_{date.second:02d}"
+    
+    time_df = pd.DataFrame()
+    
+    for nb in n_bins:
+        for ng in n_goals:
+    
+            time_log = pd.Series(index=n_tasks)
+    
+            for nt in n_tasks:
+                print(f"===== {nb} bins x {ng} goals x {nt} tasks =====")
 
-            time_dfs = []
-            time_rec = []
-            
-            for _ in tqdm(range(num_samples)):
-                tic = time.time()
-                goals = [
-                    generate_goal(n_tasks, deadline_time=n_tasks * n_goals * 30,
-                                  time_scale=2*s+1)
-                    for s in range(n_goals)
-                ]
-                to_do_list = ToDoList(goals, gamma=gamma,
-                                      slack_reward=SLACK_REWARD)
-                to_do_list.solve(verbose=False)
-                toc = time.time()
-                
-                if verbose:
-                    print_stats(to_do_list)
-                    print(f"Recursive procedure took {toc - tic:.2f} seconds!\n")
-            
-                time_rec.append(toc - tic)
-        
-                # if eval_dfs:
-                #     goal = generate_goal()
-                #     tic = time.time()
-                #     result = goal.dfs_solver(gamma=GAMMA, start_time=START_TIME)
-                #     toc = time.time()
-                #     print_stats(goal)
-                #     print(f"DFS procedure took {toc - tic:.2f} seconds!")
-                #
-                #     time_dfs.append(toc - tic)
-                #
-                #     print()
-                #     pprint(result["Q"])
-                #     print()
+                time_results[nt] = list()
     
-            print(f"\nRec mean time: {np.array(time_rec).mean()}")
-            print(f"Rec times {np.array(time_rec)}\n")
-            
-            # if eval_dfs:
-            #     print(f"DFS mean time: {np.array(time_dfs).mean()}")
-            #     print(f"DFS times {np.array(time_dfs}}")
+                for _ in tqdm(range(n_trials)):
+                    
+                    goals = generate_test_case(test_mode,
+                                               n_bins=nb, n_goals=ng,
+                                               n_tasks=nt)
+                    
+                    tic = time.time()
+                    to_do_list = ToDoList(goals,
+                                          gamma=GAMMA,
+                                          slack_reward=SLACK_REWARD)
+                    to_do_list.solve(verbose=False)
+                    toc = time.time()
+                    
+                    time_results[nt].append(toc - tic)
+
+                # Compute mean time
+                time_log[nt] = np.mean(time_results[nt])
+
+                # Print results
+                print(f"\nNumber of bins: {nb}\n"
+                      f"Number of goals: {ng}\n"
+                      f"Number of tasks per goal: {nt}\n"
+                      f"Total number of tasks: {ng * nt}\n"
+                      f"Average time: {time_log[nt]:.4f}\n"
+                      f"Time results: {time_results[nt]}\n")
+
+            time_df[ng] = time_log
+            time_df.to_csv(f"{OUTPUT_PATH}/"
+                           f"{timestamp}_{test_mode}_direct_time.csv")
+
+    return time_df
 
 
 def run(goals, gamma=GAMMA, verbose=False):
@@ -623,15 +590,42 @@ if __name__ == '__main__':
     # goals = test_1
     # goals = test_2
     # goals = [single_goal]
-    goals = two_goals
+    # goals = two_goals
     
-    # goals = generate_discrepancy_test(n_goals=N_GOALS, n_tasks=N_TASKS)
+    # run(goals=goals, verbose=False)
     
-    run(goals=goals, verbose=False)
-    
-    # multi_test(
-    #     num_goals=[1, 2, 3, 4, 5, 6, 7, 8, 9],
-    #     num_tasks=[50],
-    #     num_samples=3,
-    #     verbose=False
-    # )
+    local_speed_test(
+        n_bins=[
+            1,
+            # 2
+        ],
+        n_goals=[
+            # 1,
+            # 2,
+            # 3,
+            4,
+            # 5,
+            # 6,
+            # 7,
+            # 8,
+            # 9,
+            # 10
+        ],
+        n_tasks=[
+            1,
+            2,
+            3,
+            4,
+            # 25,
+            # 50,
+            # 75,
+            # 100,
+            # 125, 150, 250, 500, 750, 1000,
+            # 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000,
+            # 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000
+        ],
+        n_trials=5,
+        # test_mode="averageSpeedTestSMDP",
+        # test_mode="bestSpeedTestSMDP",
+        test_mode="worstSpeedTestSMDP",
+    )

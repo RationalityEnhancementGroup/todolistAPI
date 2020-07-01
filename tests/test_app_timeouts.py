@@ -203,8 +203,10 @@ def test_speed_smdp(test_mode, n_bins, n_goals, n_tasks, n_trials=1):
                                        f"{timestamp}_{test_mode}_"
                                        f"{SERVER_ABBR}_main.csv")
     
-                    # Print results
+                    # Compute mean time
                     time_log[nt] = np.mean(time_results[nt])
+                    
+                    # Print results
                     print(f"\nNumber of bins: {nb}\n"
                           f"Number of goals: {ng}\n"
                           f"Number of tasks per goal: {nt}\n"
