@@ -231,6 +231,12 @@ If you encounter any problem related to the API, please submit a Github issue.
 
 All required Python packages are listed in the `requirements.txt` file.
 
+## Citation
+
+If you use this code in academic work, please cite the report:
+
+<TBD>
+
 ## Acknowledgements
 
 This project uses code from:
