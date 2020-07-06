@@ -9,9 +9,9 @@ from math import factorial
 from pprint import pprint
 from tqdm import tqdm
 
+from todolistMDP.smdp_utils import compute_pseudo_rewards, run_optimal_policy
 from todolistMDP.smdp_test_generator import generate_test_case
-from todolistMDP.to_do_list import Task, Goal, ToDoList,\
-    compute_pseudo_rewards, run_optimal_policy
+from todolistMDP.to_do_list import Task, Goal, ToDoList
 
 
 def print_item(item):
