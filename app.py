@@ -384,21 +384,6 @@ class PostResource(RESTResource):
                 # Store time: parsing scheduling tags
                 timer["Parsing scheduling tags"] = toc - tic
 
-                # Check whether users have assigned more tasks than their time allows.
-                # for weekday in range(len(typical_minutes)):
-                #     if typical_minutes[weekday] < 0:
-                #         # TODO: Change the error message once we introduce weekdays in WorkFlowy
-                #         status = f"You have {-typical_minutes[weekday]} more " \
-                #                  f"minutes assigned on a typical day. Please " \
-                #                  f"increase your typical working hours or " \
-                #                  f"remove some of the #daily tasks. "
-                #
-                #         # Store error in DB
-                #         store_log(db.request_log, log_dict, status=status)
-                #
-                #         cherrypy.response.status = 403
-                #         return json.dumps(status + CONTACT)
-
                 # Start timer: subtracting times
                 tic = time.time()
 
@@ -555,68 +540,6 @@ class PostResource(RESTResource):
 
                         cherrypy.response.status = 403
                         return json.dumps(status + CONTACT)
-
-                # DP method
-                # elif method == "dp" or method == "greedy":
-                #     # Get mixing parameter | Default URL value: 0
-                #     mixing_parameter = float(parameters[0])
-                #
-                #     # Store the value of the mixing parameter in the log dict
-                #     log_dict['mixing_parameter'] = mixing_parameter
-                #
-                #     # Defined by the experimenter
-                #     if not (0 <= mixing_parameter < 1):
-                #         status = "There was an issue with the API input " \
-                #                  "(mixing-parameter value). Please contact " \
-                #                  "us at reg.experiments@tuebingen.mpg.de."
-                #         store_log(db.request_log, log_dict, status=status)
-                #         cherrypy.response.status = 403
-                #         return json.dumps(status)
-                #
-                #     scaling_inputs = {
-                #         'scale_type': "no_scaling",
-                #         'scale_min': None,
-                #         'scale_max': None
-                #     }
-                #
-                #     if len(parameters) >= 4:
-                #         scaling_inputs['scale_type'] = parameters[1]
-                #         scaling_inputs['scale_min'] = float(parameters[2])
-                #         scaling_inputs['scale_max'] = float(parameters[3])
-                #
-                #         if scaling_inputs["scale_min"] == float("inf"):
-                #             scaling_inputs["scale_min"] = None
-                #         if scaling_inputs["scale_max"] == float("inf"):
-                #             scaling_inputs["scale_max"] = None
-                #
-                #     solver_fn = run_dp_algorithm
-                #     if method == "greedy":
-                #         solver_fn = run_greedy_algorithm
-                #
-                #     # TODO: Get informative exceptions
-                #     try:
-                #         final_tasks = \
-                #             assign_dynamic_programming_points(
-                #                 projects,
-                #                 solver_fn=solver_fn,
-                #                 scaling_fn=utility_scaling,
-                #                 scaling_inputs=scaling_inputs,
-                #                 day_duration=today_minutes,
-                #                 mixing_parameter=mixing_parameter,
-                #                 time_zone=time_zone,
-                #                 verbose=False
-                #             )
-                #     except Exception as error:
-                #         cherrypy.response.status = 403
-                #         if to_ctx_mgr.state == to_ctx_mgr.TIMED_OUT:
-                #
-                #             error = "The API took too long processing your " \
-                #                     "Workflowy information, please try again. " \
-                #                     "Long processing times can arise from too " \
-                #                     "many or very late deadlines -- if you " \
-                #                     "can, you might want to reduce these."
-                #
-                #         return json.dumps(str(error) + " " + CONTACT)
                 
                 elif method == "smdp":
                     
@@ -703,12 +626,6 @@ class PostResource(RESTResource):
                         toc = time.time()
                         timer["Simulating task scheduling"] = toc - tic
     
-                # TODO: Test and fix potential bugs!
-                # elif method == "old-report":
-                #     final_tasks = \
-                #         assign_old_api_points(projects, backward_induction,
-                #                               duration=today_minutes)
-                
                 else:
                     status = "API method does not exist. Please contact us " \
                              "at reg.experiments@tuebingen.mpg.de."
