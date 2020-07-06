@@ -162,7 +162,7 @@ scale: 100
 <functionName>: getTasksForToday
 ```
 
-### SMDP point-assignment method
+### SMDP point-assignment method (`smdp`)
 - Additional parameters
     - `choice_mode`: Mode of making time transitions while executing optimal policy
         - `max`: Choose the path that is most-likely to happen.
@@ -240,5 +240,5 @@ If you use this code in academic work, please cite the report:
 ## Acknowledgements
 
 This project uses code from:
-- The Pacman Projects [http://ai.berkeley.edu]
+- [The Pacman Projects](http://ai.berkeley.edu)
 - [todolistMDP by Andrew Tan](https://github.com/andrewztan/todolistMDP)
