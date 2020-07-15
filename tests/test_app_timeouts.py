@@ -244,7 +244,7 @@ if __name__ == '__main__':
     HEROKU = 2
     VERBOSE = False
     
-    MODE = HEROKU
+    MODE = LOCAL
     
     # ALGORITHM = "dp"
     ALGORITHM = "smdp"
@@ -290,8 +290,8 @@ if __name__ == '__main__':
           DB.trees.find({"user_id": USER_ID}).count())
 
     N_BINS = [
-        # 1,
-        2
+        1,
+        # 2
     ]
 
     # N_GOALS = list(range(1, 11))
@@ -333,7 +333,9 @@ if __name__ == '__main__':
         n_goals=N_GOALS,
         n_tasks=N_TASKS,
         n_trials=5,
-        test_mode="averageSpeedTestSMDP",
+        # test_mode="averageSpeedTestSMDP",
         # test_mode="bestSpeedTestSMDP",
+        # test_mode="exhaustiveSpeedTestSMDP",
+        test_mode="realSpeedTestSMDP",
         # test_mode="worstSpeedTestSMDP",
     )

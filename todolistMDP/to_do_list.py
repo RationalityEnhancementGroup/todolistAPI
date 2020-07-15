@@ -32,6 +32,7 @@ class Item:
             self.time_est: None
         }
         
+        self.expected_loss = None  # TODO: Implement this
         self.values = deque()
 
     def __hash__(self):
@@ -71,6 +72,9 @@ class Item:
 
     def get_description(self):
         return self.description
+    
+    def get_expected_loss(self):
+        return self.expected_loss
 
     def get_id(self):
         return self.item_id
@@ -135,6 +139,12 @@ class Item:
     
     def get_values(self):
         return self.values
+    
+    def set_description(self, description):
+        self.description = description
+        
+    def set_expected_loss(self, expected_loss):
+        self.expected_loss = expected_loss
     
     def set_idx(self, idx):
         self.idx = idx
@@ -288,6 +298,11 @@ class Goal(Item):
 
         # Initialize highest negative reward
         self.highest_negative_reward = np.NINF
+        
+        # Initialize dictionary of maximum future Q-values
+        self.future_q = {
+            0: None
+        }
 
     def __str__(self):
         return super().__str__() + \
@@ -369,6 +384,11 @@ class Goal(Item):
         
         return np.PINF
 
+    def get_future_q(self, t=None):
+        if t is not None:
+            return self.future_q[t]
+        return self.future_q
+
     def get_gamma(self):
         return self.gamma
 
@@ -417,6 +437,47 @@ class Goal(Item):
                 return self.PR[s][t]
             return self.PR[s]
         return self.PR
+    
+    # TODO: Change function name and add comments (!)
+    def get_s0_prs(self, t=0):
+        s = tuple(0 for _ in range(self.num_tasks))
+        
+        best_a = -1
+        best_q = self.compute_slack_reward(0)
+        
+        self.R[s][t][-1] = best_q
+        
+        for a, q in self.Q[s][t].items():
+            if best_q <= q:
+                best_a = a
+                best_q = q
+                
+        loss = self.R[s][t][best_a]
+        # next_q = best_q - loss
+
+        PR = dict()
+        gamma = ToDoList.get_discount(t)
+        
+        for a, q in self.Q[s][t].items():
+            
+            pr = gamma * q - best_q
+            
+            if np.isclose(pr, 0, atol=1e-6):
+                pr = 0.
+
+            PR[a] = pr
+
+            if a == -1:
+                task = self.slack_action
+            else:
+                task = self.tasks[a]
+            
+            task.set_optimal_reward(pr)
+            
+        # print(f"===== {self.get_description()} =====")
+        # print(PR, end="\n\n")
+        
+        return PR, best_a
 
     def get_slack_action(self):
         return self.slack_action
@@ -429,6 +490,11 @@ class Goal(Item):
 
     def get_tasks(self):
         return self.tasks
+    
+    def set_future_q(self, t, value, compare=False):
+        self.future_q.setdefault(t, value)
+        if compare:
+            self.future_q[t] = max(self.future_q[t], value)
 
     def set_gamma(self, gamma):
         self.gamma = gamma
@@ -437,9 +503,9 @@ class Goal(Item):
         self.slack_action.set_reward(slack_reward)
         self.slack_reward = slack_reward
 
-    def solve(self, start_time=0, verbose=False):
+    def solve(self, start_time=0, tasks=[], verbose=False):
         
-        def solve_next_tasks(curr_state, mode, verbose=False):
+        def solve_next_tasks(curr_state, mode, next_task=None, verbose=False):
             """
                 - s: current state
                 - t: current time
@@ -456,33 +522,35 @@ class Goal(Item):
             idx_time_est = curr_state["idx_time_est"]
             
             idx = None
-            next_task = None
             queue = None
             task_idx = None
-
-            if mode == "deadline":
-                idx = idx_deadlines
-                queue = self.sorted_tasks_by_deadlines
-            if mode == "time_est":
-                idx = idx_time_est
-                queue = self.sorted_tasks_by_time_est
             
-            # Get next uncompleted task (if one exists)
-            while idx < len(queue):
-                task = queue[idx]
-                task_idx = task.get_idx()
-
-                # If the next task in the queue is completed
-                if s[task_idx]:
-                    idx += 1
-                else:
-                    next_task = task
-                    break
+            if next_task is None:
+                if mode == "deadline":
+                    idx = idx_deadlines
+                    queue = self.sorted_tasks_by_deadlines
+                if mode == "time_est":
+                    idx = idx_time_est
+                    queue = self.sorted_tasks_by_time_est
+                
+                # Get next uncompleted task (if one exists)
+                while idx < len(queue):
+                    task = queue[idx]
+                    task_idx = task.get_idx()
+    
+                    # If the next task in the queue is completed
+                    if s[task_idx]:
+                        idx += 1
+                    else:
+                        next_task = task
+                        break
+            else:
+                task_idx = next_task.get_idx()
 
             if verbose:
                 print(
                     f"\nCurrent task-level state: {s} | "
-                    f"Current time: {t} | "
+                    f"Current time: {t:>3d} | "
                     f"Task index: {task_idx if task_idx is not None else '-'} | "
                     f"Index deadlines: {idx_deadlines}  | "
                     f"Index time_est: {idx_time_est} | ",
@@ -610,6 +678,9 @@ class Goal(Item):
                                             (t_ - task_deadline)
                             
                             next_state["penalty_factor"] += total_penalty
+
+                        if idx is None:
+                            idx = -1
                             
                         if mode == "deadline":
                             next_state["idx_deadlines"] = idx + 1
@@ -742,6 +813,15 @@ class Goal(Item):
         # Take next action to be from the task list sorted w.r.t. deadlines
         solve_next_tasks(curr_state, mode="deadline", verbose=verbose)
         
+        for task in tasks:
+            # Take next action to be from the task list sorted w.r.t. time estimates
+            solve_next_tasks(curr_state, mode="time_est",
+                             next_task=task, verbose=verbose)
+    
+            # Take next action to be from the task list sorted w.r.t. deadlines
+            solve_next_tasks(curr_state, mode="deadline",
+                             next_task=task, verbose=verbose)
+
         # Get optimal action and value for the starting state and time
         a, r = ToDoList.max_from_dict(self.Q[s][t])
 
@@ -759,6 +839,230 @@ class Goal(Item):
             "r": r
         }
 
+    def solve_chain(self, available_time=np.PINF, start_time=0, verbose=False):
+        
+        def solve_branching(curr_state, next_task=None, verbose=False):
+            """
+                - s: current state
+                - t: current time
+                - a: current action | taken at (s, t)
+                - s_: next state (consequence of taking a in (s, t))
+                - t_: next time (consequence of taking a in (s, t) with dur. x)
+                - a_: next action | taken at (s_, t_)
+                - r: reward of r(s, a, s') with length (t_ - t)
+            """
+            s = curr_state["s"]
+            t = curr_state["t"]
+            idx = curr_state["idx"]
+    
+            queue = self.sorted_tasks_by_deadlines
+            task_idx = None
+            
+            if next_task is None:
+                
+                # Get next uncompleted task (if one exists)
+                while idx < len(queue):
+                    
+                    # Get next task from the queue
+                    task = queue[idx]
+                    
+                    # Get task index
+                    task_idx = task.get_idx()
+                    
+                    # If the next task in the queue is completed
+                    if s[task_idx]:
+                        idx += 1
+                    else:
+                        next_task = task
+                        break
+            else:
+                # Set action to be the index of the next task
+                task_idx = next_task.get_idx()
+    
+            if verbose:
+                print(
+                    f"\nCurrent task-level state: {s} | "
+                    f"Current time: {t:>3d} | "
+                    f"Task index: {task_idx if task_idx is not None else '-'} | "
+                    f"Idx: {idx} | "
+                    ,
+                    end=""
+                )
+
+            if next_task is not None:
+                
+                # Set action to be the index of the next task
+                a = next_task.get_idx()
+        
+                # Get next state by taking (a)ction in (s)tate
+                s_ = ToDoList.exec_action(s, a)
+        
+                # Get the latest deadline time of the next tasks
+                task_deadline = next_task.get_latest_deadline_time()
+        
+                # Get time transitions of the next state
+                time_transitions = next_task.get_time_transitions().items()
+        
+                # if verbose:
+                #     print(f"Time estimates:"
+                #           f"{next_task.get_time_transitions().items()}")
+                    
+                # Initialize Q-value
+                q = 0
+                
+                # Initialize expected reward
+                exp_reward = 0
+        
+                for time_est, prob_t_ in time_transitions:
+            
+                    # Make time transition
+                    t_ = t + time_est
+            
+                    # Get cumulative discount w.r.t. task duration
+                    cum_discount = ToDoList.get_cum_discount(time_est)
+            
+                    # Calculate total loss for next action (immediate "reward")
+                    r = next_task.get_total_loss(cum_discount=cum_discount)
+            
+                    # if verbose:
+                    #     print(f"Current reward {r} | ")
+            
+                    # Generate next task-level state (by updating current state)
+                    next_state = deepcopy(curr_state)
+                    next_state["s"] = s_
+                    next_state["t"] = t_
+            
+                    # Add deadline to the missed deadlines if not attained
+                    if self.check_missed_task_deadline(task_deadline, t_):
+                        
+                        # Compute total penalty for missing task deadline
+                        total_penalty = next_task.get_unit_penalty() * \
+                                        (t_ - task_deadline)
+                
+                        # Update penalty for the next state
+                        next_state["penalty_factor"] += total_penalty
+            
+                    # Update index of the next state
+                    next_state["idx"] = idx
+            
+                    # Solve branching of the next state
+                    q_next, _ = solve_branching(next_state, verbose=verbose)
+            
+                    # Compute expected reward for (state, time, action)
+                    exp_reward += prob_t_ * r
+            
+                    """ Compute total reward for the current state-time action
+                        Immediate + Expected future reward """
+            
+                    # If next best action is a terminal state
+                    # Single time-step discount (MDP)
+                    # if a_ is None:
+                    #     total_reward = r + r_
+                    #
+                    # Otherwise
+                    # else:
+                    #     Single time-step discount (MDP)
+                    #     total_reward = r + self.gamma * r_
+            
+                    # Multiple time-step discount (SMDP)
+                    total_reward = r + ToDoList.get_discount(time_est) * q_next
+            
+                    # Add contribution to the expected value of taking (a)ction
+                    q += prob_t_ * total_reward
+                    
+                # Return Q-value of the current state
+                return q, exp_reward
+    
+            # ===== Terminal state =====
+            else:
+                
+                # Get total penalty factor
+                beta = curr_state["penalty_factor"]
+        
+                # Compute reward
+                term_value = self.get_reward(beta=beta, t=t, discount=1.)
+                
+                if verbose:
+                    print(f"Beta: {beta}")
+                
+                # Return (potentially discounted) goal reward
+                return term_value, 0
+        
+        # Initialize starting (s)tate and (t)ime
+        s = tuple(0 for _ in range(self.num_tasks))
+        t = start_time
+    
+        # Initialize Q-value dictionary
+        self.Q.setdefault(s, dict())
+        self.Q[s].setdefault(t, dict())
+
+        # Initialize reward dictionary
+        self.R.setdefault(s, dict())
+        self.R[s].setdefault(t, dict())
+
+        # Initialize slack-off action
+        self.Q[s][t][-1] = self.compute_slack_reward(0)
+        
+        if t == 0:
+            
+            if available_time == np.PINF or available_time > self.time_est:
+                tasks_to_iterate = self.sorted_tasks_by_deadlines
+                
+            else:
+                # In any case...
+                available_time = deepcopy(available_time)
+    
+                tasks_to_iterate = deque()
+
+                for task in self.sorted_tasks_by_deadlines:
+                    
+                    time_est = task.get_time_est()
+                    
+                    tasks_to_iterate.append(task)
+                    
+                    available_time -= time_est
+                    
+                    if available_time < 0:
+                        break
+                
+        else:
+            tasks_to_iterate = [self.sorted_tasks_by_deadlines[0]]
+            
+        # print(t, self.description, len(tasks_to_iterate))
+            
+        # TODO: Reduce the number of tasks for which this has been iterated
+        for task in tasks_to_iterate:
+            
+            # Initialize state
+            curr_state = {
+                "s":              deepcopy(s),
+                "t":              t,
+                "idx":            0,
+                "penalty_factor": 0.,
+            }
+    
+            # Get index of the first action
+            a = task.get_idx()
+            
+            # If action is not completed
+            if not s[a]:
+                
+                if verbose:
+                    print(f"\n===== Starting action: {a} =====", end="")
+                    
+                # Solve branching procedure
+                q, exp_reward = solve_branching(curr_state, next_task=task,
+                                                verbose=verbose)
+                
+                # Store Q-value and immediate reward/loss for (a)ction
+                self.Q[s][t][a] = q
+                self.R[s][t][a] = exp_reward
+                
+        # pprint(self.Q)
+        
+        # Return maximum Q-value
+        return max(self.Q[s][t].values())
+    
     
 class ToDoList:
     
@@ -898,7 +1202,7 @@ class ToDoList:
         return max_a, max_q
 
     def add_goals(self, goals):
-        for goal in goals:
+        for idx, goal in enumerate(goals):
         
             # Increase total time estimate of the to-do list
             self.total_time_est += goal.get_time_est()
@@ -910,6 +1214,9 @@ class ToDoList:
             # Set slack reward for goal's slack-off action if not defined
             if goal.get_slack_reward() is None:
                 goal.set_slack_reward(self.slack_reward)
+                
+            # Set goal index
+            goal.set_idx(idx)
 
     def compute_slack_reward(self, t=0):
         if self.slack_reward == 0:
@@ -995,7 +1302,7 @@ class ToDoList:
         self.slack_action.set_reward(slack_reward)
         self.slack_reward = slack_reward
 
-    def solve(self, start_time=0, verbose=False):
+    def solve(self, available_time=np.PINF, start_time=0, verbose=False):
     
         def solve_next_goals(curr_state, verbose=False):
             """
@@ -1013,7 +1320,7 @@ class ToDoList:
             if verbose:
                 print(
                     f"Current state: {s} | "
-                    f"Current time: {t} | "
+                    f"Current time: {t:>3d} | "
                     , end=""
                 )
                 
@@ -1103,8 +1410,12 @@ class ToDoList:
                     self.log_prob[s_][t_] = np.log(prob)
 
                     # Calculate total reward for next action
-                    result = next_goal.solve(start_time=t, verbose=verbose)
-                    r = result["r"]
+                    # result = next_goal.solve(start_time=t, verbose=verbose)
+                    # r = result["r"]
+                    
+                    # TODO: ...
+                    r = next_goal.solve_chain(available_time=available_time,
+                                              start_time=t, verbose=verbose)
                     
                     # Initialize entry for (state, time, action)
                     self.R[s][t].setdefault(a, dict())
@@ -1159,6 +1470,9 @@ class ToDoList:
 
                     # Store policy for the next (state, time) pair
                     self.P[s_][t_] = a_
+                    
+                    # Store future Q-value
+                    next_goal.set_future_q(t_, r_, compare=True)
                     
                     # Compute total reward for the current state-time action as
                     # immediate + (discounted) expected future reward

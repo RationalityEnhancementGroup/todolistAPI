@@ -4,12 +4,14 @@ import pandas as pd
 import sys
 import time
 
+from collections import deque
 from datetime import datetime
 from math import factorial
 from pprint import pprint
 from tqdm import tqdm
 
-from todolistMDP.smdp_utils import compute_pseudo_rewards, run_optimal_policy
+from todolistMDP.smdp_utils import compute_pseudo_rewards,\
+    compute_s0_pseudo_rewards, run_optimal_policy
 from todolistMDP.smdp_test_generator import generate_test_case
 from todolistMDP.to_do_list import Task, Goal, ToDoList
 
@@ -43,7 +45,7 @@ LOSS_RATE = -1
 # LOSS_RATE = -1e-3
 
 # GAMMA = 0.9999  # Default
-GAMMA = 0.9999
+GAMMA = 0.99
 # GAMMA = 1 - 1e-3
 
 N_BINS = 1
@@ -60,14 +62,15 @@ VALUE_SCALE = 1  # Default
 PLANNING_FALLACY_CONST = 1  # Default
 # PLANNING_FALLACY_CONST = 1.39
 
-SLACK_REWARD = np.NINF
+# SLACK_REWARD = np.NINF
 # SLACK_REWARD = 1
-# SLACK_REWARD = 1e-1
+SLACK_REWARD = 1e-1
 # SLACK_REWARD = 1e-2
 # SLACK_REWARD = 1e-3
 
 # UNIT_PENALTY = 10
-UNIT_PENALTY = .1
+UNIT_PENALTY = 1
+# UNIT_PENALTY = .1
 # UNIT_PENALTY = np.PINF
 
 sys.setrecursionlimit(10000)
@@ -296,9 +299,11 @@ single_goal = Goal(
     #     Task("Task 4", time_est=2, deadline=2),
     # ],
     tasks=[
-        Task("Task 1", time_est=1, deadline=6),
-        Task("Task 2", time_est=2, deadline=5),
-        Task("Task 3", time_est=3, deadline=3),
+        Task("Task 1", time_est=1, deadline=15),
+        Task("Task 2", time_est=2, deadline=14),
+        Task("Task 3", time_est=3, deadline=12),
+        Task("Task 4", time_est=4, deadline=9),
+        Task("Task 5", time_est=5, deadline=5),
     ],
     unit_penalty=UNIT_PENALTY,
 )
@@ -310,15 +315,16 @@ two_goals = [
         num_bins=N_BINS,
         planning_fallacy_const=PLANNING_FALLACY_CONST,
         rewards={10: 100},
-        # tasks=[
-        #     Task("Task 1", time_est=1, deadline=6),
-        #     Task("Task 2", time_est=2, deadline=5),
-        #     Task("Task 3", time_est=3, deadline=3),
-        # ],
         tasks=[
-            Task("G1 - T1", time_est=2, deadline=3),
-            Task("G1 - T2", time_est=4, deadline=10),
+            Task("G1-T1", time_est=1, deadline=10),
+            Task("G1-T2", time_est=2, deadline=9),
+            Task("G1-T3", time_est=3, deadline=7),
+            Task("G1-T4", time_est=4, deadline=4),
         ],
+        # tasks=[
+        #     Task("G1 - T1", time_est=2, deadline=3),
+        #     Task("G1 - T2", time_est=4, deadline=10),
+        # ],
         # tasks=[
         #     Task("G1 - T1", time_est=10),
         #     Task("G1 - T2", time_est=20),
@@ -332,11 +338,15 @@ two_goals = [
         loss_rate=LOSS_RATE,
         num_bins=N_BINS,
         planning_fallacy_const=PLANNING_FALLACY_CONST,
-        rewards={10: 100},
+        rewards={10: 1000},
         tasks=[
-            Task("G2 - T1", time_est=1, deadline=1),
-            Task("G2 - T2", time_est=3, deadline=6),
+            Task("G2-T1", time_est=1, deadline=1),
+            Task("G2-T2", time_est=3, deadline=6),
         ],
+        # tasks=[
+        #     Task("G2 - T1", time_est=1, deadline=1),
+        #     Task("G2 - T2", time_est=3, deadline=6),
+        # ],
         # tasks=[
         #     Task("G2 - T1", time_est=1, deadline=1),
         #     Task("G2 - T2", time_est=2, deadline=2),
@@ -550,10 +560,22 @@ def run(goals, gamma=GAMMA, verbose=False):
             goal_optimal_policy = run_optimal_policy(goal, choice_mode="max")
             
             print(f"===== {goal.description} =====")
-            # pprint(goal_optimal_policy)
-            # print()
+            
+            pprint(goal_optimal_policy)
+            print()
+            
+            task_list = deque()
+            for entry in goal_optimal_policy[0]:
+                task_list.append(entry["obj"])
+                
+            goal.solve(tasks=task_list)
+            
+            compute_pseudo_rewards(goal)
+            # goal_optimal_policy = run_optimal_policy(goal, choice_mode="max")
+            
             print_item(goal)
             print()
+            
             
         # pprint(to_do_list.Q)
         # print()
@@ -590,42 +612,103 @@ if __name__ == '__main__':
     # goals = test_1
     # goals = test_2
     # goals = [single_goal]
-    # goals = two_goals
-    
+    goals = two_goals
+
     # run(goals=goals, verbose=False)
     
-    local_speed_test(
-        n_bins=[
-            1,
-            # 2
-        ],
-        n_goals=[
-            # 1,
-            # 2,
-            # 3,
-            4,
-            # 5,
-            # 6,
-            # 7,
-            # 8,
-            # 9,
-            # 10
-        ],
-        n_tasks=[
-            1,
-            2,
-            3,
-            4,
-            # 25,
-            # 50,
-            # 75,
-            # 100,
-            # 125, 150, 250, 500, 750, 1000,
-            # 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000,
-            # 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000
-        ],
-        n_trials=5,
-        # test_mode="averageSpeedTestSMDP",
-        # test_mode="bestSpeedTestSMDP",
-        test_mode="worstSpeedTestSMDP",
-    )
+    tic = time.time()
+    to_do_list = ToDoList(goals, gamma=GAMMA, slack_reward=SLACK_REWARD)
+    to_do_list.solve(start_time=0, verbose=False)
+    print()
+    
+    """ ===== Get Q-values of the next state """
+    goals = to_do_list.get_goals()
+
+    s = tuple(0 for _ in range(len(goals)))
+    t = 0
+    
+    # pprint(to_do_list.get_q_values())
+    
+    for goal in goals:
+        
+        # Action
+        a = goal.get_idx()
+        
+        # Compute next time
+        t_ = t + goal.get_time_est()
+        
+        # pprint(goal.get_q_values())
+        
+        if a is not None and a != -1:
+            
+            # Move to next state
+            s_ = ToDoList.exec_action(s, a)
+            
+            # print(s_, t_, to_do_list.get_q_values(s_, t_))
+            
+            # _, max_q = ToDoList.max_from_dict(to_do_list.get_q_values(s_, t_))
+            # future_q = goal.get_future_q(t_)
+            # print(max_q, future_q, max_q == future_q)
+            #
+            # print()
+    
+    # compute_pseudo_rewards(to_do_list)
+    prs = compute_s0_pseudo_rewards(to_do_list)
+
+    print("===== Optimal tasks =====")
+    for task in prs["optimal_tasks"]:
+        print(task.get_description(), f"{task.get_optimal_reward():.4f}")
+    print()
+
+    print("===== Suboptimal tasks (from goals not worth pursuing) =====")
+    for task in prs["suboptimal_tasks"]:
+        print(task.get_description(), f"{task.get_optimal_reward():.4f}")
+    print()
+
+    print("===== Slack tasks (PR not part of total PR sum) =====")
+    for task in prs["slack_tasks"]:
+        print(task.get_description(), f"{task.get_optimal_reward():.4f}")
+    print()
+
+    print("Scale:", prs["scale"], "| Bias", prs["bias"])
+    print("Total sum of pseudo-rewards:", f'{prs["sc_sum_pr"]:.3f}')
+
+    toc = time.time()
+    
+    # pprint(single_goal.solve_chain(verbose=False))
+    
+    # local_speed_test(
+    #     n_bins=[
+    #         1,
+    #         # 2
+    #     ],
+    #     n_goals=[
+    #         # 1,
+    #         # 2,
+    #         # 3,
+    #         4,
+    #         # 5,
+    #         # 6,
+    #         # 7,
+    #         # 8,
+    #         # 9,
+    #         # 10
+    #     ],
+    #     n_tasks=[
+    #         1,
+    #         2,
+    #         3,
+    #         4,
+    #         # 25,
+    #         # 50,
+    #         # 75,
+    #         # 100,
+    #         # 125, 150, 250, 500, 750, 1000,
+    #         # 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000,
+    #         # 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000
+    #     ],
+    #     n_trials=5,
+    #     # test_mode="averageSpeedTestSMDP",
+    #     # test_mode="bestSpeedTestSMDP",
+    #     test_mode="worstSpeedTestSMDP",
+    # )

@@ -277,13 +277,18 @@ def get_wf_task_id(task_name):
         return "__no_wf_id__"  # Return dummy WorkFlowy ID
 
 
-def incentivize_forced_pull(goals, default_value=0):
+def incentivize_forced_pull(goals, default_value=0, pr_dict=None):
     forced_tasks = deque()
     
     for goal in goals:
         for task in goal["ch"]:
             if task["today"] and "val" not in task.keys():
-                task["val"] = default_value
+                
+                if pr_dict is None:
+                    task["val"] = default_value
+                    
+                else:
+                    task["val"] = pr_dict[task["id"]]
                 
                 forced_tasks.append(task)
 

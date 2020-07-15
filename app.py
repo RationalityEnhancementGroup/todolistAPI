@@ -582,7 +582,11 @@ class PostResource(RESTResource):
                     timer["Reading SMDP parameters"] = toc - tic
                     
                     if api_method == "getTasksForToday":
-                        final_tasks = assign_smdp_points(
+                        # final_tasks = assign_smdp_points(
+                        #     projects, timer=timer, day_duration=today_minutes,
+                        #     smdp_params=smdp_params, time_zone=time_zone
+                        # )
+                        final_tasks = assign_chain_smdp_points(
                             projects, timer=timer, day_duration=today_minutes,
                             smdp_params=smdp_params, time_zone=time_zone
                         )
@@ -606,7 +610,7 @@ class PostResource(RESTResource):
                         """ Run SMDP """
                         tic = time.time()
     
-                        final_tasks = assign_smdp_points(
+                        final_tasks = assign_chain_smdp_points(
                             projects=test_goals,
                             timer=timer,
                             day_duration=today_minutes,
@@ -754,8 +758,8 @@ class PostResource(RESTResource):
                     # Store time: Storing successful pull in database
                     timer["Storing successful pull in database"] = toc - tic
                     
-                    # for task in final_tasks:
-                    #     print(task["nm"], "&", task["val"], "\\\\")
+                    for task in final_tasks:
+                        print(task["nm"], "&", task["val"], "\\\\")
 
                     # Return scheduled tasks
                     return json.dumps(final_tasks)
