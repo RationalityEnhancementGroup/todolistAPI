@@ -271,7 +271,6 @@ def compute_s0_pseudo_rewards(to_do_list):
                 # Add tasks to the list of incentivized tasks (?!)
                 incentivized_tasks.append(task)
                 
-                # print(s, t, task_id, q)
             else:
                 pass
                 # TODO: Enable slack action
@@ -303,17 +302,11 @@ def compute_s0_pseudo_rewards(to_do_list):
         # Update sum of pseudo-rewards
         sum_pr += pr
         
-        # print(task.get_description(), best_next_q, task_q[task_id], task_loss, pr)
-
-    # print()
-    
     # Compute sum of goal values
     sum_goal_values = sum([goal.get_reward() for goal in goals])
 
     # Update sum of pseudo-rewards
     sum_pr += len(incentivized_tasks) * (1 - min_pr)  # min_pr < 0 (!)
-    
-    # print(sum((task.get_optimal_reward() for task in incentivized_tasks)))
     
     # Define scaling and shifting parameters
     scale = sum_goal_values / sum_pr
@@ -352,14 +345,6 @@ def compute_s0_pseudo_rewards(to_do_list):
         # Store pseudo-reward {Task ID: pseudo-reward}
         id2pr[task_id] = pr
         
-        # print(task.get_id(), task.get_optimal_reward())
-
-    # print(sc_sum_pr)
-    
-    # pprint(task_q)
-    # pprint(next_q)
-    # print()
-    
     # Initialize tasks queue
     optimal_tasks = deque()
     suboptimal_tasks = deque()
@@ -367,7 +352,7 @@ def compute_s0_pseudo_rewards(to_do_list):
     
     # Run goal-level optimal policy in order to get optimal sequence of goals
     P, t = run_optimal_policy(to_do_list)
-
+    
     for entry in P:
         
         # Get next (a)ction and initial (t)ime
@@ -381,7 +366,7 @@ def compute_s0_pseudo_rewards(to_do_list):
             goal = goals[a]
             
             # Compute 0-state pseudo-rewards for current goal
-            PR, best_a = goal.get_s0_prs(t)
+            PR, best_a = goal.get_s0_pseudo_rewards(t)
             
             # Get all goal's tasks
             tasks = goal.get_tasks()
@@ -432,8 +417,6 @@ def compute_s0_pseudo_rewards(to_do_list):
         else:
             pass
         
-    print(len(optimal_tasks), len(suboptimal_tasks), len(incentivized_tasks))
-    
     return {
         "optimal_tasks": optimal_tasks,
         "suboptimal_tasks": suboptimal_tasks,

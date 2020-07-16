@@ -366,10 +366,7 @@ def assign_smdp_points(projects, day_duration, smdp_params, timer,
 
     # Start timer: Run SMDP - Converting tasks queue to list
     tic = time.time()
-    
     tasks = [task["obj"] for task in tasks]
-    # tasks = list(tasks)
-    
     timer["Run SMDP - Converting tasks queue to list"] = time.time() - tic
 
     if verbose:

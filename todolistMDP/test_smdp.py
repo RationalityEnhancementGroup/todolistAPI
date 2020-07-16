@@ -69,8 +69,8 @@ SLACK_REWARD = 1e-1
 # SLACK_REWARD = 1e-3
 
 # UNIT_PENALTY = 10
-UNIT_PENALTY = 1
-# UNIT_PENALTY = .1
+# UNIT_PENALTY = 1
+UNIT_PENALTY = .1
 # UNIT_PENALTY = np.PINF
 
 sys.setrecursionlimit(10000)
@@ -452,8 +452,8 @@ def print_stats(goal):  # TODO: Move this a Goal method!
         # f"Total number of tasks: {len(goal.tasks)}\n"
         f"Total computations: {goal.total_computations}\n"
         f"Already computed: {goal.already_computed_pruning} ({goal.already_computed_pruning / goal.total_computations * 100:.3f}%)\n"
-        f"Small reward: {goal.small_reward_pruning} | ({goal.small_reward_pruning / goal.total_computations * 100:.3f}%)\n"
-        f"Effective computations: {effective_computations} | ({effective_computations / goal.total_computations * 100:.3f}%)\n"
+        f"Small reward: {goal.small_reward_pruning} ({goal.small_reward_pruning / goal.total_computations * 100:.3f}%)\n"
+        f"Effective computations: {effective_computations} ({effective_computations / goal.total_computations * 100:.3f}%)\n"
     )
 
 
@@ -627,8 +627,6 @@ if __name__ == '__main__':
     s = tuple(0 for _ in range(len(goals)))
     t = 0
     
-    # pprint(to_do_list.get_q_values())
-    
     for goal in goals:
         
         # Action
@@ -651,6 +649,8 @@ if __name__ == '__main__':
             # print(max_q, future_q, max_q == future_q)
             #
             # print()
+            
+    print_stats(to_do_list)
     
     # compute_pseudo_rewards(to_do_list)
     prs = compute_s0_pseudo_rewards(to_do_list)
