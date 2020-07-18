@@ -25,7 +25,7 @@ For successful communication with the API, a `POST` request should be sent via t
 The general URL for local testing looks like this: 
 `http://127.0.0.1:6789/api/<compulsoryParameters>/<additionalParameters>/tree/<userID>/<functionName>`
 
-The general URL for testing the server online (on Heroku) looks like this
+The general URL for using the server online (on Heroku) looks like this:
 `https://<HerokuAppCode>.herokuapp.com/api/<compulsoryParameters>/<additionalParameters>/tree/<userID>/<functionName>`
 
 Description of the URL parameters:
@@ -59,8 +59,6 @@ Description of the URL parameters:
 - `<functionName>`: Type of request.
     - `updateTree`: Updates the stored tree.
     - `getTasksForToday`: Outputs list of task for today.
-    - `bestSpeedTestSMDP`: Speed test of the SMDP method in the best-case scenario.
-    - `worstSpeedTestSMDP`: Speed test of the SMDP method in the worst-case scenario.  
 
 The additional parameters (`<additionalParameters>`) are dependent on the method that has been used (described below). 
 Important: The order of all URL parameters is **fixed**!
@@ -235,7 +233,7 @@ All required Python packages are listed in the `requirements.txt` file.
 
 If you use this code in academic work, please cite the report:
 
-<TBD>
+\<TBD\>
 
 ## Acknowledgements
 
