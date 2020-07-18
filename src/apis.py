@@ -191,10 +191,10 @@ def assign_chain_smdp_points(projects, day_duration, smdp_params, timer,
     to_do_list.solve(available_time=day_duration, start_time=start_time,
                      verbose=verbose)
     timer["Run SMDP - Solving SMDP"] = time.time() - tic
-    
+
     """ Compute pseudo-rewards """
     tic = time.time()
-    prs = compute_s0_pseudo_rewards(to_do_list)
+    prs = compute_start_state_pseudo_rewards(to_do_list)
     timer["Run SMDP - Compute pseudo-rewards"] = time.time() - tic
     
     # Unpack pseudo-rewards
@@ -237,19 +237,43 @@ def assign_chain_smdp_points(projects, day_duration, smdp_params, timer,
     else:
         today_tasks = optimal_tasks
 
+    today_tasks.sort(key=lambda task: task["val"])
+    
     # TODO: Add slack tasks to output
-    # for task in slack_tasks:
-    #     today_tasks.append({
-    #         'est': 240,
-    #         'id': 's2',
-    #         'lm': 0,
-    #         'nm': '===== Slack-action for goal 2 =====',
-    #         'parentId': 's2',
-    #         'pcp': False,
-    #         'pph': 70.17543859649122,
-    #         'val': 1.0000000000001137
-    #     })
+    for task in slack_tasks:
+        
+        goal = list(task.get_goals())[0]
+        
+        task_json = {
+            'completed':         False,
+            'daily':             False,
+            'day_datetime':      None,
+            'days':              [False, False, False, False, False, False,
+                                  False],
+            'deadline':          task.get_deadline(),
+            'deadline_datetime': task.get_deadline_datetime(),
+            'future':            False,
+            'repetitive_days':   [False, False, False, False, False, False,
+                                  False],
+            'scheduled_today':   True,
+            
+            'est': 25,
+            'id': f"sa{goal.get_idx()}",
+            'lm': 0,
+            'nm': f"{goal.get_idx() + 1}) {task.get_description()}",
+            'parentId': goal.get_id(),
+            'pcp': False,
+            'pph': 0,
+            'today': True,
+            'val': 0
+        }
+        
+        # today_tasks = [task_json] + today_tasks
+        today_tasks.append(task_json)
 
+    # Sort tasks in reversed order
+    today_tasks.reverse()
+    
     return today_tasks
 
 

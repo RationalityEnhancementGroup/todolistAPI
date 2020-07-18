@@ -758,8 +758,10 @@ class PostResource(RESTResource):
                     # Store time: Storing successful pull in database
                     timer["Storing successful pull in database"] = toc - tic
                     
-                    for task in final_tasks:
-                        print(task["nm"], "&", task["val"], "\\\\")
+                    # print("\n===== Optimal tasks =====")
+                    # for task in final_tasks:
+                    #     print(task["nm"], "&", task["val"], "\\\\")
+                    # print()
 
                     # Return scheduled tasks
                     return json.dumps(final_tasks)

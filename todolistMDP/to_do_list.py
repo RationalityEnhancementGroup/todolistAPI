@@ -9,10 +9,13 @@ from pprint import pprint
 
 
 class Item:
-    def __init__(self, description, idx=None, item_id=None, loss_rate=None,
-                 num_bins=None, planning_fallacy_const=None, rewards=None,
-                 time_est=None, unit_penalty=None):
+    def __init__(self, description, completed=False, deadline_datetime=None,
+                 idx=None, item_id=None, loss_rate=None, num_bins=None,
+                 planning_fallacy_const=None, rewards=None, time_est=None,
+                 unit_penalty=None):
         self.description = description
+        self.completed = completed
+        self.deadline_datetime = deadline_datetime
         self.idx = idx
         self.loss_rate = loss_rate
         self.num_bins = num_bins
@@ -69,6 +72,9 @@ class Item:
         
         times = sorted(self.rewards.keys())
         return next(val for x, val in enumerate(times) if val >= t)
+
+    def get_deadline_datetime(self):
+        return self.deadline_datetime
 
     def get_description(self):
         return self.description
@@ -140,6 +146,12 @@ class Item:
     def get_values(self):
         return self.values
     
+    def is_completed(self):
+        return self.completed
+    
+    def set_completed(self):
+        self.completed = True
+    
     def set_description(self, description):
         self.description = description
         
@@ -177,10 +189,13 @@ class Task(Item):
         - Task predecessors/dependencies
     """
     
-    def __init__(self, description, deadline=None, loss_rate=None, reward=0,
-                 task_id=None, time_est=0, prob=1., unit_penalty=None):
+    def __init__(self, description, completed=False, deadline=None,
+                 deadline_datetime=None, loss_rate=None, reward=0, task_id=None,
+                 time_est=0, prob=1., today=False, unit_penalty=None):
         super().__init__(
             description=description,
+            completed=completed,
+            deadline_datetime=deadline_datetime,
             item_id=task_id,
             loss_rate=loss_rate,
             rewards={deadline: reward},
@@ -192,6 +207,7 @@ class Task(Item):
         self.reward = reward
         self.goals = set()
         self.prob = prob
+        self.today = today
         
     # def __eq__(self, other):
     #     return self.time_est == other.time_est
@@ -226,6 +242,9 @@ class Task(Item):
     
     def get_total_reward(self):
         return self.get_reward() * self.time_est
+    
+    def is_today(self):
+        return self.today
 
     def set_deadline(self, deadline, compare=False):
         if self.deadline is None or not compare:
@@ -240,6 +259,9 @@ class Task(Item):
         self.reward = reward
         self.update_rewards_dict()
         
+    def set_today(self, today):
+        self.today = today
+        
     def update_latest_deadline_time(self):
         self.latest_deadline_time = self.deadline
         
@@ -249,11 +271,14 @@ class Task(Item):
 
 class Goal(Item):
     
-    def __init__(self, description, gamma=None, goal_id=None, loss_rate=0,
-                 num_bins=1, planning_fallacy_const=1., rewards=None,
-                 slack_reward=None, tasks=None, unit_penalty=np.PINF):
+    def __init__(self, description, completed=False, deadline_datetime=None,
+                 gamma=None, goal_id=None, loss_rate=0, num_bins=1,
+                 planning_fallacy_const=1., rewards=None, slack_reward=None,
+                 tasks=None, unit_penalty=np.PINF):
         super().__init__(
             description=description,
+            completed=completed,
+            deadline_datetime=deadline_datetime,
             item_id=goal_id,
             loss_rate=loss_rate,
             num_bins=num_bins,
@@ -271,11 +296,14 @@ class Goal(Item):
         self.sorted_tasks_by_deadlines = None
         
         self.tasks = tasks
+        self.num_tasks = len(self.tasks)
+        self.today_tasks = set()
+
+        # Initialize 0-th state
+        self.start_state = tuple()
+
         if tasks is not None:
             self.add_tasks(tasks)
-
-        self.num_tasks = len(self.tasks)
-        self.start_state = (0 for _ in range(self.num_tasks))
 
         # Initialize policy, Q-value function and pseudo-rewards
         self.P = dict()  # {state: {time: action}}
@@ -293,8 +321,11 @@ class Goal(Item):
         self.total_computations = 0
 
         # Initialize slack-off action
-        self.slack_action = Task("__SLACK-OFF__", deadline=np.PINF,
-                                 reward=slack_reward, time_est=1)
+        self.slack_action = Task(
+            f"This goal is sub-optimal! Please revise it!",
+            deadline=np.PINF, reward=slack_reward, time_est=1)
+        self.slack_action.set_idx(-1)
+        self.slack_action.add_goal(self)
 
         # Initialize highest negative reward
         self.highest_negative_reward = np.NINF
@@ -304,15 +335,15 @@ class Goal(Item):
             0: None
         }
         
-        # Initialize 0-th state
-        self.s0 = tuple(0 for _ in range(self.num_tasks))
-
     def __str__(self):
         return super().__str__() + \
             f"Rewards: {self.rewards}\n" + \
             f"Slack reward: {self.slack_reward}\n"
             
     def add_tasks(self, tasks):
+        
+        self.start_state = list(0 for _ in range(self.num_tasks))
+        
         for idx, task in enumerate(tasks):
             
             # If task has no deadline, set goal's deadline
@@ -330,10 +361,15 @@ class Goal(Item):
             if task.get_unit_penalty() is None:
                 task.set_unit_penalty(self.unit_penalty)
                 
+            if task.is_today():
+                self.today_tasks.add(idx)
+                
+            if task.is_completed():
+                self.start_state[idx] = 1
+
             # TODO:
             #     - Pass number of bins
             #     - Pass planning fallacy
-            #     - Completed tasks in s0 (?)
             
             # Connect task with goal
             task.add_goal(self)
@@ -349,6 +385,8 @@ class Goal(Item):
             # Set task index
             task.set_idx(idx)
             
+        self.start_state = tuple(self.start_state)
+
         # Compute goal-level bins | # TODO: Increase to > 1 (!)
         self.compute_binning(num_bins=1)
         
@@ -373,7 +411,6 @@ class Goal(Item):
         )
         
         self.num_tasks = len(self.tasks)
-        self.start_state = (0 for _ in range(self.num_tasks))
 
     def check_missed_task_deadline(self, deadline, t):
         return t > deadline
@@ -442,13 +479,10 @@ class Goal(Item):
             return self.Q[s]
         return self.Q
 
-    def get_s0(self):
-        return self.s0
-
     # TODO: Add comments (!)
-    def get_s0_pseudo_rewards(self, t=0):
+    def get_start_state_pseudo_rewards(self, t=0):
         
-        s = self.s0
+        s = self.start_state
         
         best_a = -1
         best_q = self.compute_slack_reward(0)
@@ -895,7 +929,7 @@ class Goal(Item):
                 )
 
             if next_task is not None:
-                
+    
                 # Set action to be the index of the next task
                 a = next_task.get_idx()
         
@@ -988,43 +1022,75 @@ class Goal(Item):
                 return term_value, 0
         
         # Initialize starting (s)tate and (t)ime
-        s = tuple(0 for _ in range(self.num_tasks))
+        s = self.start_state
         t = start_time
-
+        
         # Initialize entries
         self.Q.setdefault(s, dict())
         self.R.setdefault(s, dict())
         
         self.Q[s].setdefault(t, dict())
         self.R[s].setdefault(t, dict())
-        
+
+        """ Incorporate slack action for (state, time) """
+        # Add slack reward to the dictionary
+        slack_reward = self.compute_slack_reward(0)
+
+        # Add slack reward in the Q-values & rewards
+        self.Q[s][t].setdefault(-1, slack_reward)
+        self.R[s][t].setdefault(-1, slack_reward)
+
         # TODO: Comment...
+        tasks_to_iterate = deque()
+        
         if t == 0:
             
             if available_time == np.PINF or available_time > self.time_est:
-                tasks_to_iterate = self.sorted_tasks_by_deadlines
+                
+                # Add all tasks
+                tasks_to_iterate.extend(self.sorted_tasks_by_deadlines)
+                
+                # Set index as list was completely iterated
+                self.today_tasks = set(range(self.num_tasks))
                 
             else:
+                
+                for idx in self.today_tasks:
+                    
+                    tasks_to_iterate.append(self.tasks[idx])
                 
                 # Reduce the number of tasks for which this has been iterated
                 
                 available_time = deepcopy(available_time)
     
-                tasks_to_iterate = deque()
-
                 for task in self.sorted_tasks_by_deadlines:
                     
-                    time_est = task.get_time_est()
+                    idx = task.get_idx()
                     
-                    tasks_to_iterate.append(task)
+                    if idx not in self.today_tasks:
                     
-                    available_time -= time_est
-                    
-                    if available_time < 0:
-                        break
+                        time_est = task.get_time_est()
+                        
+                        tasks_to_iterate.append(task)
+                        
+                        available_time -= time_est
+                        
+                        self.today_tasks.add(idx)
+                        
+                        if available_time < 0:
+                            break
                 
         else:
-            tasks_to_iterate = [self.sorted_tasks_by_deadlines[0]]
+            tasks_to_iterate.append(self.sorted_tasks_by_deadlines[0])
+            
+        # Append least-optimal action in order to get lower bound on f(s, a)
+        last_task = self.sorted_tasks_by_deadlines[-1]
+
+        if last_task.get_idx() not in self.today_tasks:
+
+            tasks_to_iterate.append(last_task)
+
+            self.today_tasks.add(last_task.get_idx())
             
         tic = time.time()
             
@@ -1057,11 +1123,11 @@ class Goal(Item):
                 
         toc = time.time()
 
-        if t == 0:
+        if verbose and t == 0:
             print(
                 f"{t:>3d} | "
                 f"Number of tasks: {len(tasks_to_iterate)} | "
-                f"Time: {toc - tic:.2f}"
+                f"Time: {toc - tic:.2f}\n"
             )
         
         # Return maximum Q-value
@@ -1094,9 +1160,11 @@ class ToDoList:
         self.start_time = start_time
 
         # Slack-off action
-        self.slack_action = Task("__SLACK-OFF__", deadline=np.PINF,
-                                 reward=self.slack_reward, time_est=1)
-        
+        self.slack_action = Task(
+            f"{self.description} + slack-off action", deadline=np.PINF,
+            reward=self.slack_reward, time_est=1)
+        self.slack_action.set_idx(-1)
+
         # Set number of goals
         self.num_goals = len(self.goals)
 
@@ -1132,7 +1200,7 @@ class ToDoList:
         self.highest_negative_reward = np.NINF
         
         # Initialize 0-th state
-        self.s0 = tuple(0 for _ in range(self.num_goals))
+        self.start_state = tuple(0 for _ in range(self.num_goals))
         
     @classmethod
     def generate_discounts(cls, epsilon=0., gamma=1., horizon=1, verbose=False):
@@ -1222,7 +1290,7 @@ class ToDoList:
             if goal.get_slack_reward() is None:
                 goal.set_slack_reward(self.slack_reward)
                 
-            # TODO: Completed goals in s0 (?)
+            # TODO: Completed goals in start_state (?)
                 
             # Set goal index
             goal.set_idx(idx)
@@ -1294,8 +1362,8 @@ class ToDoList:
             return self.Q[s]
         return self.Q
 
-    def get_s0(self):
-        return self.s0
+    def get_start_state(self):
+        return self.start_state
 
     def get_start_time(self):
         return self.start_time
@@ -1351,29 +1419,8 @@ class ToDoList:
             self.R.setdefault(s, dict())
             self.R[s].setdefault(t, dict())
 
-            """ Add absorbing terminal state """
-            self.Q[s].setdefault(np.PINF, dict())
-            self.Q[s][np.PINF].setdefault(None, dict())
-            self.Q[s][np.PINF][None]["E"] = 0
-
-            self.R[s].setdefault(np.PINF, dict())
-            self.R[s][np.PINF].setdefault(None, dict())
-            self.R[s][np.PINF][None]["E"] = 0
-
             # Find the next uncompleted goal
             for goal_idx in range(self.num_goals):
-    
-                """ Incorporate slack action for (state, time) """
-                # Add slack reward to the dictionary
-                slack_reward = self.compute_slack_reward(0)
-                
-                # Add slack reward in the Q-values
-                self.Q[s][t].setdefault(-1, dict())
-                self.Q[s][t][-1]["E"] = slack_reward
-    
-                # Add slack reward in the rewards
-                self.R[s][t].setdefault(-1, dict())
-                self.R[s][t][-1]["E"] = slack_reward
     
                 # If the goal with index goal_idx is not completed
                 if s[goal_idx] == 0:

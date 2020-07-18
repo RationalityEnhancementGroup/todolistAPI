@@ -198,7 +198,7 @@ def compute_pseudo_rewards(obj, start_time=0, loc=0., scale=1.):
     return min_PR
 
 
-def compute_s0_pseudo_rewards(to_do_list):
+def compute_start_state_pseudo_rewards(to_do_list):
     
     # Get list of goals
     goals = to_do_list.get_goals()
@@ -233,22 +233,25 @@ def compute_s0_pseudo_rewards(to_do_list):
         future_q = goal.get_future_q(t_)
         
         # Initialize (s)tate and (t)ime
-        s = tuple(0 for _ in range(goal.get_num_tasks()))
+        s = goal.get_start_state()
         t = 0
         
+        # Get all tasks
         tasks = goal.get_tasks()
         
         for a in goal.get_q_values(s, t):
             
             if a != -1:
-                task = tasks[a]
                 
-                # Get task ID
-                task_id = task.get_id()
+                # Get task object
+                task = tasks[a]
                 
                 # Compute task Q-value
                 q = goal.get_q_values(s, t, a) + future_q
                 
+                # Get task ID
+                task_id = task.get_id()
+
                 # Store Q-value for task execution in s[0]
                 task_q[task_id] = q
                 
@@ -265,8 +268,6 @@ def compute_s0_pseudo_rewards(to_do_list):
                 if best_q <= q:
                     best_q = q
                     best_next_q = q - loss
-    
-                # best_next_q = max(best_next_q, q - loss)
     
                 # Add tasks to the list of incentivized tasks (?!)
                 incentivized_tasks.append(task)
@@ -315,9 +316,6 @@ def compute_s0_pseudo_rewards(to_do_list):
     # Initialize {Task ID: pseudo-reward} dictionary
     id2pr = dict()
 
-    # Get total number of tasks
-    # num_tasks = len(optimal_tasks) + len(suboptimal_tasks)
-
     # Sanity check for the sum of pseudo-rewards
     sc_sum_pr = 0
 
@@ -325,8 +323,6 @@ def compute_s0_pseudo_rewards(to_do_list):
     # for task in optimal_tasks + suboptimal_tasks + slack_tasks:
     for task in incentivized_tasks:
         
-        # TODO: Include slack actions...
-    
         # Get task unique identification
         task_id = task.get_id()
     
@@ -337,7 +333,7 @@ def compute_s0_pseudo_rewards(to_do_list):
         task.set_optimal_reward(pr)
     
         # If task is not slack action
-        if task.get_idx() is not None:
+        if task.get_idx() != -1:
             
             # Update sanity check for the sum of pseudo-rewards
             sc_sum_pr += task.get_optimal_reward()
@@ -366,7 +362,7 @@ def compute_s0_pseudo_rewards(to_do_list):
             goal = goals[a]
             
             # Compute 0-state pseudo-rewards for current goal
-            PR, best_a = goal.get_s0_pseudo_rewards(t)
+            PR, best_a = goal.get_start_state_pseudo_rewards(t)
             
             # Get all goal's tasks
             tasks = goal.get_tasks()
@@ -383,17 +379,16 @@ def compute_s0_pseudo_rewards(to_do_list):
                 task = tasks[task_idx]
 
                 # TODO: Comment
-                if task_id not in id2pr.keys():
-                    break
-
-                # Append task to the queue of tasks to be scheduled
-                if best_a != -1:
-                    optimal_tasks.append(task)
-                else:
-                    suboptimal_tasks.append(task)
+                if task_id in id2pr.keys():
                     
-                # Set transformed task pseudo-reward as optimal value
-                task.set_optimal_reward(id2pr[task_id])
+                    # Append task to the queue of tasks to be scheduled
+                    if best_a != -1:
+                        optimal_tasks.append(task)
+                    else:
+                        suboptimal_tasks.append(task)
+                        
+                    # Set transformed task pseudo-reward as optimal value
+                    task.set_optimal_reward(id2pr[task_id])
                 
             # If the goal is worth pursuing (i.e. slack action is not the best)
             if best_a == -1:
@@ -403,14 +398,11 @@ def compute_s0_pseudo_rewards(to_do_list):
                 # Get slack action associated with current goal
                 slack_action = goal.get_slack_action()
                 
-                # Set slack action name
-                # TODO: Add goal name to slack-off action
-                slack_action.set_description(
-                    f"Please revise goal \"{goal.get_description()}\"!"
-                )
+                # Set otpimal reward
+                slack_action.set_optimal_reward(0)
                 
                 # Add slack action to the list of slack tasks
-                slack_tasks.append(goal.get_slack_action())
+                slack_tasks.append(slack_action)
         
         # TODO: Add slack-off action that reminds user to revise other goals
         #     - Not sure if necessary, i.e. the method reaches this point...
@@ -505,8 +497,8 @@ def run_optimal_policy(obj, s=None, t=0, choice_mode="random"):
             time_est = times[idx]
         
         elif choice_mode == "random":
-            time_est = np.random.choice(times, size=1, replace=False, p=values)[
-                0]
+            time_est = \
+                np.random.choice(times, size=1, replace=False, p=values)[0]
         
         else:
             raise NotImplementedError(f"Unsupported choice mode {choice_mode}!")

@@ -11,7 +11,7 @@ from pprint import pprint
 from tqdm import tqdm
 
 from todolistMDP.smdp_utils import compute_pseudo_rewards,\
-    compute_s0_pseudo_rewards, run_optimal_policy
+    compute_start_state_pseudo_rewards, run_optimal_policy
 from todolistMDP.smdp_test_generator import generate_test_case
 from todolistMDP.to_do_list import Task, Goal, ToDoList
 
@@ -63,8 +63,8 @@ PLANNING_FALLACY_CONST = 1  # Default
 # PLANNING_FALLACY_CONST = 1.39
 
 # SLACK_REWARD = np.NINF
-# SLACK_REWARD = 1
-SLACK_REWARD = 1e-1
+SLACK_REWARD = 1
+# SLACK_REWARD = 1e-1
 # SLACK_REWARD = 1e-2
 # SLACK_REWARD = 1e-3
 
@@ -653,7 +653,7 @@ if __name__ == '__main__':
     print_stats(to_do_list)
     
     # compute_pseudo_rewards(to_do_list)
-    prs = compute_s0_pseudo_rewards(to_do_list)
+    prs = compute_start_state_pseudo_rewards(to_do_list)
 
     print("===== Optimal tasks =====")
     for task in prs["optimal_tasks"]:
@@ -671,7 +671,7 @@ if __name__ == '__main__':
     print()
 
     print("Scale:", prs["scale"], "| Bias", prs["bias"])
-    print("Total sum of pseudo-rewards:", f'{prs["sc_sum_pr"]:.3f}')
+    print("Total sum of pseudo-rewards:", f'{prs["sc_sum_pr"]}')
 
     toc = time.time()
     
