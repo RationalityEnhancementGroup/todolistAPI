@@ -82,6 +82,87 @@ class PostResource(RESTResource):
 
             try:
                 
+                api_method = vpath[-1]
+    
+                if api_method in {"averageSpeedTestSMDP",
+                                  "bestSpeedTestSMDP",
+                                  "exhaustiveSpeedTestSMDP",
+                                  "realSpeedTestSMDP",
+                                  "worstSpeedTestSMDP"}:
+        
+                    smdp_params = {
+                        "choice_mode":            jsonData["choice_mode"],
+                        "gamma":                  jsonData["gamma"],
+                        "loss_rate":              jsonData["loss_rate"],
+                        "num_bins":               jsonData["n_bins"],
+                        "planning_fallacy_const": jsonData["planning_fallacy_const"],
+                        "slack_reward":           jsonData["slack_reward"],
+                        "unit_penalty":           jsonData["unit_penalty"],
+            
+                        "goal_pr_loc":   jsonData["goal_pr_loc"],
+                        "goal_pr_scale": jsonData["goal_pr_scale"],
+                        "task_pr_loc":   jsonData["task_pr_loc"],
+                        "task_pr_scale": jsonData["task_pr_scale"],
+            
+                        "scale_type": jsonData["scale_type"],
+                        "scale_min":  jsonData["scale_min"],
+                        "scale_max":  jsonData["scale_max"]
+                    }
+        
+                    if smdp_params["slack_reward"] == 0:
+                        smdp_params["slack_reward"] = np.NINF
+        
+                    """ Generating test case """
+                    tic = time.time()
+        
+                    test_goals = generate_test_case(
+                        api_method=api_method,
+                        n_bins=jsonData["n_bins"],
+                        n_goals=jsonData["n_goals"],
+                        n_tasks=jsonData["n_tasks"],
+                        time_est=jsonData["time_est"],
+                        unit_penalty=jsonData["unit_penalty"]
+                    )
+                    
+                    toc = time.time()
+                    timer["Generating test case"] = toc - tic
+        
+                    """ Run SMDP """
+                    tic = time.time()
+        
+                    final_tasks = assign_chain_smdp_points(
+                        projects=test_goals,
+                        timer=timer,
+                        day_duration=jsonData["today_minutes"],
+                        smdp_params=smdp_params,
+                        time_zone=0,
+                        json=False
+                    )
+        
+                    toc = time.time()
+                    timer["Run SMDP"] = toc - tic
+        
+                    """ Simulating task scheduling """
+                    tic = time.time()
+        
+                    simulate_task_scheduling(test_goals)
+        
+                    toc = time.time()
+                    timer["Simulating task scheduling"] = toc - tic
+        
+                    # Stop timer: Complete SMDP procedure
+                    main_toc = time.time()
+        
+                    status = f"Testing took {main_toc - main_tic:.3f} seconds!"
+        
+                    # Stop timer: Complete SMDP procedure
+                    timer["Complete SMDP procedure"] = main_toc - main_tic
+        
+                    return json.dumps({
+                        "status": status,
+                        "timer":  timer
+                    })
+    
                 # Start timer: reading parameters
                 tic = time.time()
                 
@@ -591,44 +672,45 @@ class PostResource(RESTResource):
                             smdp_params=smdp_params, time_zone=time_zone
                         )
 
-                    else:
-                        
-                        """ Generating test case """
-                        tic = time.time()
-                        
-                        test_goals = generate_test_case(
-                            api_method=api_method,
-                            n_bins=jsonData["n_bins"],
-                            n_goals=jsonData["n_goals"],
-                            n_tasks=jsonData["n_tasks"],
-                            unit_penalty=smdp_params["unit_penalty"]
-                        )
-
-                        toc = time.time()
-                        timer["Generating test case"] = toc - tic
-    
-                        """ Run SMDP """
-                        tic = time.time()
-    
-                        final_tasks = assign_chain_smdp_points(
-                            projects=test_goals,
-                            timer=timer,
-                            day_duration=today_minutes,
-                            smdp_params=smdp_params,
-                            time_zone=time_zone,
-                            json=False
-                        )
-                        
-                        toc = time.time()
-                        timer["Run SMDP"] = toc - tic
-
-                        """ Simulating task scheduling """
-                        tic = time.time()
-
-                        simulate_task_scheduling(test_goals)
-                        
-                        toc = time.time()
-                        timer["Simulating task scheduling"] = toc - tic
+                    # else:
+                    #
+                    #     """ Generating test case """
+                    #     tic = time.time()
+                    #
+                    #     test_goals = generate_test_case(
+                    #         api_method=api_method,
+                    #         n_bins=jsonData["n_bins"],
+                    #         n_goals=jsonData["n_goals"],
+                    #         n_tasks=jsonData["n_tasks"],
+                    #         time_est=jsonData["time_est"],
+                    #         unit_penalty=smdp_params["unit_penalty"]
+                    #     )
+                    #
+                    #     toc = time.time()
+                    #     timer["Generating test case"] = toc - tic
+                    #
+                    #     """ Run SMDP """
+                    #     tic = time.time()
+                    #
+                    #     final_tasks = assign_chain_smdp_points(
+                    #         projects=test_goals,
+                    #         timer=timer,
+                    #         day_duration=today_minutes,
+                    #         smdp_params=smdp_params,
+                    #         time_zone=time_zone,
+                    #         json=False
+                    #     )
+                    #
+                    #     toc = time.time()
+                    #     timer["Run SMDP"] = toc - tic
+                    #
+                    #     """ Simulating task scheduling """
+                    #     tic = time.time()
+                    #
+                    #     simulate_task_scheduling(test_goals)
+                    #
+                    #     toc = time.time()
+                    #     timer["Simulating task scheduling"] = toc - tic
     
                 else:
                     status = "API method does not exist. Please contact us " \
@@ -766,24 +848,24 @@ class PostResource(RESTResource):
                     # Return scheduled tasks
                     return json.dumps(final_tasks)
                 
-                elif api_method in ["averageSpeedTestSMDP",
-                                    "bestSpeedTestSMDP", "worstSpeedTestSMDP"]:
-    
-                    # Stop timer: Complete SMDP procedure
-                    main_toc = time.time()
-    
-                    status = f"Testing {api_method} with " \
-                             f"{jsonData['n_goals']} goals and " \
-                             f"{jsonData['n_tasks']} tasks per goal " \
-                             f"took {main_toc - main_tic:.3f} seconds!"
-                    
-                    # Stop timer: Complete SMDP procedure
-                    timer["Complete SMDP procedure"] = main_toc - main_tic
-
-                    return json.dumps({
-                        "status": status,
-                        "timer": timer
-                    })
+                # elif api_method in ["averageSpeedTestSMDP",
+                #                     "bestSpeedTestSMDP", "worstSpeedTestSMDP"]:
+                #
+                #     # Stop timer: Complete SMDP procedure
+                #     main_toc = time.time()
+                #
+                #     status = f"Testing {api_method} with " \
+                #              f"{jsonData['n_goals']} goals and " \
+                #              f"{jsonData['n_tasks']} tasks per goal " \
+                #              f"took {main_toc - main_tic:.3f} seconds!"
+                #
+                #     # Stop timer: Complete SMDP procedure
+                #     timer["Complete SMDP procedure"] = main_toc - main_tic
+                #
+                #     return json.dumps({
+                #         "status": status,
+                #         "timer": timer
+                #     })
                 
                 else:
                     status = "API Method not implemented. Please contact us " \

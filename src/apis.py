@@ -237,40 +237,43 @@ def assign_chain_smdp_points(projects, day_duration, smdp_params, timer,
     else:
         today_tasks = optimal_tasks
 
-    today_tasks.sort(key=lambda task: task["val"])
+    today_tasks = list(today_tasks)
+    if json:
+        today_tasks.sort(key=lambda task: task["val"])
+        
+        # Add slack tasks to output
+        for task in slack_tasks:
+            goal = list(task.get_goals())[0]
     
-    # TODO: Add slack tasks to output
-    for task in slack_tasks:
+            task_json = {
+                'completed':         False,
+                'daily':             False,
+                'day_datetime':      None,
+                'days':              [False, False, False, False, False, False, False],
+                'deadline':          task.get_deadline(),
+                'deadline_datetime': task.get_deadline_datetime(),
+                'future':            False,
+                'repetitive_days':   [False, False, False, False, False, False,
+                                      False],
+                'scheduled_today':   True,
         
-        goal = list(task.get_goals())[0]
-        
-        task_json = {
-            'completed':         False,
-            'daily':             False,
-            'day_datetime':      None,
-            'days':              [False, False, False, False, False, False,
-                                  False],
-            'deadline':          task.get_deadline(),
-            'deadline_datetime': task.get_deadline_datetime(),
-            'future':            False,
-            'repetitive_days':   [False, False, False, False, False, False,
-                                  False],
-            'scheduled_today':   True,
-            
-            'est': 25,
-            'id': f"sa{goal.get_idx()}",
-            'lm': 0,
-            'nm': f"{goal.get_idx() + 1}) {task.get_description()}",
-            'parentId': goal.get_id(),
-            'pcp': False,
-            'pph': 0,
-            'today': True,
-            'val': 0
-        }
-        
-        # today_tasks = [task_json] + today_tasks
-        today_tasks.append(task_json)
+                'est':               25,
+                'id':                f"sa{goal.get_idx()}",
+                'lm':                0,
+                'nm':                f"{goal.get_idx() + 1}) {task.get_description()}",
+                'parentId':          goal.get_id(),
+                'pcp':               False,
+                'pph':               0,
+                'today':             True,
+                'val':               0
+            }
+    
+            # today_tasks = [task_json] + today_tasks
+            today_tasks.append(task_json)
 
+    else:
+        today_tasks.sort(key=lambda task: task.get_optimal_reward())
+    
     # Sort tasks in reversed order
     today_tasks.reverse()
     
