@@ -19,9 +19,6 @@ def basic_scheduler(task_list, time_zone=0, duration_remaining=8 * 60,
     # Initialize queue of other tasks eligible to be scheduled today
     remaining_tasks = deque()
 
-    # Initialize overwork minutes
-    # overwork_minutes = 0
-
     # Get information on current day and weekday
     current_day = datetime.utcnow() + timedelta(minutes=time_zone)
     current_weekday = current_day.weekday()
@@ -46,17 +43,6 @@ def basic_scheduler(task_list, time_zone=0, duration_remaining=8 * 60,
                         task, current_day, current_weekday):
                     remaining_tasks.append(task)
         
-                # If there is enough time to schedule the task
-                # if task["est"] <= duration_remaining:
-                #     today_tasks.append(task)
-                #     duration_remaining -= task["est"]
-                # else:
-                #     overwork_minutes += task_item["est"]
-
-    # overwork_minutes -= duration_remaining
-    # if overwork_minutes > 0:
-    #     raise Exception(generate_overwork_error_message(overwork_minutes))
-    
     # From: https://stackoverflow.com/a/73050
     sorted_by_deadline = sorted(list(remaining_tasks),
                                 key=lambda k: k['deadline'])
@@ -99,9 +85,6 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
     # Initialize queue of other tasks eligible to be scheduled today
     remaining_tasks = deque()
     
-    # Initialize overwork minutes
-    # overwork_minutes = 0
-    
     # Get information on current day and weekday
     current_day = datetime.utcnow() + timedelta(minutes=time_zone)
     current_weekday = current_day.weekday()
@@ -132,17 +115,6 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
                                              current_day, current_weekday):
                 remaining_tasks.append(task_item)
                 
-            # If there is enough time to schedule the task
-            # if duration_remaining >= task_item["est"]:
-            #     today_tasks.append(task_item)
-            #     duration_remaining -= task_item["est"]
-            # else:
-            #     overwork_minutes += task_item["est"]
-    
-    # overwork_minutes -= duration_remaining
-    # if overwork_minutes > 0:
-    #     raise Exception(generate_overwork_error_message(overwork_minutes))
-    
     # Schedule other tasks
     while len(remaining_tasks) > 0:
         
