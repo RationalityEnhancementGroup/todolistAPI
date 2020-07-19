@@ -83,7 +83,7 @@ class PostResource(RESTResource):
             try:
                 
                 api_method = vpath[-1]
-    
+                
                 if api_method in {"averageSpeedTestSMDP",
                                   "bestSpeedTestSMDP",
                                   "exhaustiveSpeedTestSMDP",
@@ -106,9 +106,13 @@ class PostResource(RESTResource):
             
                         "scale_type": jsonData["scale_type"],
                         "scale_min":  jsonData["scale_min"],
-                        "scale_max":  jsonData["scale_max"]
+                        "scale_max":  jsonData["scale_max"],
+    
+                        "bias": None,
+                        "scale": None
+    
                     }
-        
+
                     if smdp_params["slack_reward"] == 0:
                         smdp_params["slack_reward"] = np.NINF
         
