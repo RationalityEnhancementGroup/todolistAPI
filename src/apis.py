@@ -194,7 +194,9 @@ def assign_chain_smdp_points(projects, day_duration, smdp_params, timer,
 
     """ Compute pseudo-rewards """
     tic = time.time()
-    prs = compute_start_state_pseudo_rewards(to_do_list)
+    prs = compute_start_state_pseudo_rewards(to_do_list,
+                                             bias=smdp_params["bias"],
+                                             scale=smdp_params["scale"])
     timer["Run SMDP - Compute pseudo-rewards"] = time.time() - tic
     
     # Unpack pseudo-rewards

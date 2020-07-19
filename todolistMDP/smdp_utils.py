@@ -198,7 +198,7 @@ def compute_pseudo_rewards(obj, start_time=0, loc=0., scale=1.):
     return min_PR
 
 
-def compute_start_state_pseudo_rewards(to_do_list):
+def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
     
     # Get list of goals
     goals = to_do_list.get_goals()
@@ -310,8 +310,11 @@ def compute_start_state_pseudo_rewards(to_do_list):
     sum_pr += len(incentivized_tasks) * (1 - min_pr)  # min_pr < 0 (!)
     
     # Define scaling and shifting parameters
-    scale = sum_goal_values / sum_pr
-    bias = (1 - min_pr) * scale
+    if bias is None or scale is None:
+        scale = sum_goal_values / sum_pr
+        bias = (1 - min_pr) * scale
+        
+    print(bias, scale)
 
     # Initialize {Task ID: pseudo-reward} dictionary
     id2pr = dict()
