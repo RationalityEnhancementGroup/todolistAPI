@@ -188,6 +188,67 @@ class PostResource(RESTResource):
                 # these parameters
                 parameters = [item for item in vpath[11:-3]]
                 
+                """ Reading SMDP parameters """
+                
+                smdp_params = dict({
+                    "planning_fallacy_const": 1
+                })
+
+                if method == "smdp":
+                    
+                    try:
+                        tic = time.time()
+        
+                        smdp_params.update({
+                            "choice_mode":            parameters[0],
+                            "gamma":                  float(parameters[1]),
+                            "loss_rate":              - float(parameters[2]),
+                            "num_bins":               int(parameters[3]),
+                            "planning_fallacy_const": float(parameters[4]),
+                            "slack_reward":           float(parameters[5]),
+                            "unit_penalty":           float(parameters[6]),
+            
+                            "goal_pr_loc":            float(parameters[7]),
+                            "goal_pr_scale":          float(parameters[8]),
+                            "task_pr_loc":            float(parameters[9]),
+                            "task_pr_scale":          float(parameters[10]),
+            
+                            'scale_type':             "no_scaling",
+                            'scale_min':              None,
+                            'scale_max':              None
+                        })
+        
+                        if smdp_params["slack_reward"] == 0:
+                            smdp_params["slack_reward"] = np.NINF
+        
+                        if len(parameters) >= 14:
+                            smdp_params['scale_type'] = parameters[11]
+                            smdp_params['scale_min'] = float(parameters[12])
+                            smdp_params['scale_max'] = float(parameters[13])
+            
+                            if smdp_params["scale_min"] == float("inf"):
+                                smdp_params["scale_min"] = None
+                            if smdp_params["scale_max"] == float("inf"):
+                                smdp_params["scale_max"] = None
+        
+                        smdp_params["bias"] = None
+                        if "bias" in jsonData.keys():
+                            smdp_params["bias"] = jsonData["bias"]
+        
+                        smdp_params["scale"] = None
+                        if "scale" in jsonData.keys():
+                            smdp_params["scale"] = jsonData["scale"]
+        
+                        toc = time.time()
+                        timer["Reading SMDP parameters"] = toc - tic
+                    except:
+                        status = "There was an issue with the API input " \
+                                 "(reading SMDP parameters from URL) Please " \
+                                 "contact us at reg.experiments@tuebingen.mpg.de."
+                        store_log(db.request_log, log_dict, status=status)
+                        cherrypy.response.status = 403
+                        return json.dumps(status)
+
                 # JSON tree parameters
                 try:
                     time_zone = int(jsonData["timezoneOffsetMinutes"])
@@ -451,7 +512,9 @@ class PostResource(RESTResource):
                 # Get information about daily tasks time estimation
                 daily_tasks_time_est = \
                     parse_scheduling_tags(projects, allowed_task_time,
-                                          default_time_est, user_datetime)
+                                          default_time_est,
+                                          smdp_params["planning_fallacy_const"],
+                                          user_datetime)
 
                 # Subtract daily tasks time estimation from typical working hours
                 for weekday in range(len(typical_minutes)):
@@ -624,49 +687,12 @@ class PostResource(RESTResource):
                 
                 elif method == "smdp":
                     
-                    """ Reading SMDP parameters """
-                    tic = time.time()
-                    
-                    smdp_params = {
-                        "choice_mode": parameters[0],
-                        "gamma": float(parameters[1]),  # 0.9999
-                        "loss_rate": - float(parameters[2]),  # -1
-                        "num_bins": int(parameters[3]),  # 1
-                        "planning_fallacy_const": float(parameters[4]),  # 1.39
-                        "slack_reward": float(parameters[5]),  # 1e-3
-                        "unit_penalty": float(parameters[6]),  # 1e-1
-    
-                        "goal_pr_loc": float(parameters[7]),  # 1000
-                        "goal_pr_scale": float(parameters[8]),  # 1 - gamma
-                        "task_pr_loc": float(parameters[9]),  # 0
-                        "task_pr_scale": float(parameters[10]),  # 2
-                        
-                        'scale_type': "no_scaling",
-                        'scale_min':  None,
-                        'scale_max':  None
-                    }
-                    
-                    if smdp_params["slack_reward"] == 0:
-                        smdp_params["slack_reward"] = np.NINF
-    
-                    if len(parameters) >= 14:
-                        smdp_params['scale_type'] = parameters[11]
-                        smdp_params['scale_min'] = float(parameters[12])
-                        smdp_params['scale_max'] = float(parameters[13])
-        
-                        if smdp_params["scale_min"] == float("inf"):
-                            smdp_params["scale_min"] = None
-                        if smdp_params["scale_max"] == float("inf"):
-                            smdp_params["scale_max"] = None
-
-                    toc = time.time()
-                    timer["Reading SMDP parameters"] = toc - tic
-                    
                     if api_method == "getTasksForToday":
                         # final_tasks = assign_smdp_points(
                         #     projects, timer=timer, day_duration=today_minutes,
                         #     smdp_params=smdp_params, time_zone=time_zone
                         # )
+                        
                         final_tasks = assign_chain_smdp_points(
                             projects, timer=timer, day_duration=today_minutes,
                             smdp_params=smdp_params, time_zone=time_zone

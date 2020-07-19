@@ -452,7 +452,7 @@ def parse_hours(time_string):
 
 
 def parse_scheduling_tags(projects, allowed_task_time, default_time_est,
-                          user_datetime):
+                          planning_fallacy_const, user_datetime):
     # Initialize total daily tasks time estimation for each weekday
     weekday_tasks_time_est = [0 for _ in range(7)]
     
@@ -479,7 +479,7 @@ def parse_scheduling_tags(projects, allowed_task_time, default_time_est,
             try:
                 task["est"] = \
                     process_time_est(task["nm"], allowed_task_time,
-                                     default_time_est)
+                                     default_time_est) * planning_fallacy_const
             except Exception as error:
                 raise Exception(f"Task {task['nm']}: {str(error)}")
             
@@ -953,7 +953,6 @@ def tree_to_old_structure(projects, params):
                 # effective_deadline=goal["effective_deadline"],
                 # latest_start_time=goal["latest_start_time"],
                 loss_rate=params["loss_rate"],
-                planning_fallacy_const=params["planning_fallacy_const"],
                 num_bins=params["num_bins"],
                 rewards={goal["deadline"]: goal["value"]},
                 slack_reward=params["slack_reward"],
