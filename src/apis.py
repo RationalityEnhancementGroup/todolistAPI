@@ -6,7 +6,6 @@ from src.schedulers.schedulers import schedule_tasks_for_today
 
 from todolistMDP.smdp_utils import *
 from todolistMDP.to_do_list import *
-from todolistMDP.test_smdp import *
 
 
 def assign_constant_points(projects, default_task_value=10):
