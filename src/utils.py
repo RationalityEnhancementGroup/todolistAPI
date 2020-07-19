@@ -74,8 +74,8 @@ def compute_latest_start_time(goal):
         current_time -= int(task["est"])
     
         if current_time < 0:
-            # TODO: Task ... is unattainable... (instructions)...
-            raise Exception(f'Task {task["nm"]} is unattainable!')
+            raise Exception(f'Task {task["nm"]} is unattainable! '
+                            f'Please reschedule its deadline.')
     
     return current_time
 
@@ -950,8 +950,6 @@ def tree_to_old_structure(projects, params):
                 deadline_datetime=goal["deadline_datetime"],
                 description=goal["nm"],
                 goal_id=goal["id"],
-                # effective_deadline=goal["effective_deadline"],
-                # latest_start_time=goal["latest_start_time"],
                 loss_rate=params["loss_rate"],
                 num_bins=params["num_bins"],
                 rewards={goal["deadline"]: goal["value"]},

@@ -1,20 +1,12 @@
 import json
-import os
 import stopit
-import sys
 
-from copy import deepcopy
-from datetime import datetime
-from pprint import pprint
 from pymongo import MongoClient, DESCENDING
 
 from src.apis import *
-from todolistMDP.smdp_test_generator import *
 from src.schedulers.schedulers import *
 from src.utils import *
-
-# from todolistMDP.mdp_solvers \
-#     import backward_induction, policy_iteration, value_iteration
+from todolistMDP.smdp_test_generator import *
 
 CONTACT = "If you continue to encounter this issue, please contact us at " \
           "reg.experiments@tuebingen.mpg.de."
@@ -99,11 +91,6 @@ class PostResource(RESTResource):
                         "slack_reward":           jsonData["slack_reward"],
                         "unit_penalty":           jsonData["unit_penalty"],
             
-                        "goal_pr_loc":   jsonData["goal_pr_loc"],
-                        "goal_pr_scale": jsonData["goal_pr_scale"],
-                        "task_pr_loc":   jsonData["task_pr_loc"],
-                        "task_pr_scale": jsonData["task_pr_scale"],
-            
                         "scale_type": jsonData["scale_type"],
                         "scale_min":  jsonData["scale_min"],
                         "scale_max":  jsonData["scale_max"],
@@ -134,7 +121,7 @@ class PostResource(RESTResource):
                     """ Run SMDP """
                     tic = time.time()
         
-                    final_tasks = assign_chain_smdp_points(
+                    assign_smdp_points(
                         projects=test_goals,
                         timer=timer,
                         day_duration=jsonData["today_minutes"],
@@ -212,11 +199,6 @@ class PostResource(RESTResource):
                             "slack_reward":           float(parameters[5]),
                             "unit_penalty":           float(parameters[6]),
             
-                            "goal_pr_loc":            float(parameters[7]),
-                            "goal_pr_scale":          float(parameters[8]),
-                            "task_pr_loc":            float(parameters[9]),
-                            "task_pr_scale":          float(parameters[10]),
-            
                             'scale_type':             "no_scaling",
                             'scale_min':              None,
                             'scale_max':              None
@@ -225,10 +207,10 @@ class PostResource(RESTResource):
                         if smdp_params["slack_reward"] == 0:
                             smdp_params["slack_reward"] = np.NINF
         
-                        if len(parameters) >= 14:
-                            smdp_params['scale_type'] = parameters[11]
-                            smdp_params['scale_min'] = float(parameters[12])
-                            smdp_params['scale_max'] = float(parameters[13])
+                        if len(parameters) >= 10:
+                            smdp_params['scale_type'] = parameters[7]
+                            smdp_params['scale_min'] = float(parameters[8])
+                            smdp_params['scale_max'] = float(parameters[9])
             
                             if smdp_params["scale_min"] == float("inf"):
                                 smdp_params["scale_min"] = None
@@ -692,56 +674,12 @@ class PostResource(RESTResource):
                 elif method == "smdp":
                     
                     if api_method == "getTasksForToday":
-                        # final_tasks = assign_smdp_points(
-                        #     projects, timer=timer, day_duration=today_minutes,
-                        #     smdp_params=smdp_params, time_zone=time_zone
-                        # )
                         
-                        final_tasks = assign_chain_smdp_points(
+                        final_tasks = assign_smdp_points(
                             projects, timer=timer, day_duration=today_minutes,
                             smdp_params=smdp_params, time_zone=time_zone
                         )
 
-                    # else:
-                    #
-                    #     """ Generating test case """
-                    #     tic = time.time()
-                    #
-                    #     test_goals = generate_test_case(
-                    #         api_method=api_method,
-                    #         n_bins=jsonData["n_bins"],
-                    #         n_goals=jsonData["n_goals"],
-                    #         n_tasks=jsonData["n_tasks"],
-                    #         time_est=jsonData["time_est"],
-                    #         unit_penalty=smdp_params["unit_penalty"]
-                    #     )
-                    #
-                    #     toc = time.time()
-                    #     timer["Generating test case"] = toc - tic
-                    #
-                    #     """ Run SMDP """
-                    #     tic = time.time()
-                    #
-                    #     final_tasks = assign_chain_smdp_points(
-                    #         projects=test_goals,
-                    #         timer=timer,
-                    #         day_duration=today_minutes,
-                    #         smdp_params=smdp_params,
-                    #         time_zone=time_zone,
-                    #         json=False
-                    #     )
-                    #
-                    #     toc = time.time()
-                    #     timer["Run SMDP"] = toc - tic
-                    #
-                    #     """ Simulating task scheduling """
-                    #     tic = time.time()
-                    #
-                    #     simulate_task_scheduling(test_goals)
-                    #
-                    #     toc = time.time()
-                    #     timer["Simulating task scheduling"] = toc - tic
-    
                 else:
                     status = "API method does not exist. Please contact us " \
                              "at reg.experiments@tuebingen.mpg.de."
@@ -877,25 +815,6 @@ class PostResource(RESTResource):
 
                     # Return scheduled tasks
                     return json.dumps(final_tasks)
-                
-                # elif api_method in ["averageSpeedTestSMDP",
-                #                     "bestSpeedTestSMDP", "worstSpeedTestSMDP"]:
-                #
-                #     # Stop timer: Complete SMDP procedure
-                #     main_toc = time.time()
-                #
-                #     status = f"Testing {api_method} with " \
-                #              f"{jsonData['n_goals']} goals and " \
-                #              f"{jsonData['n_tasks']} tasks per goal " \
-                #              f"took {main_toc - main_tic:.3f} seconds!"
-                #
-                #     # Stop timer: Complete SMDP procedure
-                #     timer["Complete SMDP procedure"] = main_toc - main_tic
-                #
-                #     return json.dumps({
-                #         "status": status,
-                #         "timer": timer
-                #     })
                 
                 else:
                     status = "API Method not implemented. Please contact us " \

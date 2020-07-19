@@ -11,100 +11,6 @@ from pymongo import MongoClient
 from tqdm import tqdm
 
 
-def test_speed_mdp(n_goals, n_tasks, deadline_years, mixing_params, n_trials=1):
-    time_results = dict()
-    
-    time_df = pd.DataFrame()
-    tout_df = pd.DataFrame()
-
-    break_flag = False
-
-    for ng in n_goals:
-        for nt in n_tasks:
-            for dy in deadline_years:
-
-                time_log = pd.Series(index=mixing_params)
-                tout_log = pd.Series(index=mixing_params)
-
-                idx_name = f"{ng}_goals_{nt}_tasks"
-
-                with open(f"{PATH_NAME}/{idx_name}.json", "r") as file:
-                    data = json.load(file)
-
-                for mp in mixing_params:
-                    time_results[mp] = list()
-                    tout_log[mp] = 0
-
-                    print("Number of goals:", ng,
-                          "| Number of tasks per goal:", nt,
-                          "| Years to deadline:", dy,
-                          "| Mixing parameter:", mp)
-
-                    PARAMS = f"api/{ALGORITHM}/mdp/1/10/inf/0/inf/0/inf/{mp}" \
-                             f"/0/0/tree/u123/getTasksForToday"
-                    API_ENDPOINT = SERVER + PARAMS
-
-                    for _ in tqdm(range(n_trials)):
-
-                        start_time = time.time()
-                        r = requests.post(url=API_ENDPOINT, data=json.dumps(data))
-                        end_time = time.time()
-
-                        output = r.text
-
-                        print(output)
-
-                        if output[0] == '"':
-                            print('\nTimeout!')
-                            tout_log[mp] += 1
-                        elif output[0] == '<':
-                            print(output)
-                        else:
-                            if VERBOSE:
-                                pprint(json.loads(output))
-                            time_results[mp].append(end_time - start_time)
-
-                        # Clean-up database
-                        DB.request_log.delete_many({"user_id": USER_ID})
-                        DB.trees.delete_many({"user_id": USER_ID})
-
-                    # Print results
-                    time_log[mp] = np.mean(time_results[mp])
-                    print(f"\nNumber of goals: {ng}\n"
-                          f"Number of tasks per goal: {nt}\n"
-                          f"Total number of tasks: {ng * nt}\n"
-                          f"Number of years: {dy}\n"
-                          f"Mixing parameter: {mp:.2f}\n"
-                          f"Average time: {time_log[mp]:.4f}\n"
-                          f"Timeouts: {tout_log[mp]}\n"
-                          f"Time results: {time_results[mp]}\n")
-
-                    # if n_trials == tout_log[mp]:
-                    #     break_flag = True
-                    #     print("Breaking...", end=" ")
-                    #     break
-
-                time_df[idx_name] = time_log
-                tout_df[idx_name] = tout_log
-
-                time_df.to_csv(f"{OUTPUT_PATH}/"
-                               f"results_{SERVER_ABBR}_time.csv")
-                tout_df.to_csv(f"{OUTPUT_PATH}/"
-                               f"results_{SERVER_ABBR}_tout.csv")
-
-                if break_flag:
-                    break
-
-            if break_flag:
-                print("Done!\n")
-                break
-
-        # Reset break flag
-        break_flag = False
-
-    return time_df, tout_df
-
-
 def test_speed_smdp(test_mode, n_bins, n_goals, n_tasks, n_trials=1):
     time_results = dict()
 
@@ -144,7 +50,7 @@ def test_speed_smdp(test_mode, n_bins, n_goals, n_tasks, n_trials=1):
                     )
                     
                     PARAMS = f"api/smdp/mdp/30/14/inf/0/inf/0/inf/false/2/" \
-                             f"max/{1-1e-9}/1/{nb}/1.39/0/0/0/1/0/1/" \
+                             f"max/{1-1e-9}/1/{nb}/1.39/0/0/" \
                              f"tree/u123/{test_mode}"
                     API_ENDPOINT = SERVER + PARAMS
     
@@ -184,9 +90,6 @@ def test_speed_smdp(test_mode, n_bins, n_goals, n_tasks, n_trials=1):
                             print('\nTimeout!')
                             tout_log[nt] += 1
                             
-                        # elif "The API has encountered an error" in output:
-                        #     print(output)
-                        
                         else:
                             log_info.update({
                                 "status": output
@@ -271,8 +174,7 @@ if __name__ == '__main__':
         DB = CONN["ai4productivity"]
     
     if MODE == HEROKU:
-        # URI = os.environ['MONGODB_URI']
-        URI = "mongodb://hC2P81mItQ16:a1R9ydF01dih@ds341557.mlab.com:41557/heroku_g6l4lr9d?retryWrites=false"
+        URI = os.environ['MONGODB_URI']
         CONN = MongoClient(URI)
         DB = CONN.heroku_g6l4lr9d
         
@@ -291,10 +193,9 @@ if __name__ == '__main__':
 
     N_BINS = [
         1,
-        # 2
+        2
     ]
 
-    # N_GOALS = list(range(1, 11))
     N_GOALS = [
         1,
         2,
@@ -314,28 +215,17 @@ if __name__ == '__main__':
         75,
         100,
         125, 150, 250, 500, 750, 1000,
-        1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000,
-        # 3250, 3500, 3750, 4000, 4250, 4500, 4750, 5000
+        1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000
     ]
     
-    # Test DP for different number of goals, tasks and mixing-parameter values
-    # test_speed_mdp(
-    #     n_goals=[10],
-    #     n_tasks=[2500, 7500, 10000],  # 10, 50, 100, 250, 500, 750, 1000,
-    #     deadline_years=[None],
-    #     mixing_params=[0.00, 0.10, 0.25, 0.50, 0.75, 0.90, 0.99],
-    #     n_trials=3
-    # )
-
     # Test SMDP for different number of goals and tasks
     test_speed_smdp(
         n_bins=N_BINS,
         n_goals=N_GOALS,
         n_tasks=N_TASKS,
         n_trials=5,
-        # test_mode="averageSpeedTestSMDP",
+        test_mode="averageSpeedTestSMDP",
         # test_mode="bestSpeedTestSMDP",
-        # test_mode="exhaustiveSpeedTestSMDP",
-        test_mode="realSpeedTestSMDP",
+        # test_mode="realSpeedTestSMDP",
         # test_mode="worstSpeedTestSMDP",
     )

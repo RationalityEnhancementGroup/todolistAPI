@@ -10,8 +10,8 @@ from math import factorial
 from pprint import pprint
 from tqdm import tqdm
 
-from todolistMDP.smdp_utils import compute_pseudo_rewards,\
-    compute_start_state_pseudo_rewards, run_optimal_policy
+from todolistMDP.smdp_utils import compute_start_state_pseudo_rewards,\
+    run_optimal_policy
 from todolistMDP.smdp_test_generator import generate_test_case
 from todolistMDP.to_do_list import Task, Goal, ToDoList
 
@@ -28,9 +28,9 @@ def print_item(item):
                 print(f"a: {'-' if a is None else str(a):>3s} | ", end="")
                 # print(f"t': {t_} | ", end="")
                 print(f"Q: {item.Q[s][t][a]['E']:10.3f} | ", end="")
-                print(f"f: {item.F[s][t][a]['E']:10.3f} | ", end="")
+                # print(f"f: {item.F[s][t][a]['E']:10.3f} | ", end="")
                 print(f"r: {item.R[s][t][a]['E']:10.3f} | ", end="")
-                print(f"r': {item.PR[s][t][a]['E']:10.3f} | ", end="")
+                # print(f"r': {item.PR[s][t][a]['E']:10.3f} | ", end="")
                 # print(f"Q: {item.Q[s][t][a]['E']} | ", end="")
                 # print(f"f: {item.F[s][t][a]['E']} | ", end="")
                 # print(f"r: {item.R[s][t][a]['E']} | ", end="")
@@ -672,6 +672,8 @@ if __name__ == '__main__':
 
     print("Scale:", prs["scale"], "| Bias", prs["bias"])
     print("Total sum of pseudo-rewards:", f'{prs["sc_sum_pr"]}')
+    
+    print_item(to_do_list)
 
     toc = time.time()
     

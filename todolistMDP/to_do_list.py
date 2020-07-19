@@ -366,10 +366,6 @@ class Goal(Item):
                 
             if task.is_completed():
                 self.start_state[idx] = 1
-
-            # TODO:
-            #     - Pass number of bins
-            #     - Pass planning fallacy
             
             # Connect task with goal
             task.add_goal(self)
@@ -425,6 +421,26 @@ class Goal(Item):
         
         return np.PINF
 
+    def get_best_action(self, t=0):
+    
+        # Get start state
+        s = self.start_state
+    
+        # Initialize best action and Q-value to be the slack action
+        best_a = -1
+        best_q = self.compute_slack_reward(0)
+    
+        # Store value of slack reward
+        self.R[s][t][-1] = best_q
+    
+        # Find best action and Q-value in current (state, time)
+        for a, q in self.Q[s][t].items():
+            if best_q <= q:
+                best_a = a
+                best_q = q
+    
+        return best_a
+
     def get_future_q(self, t=None):
         if t is not None:
             return self.future_q[t]
@@ -478,45 +494,6 @@ class Goal(Item):
                 return self.Q[s][t]
             return self.Q[s]
         return self.Q
-
-    # TODO: Add comments (!)
-    def get_start_state_pseudo_rewards(self, t=0):
-        
-        s = self.start_state
-        
-        best_a = -1
-        best_q = self.compute_slack_reward(0)
-        
-        self.R[s][t][-1] = best_q
-        
-        for a, q in self.Q[s][t].items():
-            if best_q <= q:
-                best_a = a
-                best_q = q
-                
-        loss = self.R[s][t][best_a]
-        # next_q = best_q - loss
-
-        PR = dict()
-        gamma = ToDoList.get_discount(t)
-        
-        for a, q in self.Q[s][t].items():
-            
-            pr = gamma * q - best_q
-            
-            if np.isclose(pr, 0, atol=1e-6):
-                pr = 0.
-
-            PR[a] = pr
-
-            if a == -1:
-                task = self.slack_action
-            else:
-                task = self.tasks[a]
-            
-            task.set_optimal_reward(pr)
-            
-        return PR, best_a
 
     def get_slack_action(self):
         return self.slack_action
@@ -608,11 +585,11 @@ class Goal(Item):
             self.R.setdefault(s, dict())
             self.R[s].setdefault(t, dict())
 
-            # TODO: ...
+            # Initialize pseudo-reward entries for (state, time)
             self.PR.setdefault(s, dict())
             self.PR[s].setdefault(t, dict())
 
-            # TODO: ...
+            # Initialize reward-shaping entries for (state, time)
             self.F.setdefault(s, dict())
             self.F[s].setdefault(t, dict())
 
@@ -789,7 +766,7 @@ class Goal(Item):
                 # self.R[s][np.PINF].setdefault(None, dict())
                 # self.R[s][np.PINF][None]["E"] = 0
 
-                # TODO: ...
+                # Initialize pseudo-reward entries for absorbing state
                 self.PR[s].setdefault(np.PINF, dict())
                 self.F[s].setdefault(np.PINF, dict())
 
@@ -1040,7 +1017,7 @@ class Goal(Item):
         self.Q[s][t].setdefault(-1, slack_reward)
         self.R[s][t].setdefault(-1, slack_reward)
 
-        # TODO: Comment...
+        # Initialize list of tasks to iterate
         tasks_to_iterate = deque()
         
         if t == 0:
@@ -1152,7 +1129,7 @@ class ToDoList:
             start_time:  Starting time of the MDP
         """
         
-        self.description = "To-do list"  # TODO: Change name (?)
+        self.description = "__TO_DO_LIST__"
         self.goals = goals
         self.end_time = end_time
         self.gamma = gamma
@@ -1290,7 +1267,7 @@ class ToDoList:
             if goal.get_slack_reward() is None:
                 goal.set_slack_reward(self.slack_reward)
                 
-            # TODO: Completed goals in start_state (?)
+            # TODO: Add completed goals in start_state (?)
                 
             # Set goal index
             goal.set_idx(idx)

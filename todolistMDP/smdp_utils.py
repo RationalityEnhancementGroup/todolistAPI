@@ -5,199 +5,6 @@ from pprint import pprint
 from todolistMDP.to_do_list import ToDoList, Goal
 
 
-def compute_pseudo_rewards(obj, start_time=0, loc=0., scale=1.):
-    """
-    Computes pseudo-rewards.
-
-    Args:
-        obj: Object for which pseudo-rewards are computed. Eg. Goal or ToDoList
-        start_time: Initial SMDP time.
-        loc: Bias parameter of the linear transformation.
-        scale: Scaling parameter of the linear transformation.
-
-    Returns:
-        /
-    """
-    standardizing_reward = obj.highest_negative_reward
-    if obj.highest_negative_reward == np.NINF:
-        standardizing_reward = 0
-    
-    # Initialize minimum pseudo-reward
-    min_PR = np.PINF
-    
-    # Get time-shift discount
-    discount = ToDoList.get_discount(start_time)
-    
-    for s in obj.Q.keys():
-        
-        for t in obj.Q[s].keys():
-            
-            # The best possible (a)ction and (q)-value in state s
-            best_a, best_q = ToDoList.max_from_dict(obj.Q[s][t])
-            best_q *= discount
-            
-            # Update optimal policy
-            obj.P[s][t] = best_a
-            
-            for a in obj.Q[s][t].keys():
-                
-                # TODO: Move to `solve` function(s)
-                obj.PR[s][t].setdefault(a, dict())
-                obj.F[s][t].setdefault(a, dict())
-                
-                # Initialize action object
-                action_obj = None
-                
-                # Initialize mean goal value
-                mean_goal_value = 0
-                
-                if a is None:
-                    v_ = 0
-                
-                elif a == -1:
-                    action_obj = obj.get_slack_action()
-                    v_ = obj.Q[s][t][a]["E"]
-                
-                else:
-                    if type(obj) is Goal:
-                        
-                        # Get current Task object
-                        action_obj = obj.tasks[a]
-                        
-                        # Move to the next state
-                        s_ = ToDoList.exec_action(s, a)
-                        
-                        # TODO: Compute expected future reward as a function
-                        if "E" not in obj.Q[s_].keys():
-                            pass
-                        
-                        # Get time transitions to the next state
-                        time_transitions = action_obj.get_time_transitions()
-                        
-                        # Initialize expected state value
-                        v_ = 0
-                        
-                        prop_goal_values = deque()
-                        mean_goal_value_scale = 0
-                        
-                        for time_est, prob_t_ in time_transitions.items():
-                            
-                            # Make time transition
-                            t_ = t + time_est
-                            
-                            # Compute mean goal value
-                            prop_goal_values.extend([
-                                [goal.get_reward(
-                                    start_time) / goal.get_time_est()
-                                 for goal in action_obj.get_goals()]
-                            ])
-                            
-                            # Get gamma for the next transition
-                            gamma = ToDoList.get_discount(time_est)
-                            
-                            # Get optimal action and value in the next state
-                            a_, q_ = ToDoList.max_from_dict(obj.Q[s_][t_])
-                            
-                            # Update expected value of the next state
-                            v_ += prob_t_ * gamma * q_
-                            
-                            # Get correct Q-value for the terminal state
-                            if a_ is None:
-                                v_ = best_q
-                                if best_a != -1:
-                                    v_ -= obj.R[s][t][a]["E"]
-                            
-                            mean_goal_value_scale += time_est * prob_t_
-                        
-                        #
-                        mean_goal_value = np.mean(prop_goal_values)
-                        mean_goal_value *= mean_goal_value_scale
-                    
-                    elif type(obj) is ToDoList:
-                        
-                        # Get current Goal object
-                        action_obj = obj.goals[a]
-                        
-                        # Move to the next state
-                        s_ = ToDoList.exec_action(s, a)
-                        
-                        # Get expected goal time estimate
-                        time_est = action_obj.get_time_est()
-                        
-                        # Make time transition
-                        t_ = t + time_est
-                        
-                        # Get gamma for the next transition
-                        gamma = ToDoList.get_discount(time_est)
-                        
-                        # Get optimal action in the next state
-                        a_, v_ = ToDoList.max_from_dict(obj.Q[s_][t_])
-                        
-                        # Compute discounted action value
-                        v_ *= gamma
-                    
-                    else:
-                        raise NotImplementedError(
-                            f"Unknown object type {type(obj)}")
-                
-                # Expected Q-value of the next state
-                v_ *= discount
-                
-                # Compute value of the reward-shaping function
-                f = v_ - best_q
-                
-                # Standardize rewards s.t. negative rewards <= 0
-                # f -= standardizing_reward * discount
-                
-                # Make affine transformation of the reward-shaping function
-                f = scale * f + loc  # + mean_goal_value
-                
-                # Get expected reward for (state, time, action)
-                r = obj.R[s][t][a]["E"]
-                
-                # Store reward-shaping value
-                obj.F[s][t][a]["E"] = f
-                
-                # Calculate pseudo-reward
-                pr = f + r
-                
-                # Set pseudo-reward to 0 in case of numerical instability
-                if np.isclose(pr, 0, atol=1e-6):
-                    pr = 0.
-                
-                # Store pseudo-reward
-                obj.PR[s][t][a]["E"] = pr
-                
-                # Store minimum non-infinite pseudo-reward
-                if action_obj is not None and (pr != np.NINF or pr != np.PINF):
-                    min_PR = min(min_PR, pr)
-                
-                # Add PR for each occurrence of action
-                if action_obj is not None and t != np.PINF:
-                    action_obj.values.append(pr)
-                    
-                    # if type(obj) is ToDoList:
-                    #     # action_obj.values.append(
-                    #     #     pr * np.exp(obj.log_prob[s][t])
-                    #     # )
-                    #     action_obj.values.append(
-                    #         v_ * np.exp(obj.log_prob[s][t])
-                    #     )
-                    #
-                    # elif type(obj) is Goal:
-                    #     # action_obj.values.append(
-                    #     #     pr * np.exp(obj.log_prob[s][t])
-                    #     # )
-                    #     action_obj.values.append(
-                    #         v_ * np.exp(obj.log_prob[s][t])
-                    #     )
-                    #
-                    # else:
-                    #     pass
-    
-    return min_PR
-
-
 def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
     
     # Get list of goals
@@ -211,7 +18,6 @@ def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
     # Initialize best Q-value
     best_q = np.NINF
     best_next_q = None
-    # TODO: Keep track of the best next action
     
     # Initialize list of incentivized tasks
     incentivized_tasks = deque()
@@ -271,10 +77,6 @@ def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
     
                 # Add tasks to the list of incentivized tasks (?!)
                 incentivized_tasks.append(task)
-                
-            else:
-                pass
-                # TODO: Enable slack action
                 
     # Initialize minimum pseudo-reward value (bias for linear transformation)
     min_pr = 0
@@ -364,8 +166,8 @@ def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
             # Get goal that correspond to that (a)ction
             goal = goals[a]
             
-            # Compute 0-state pseudo-rewards for current goal
-            PR, best_a = goal.get_start_state_pseudo_rewards(t)
+            # Get best action
+            best_a = goal.get_best_action(t)
             
             # Get all goal's tasks
             tasks = goal.get_tasks()
@@ -380,8 +182,8 @@ def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
                 
                 # Get task object for the corresponding index
                 task = tasks[task_idx]
-
-                # TODO: Comment
+                
+                # If the pseudo-reward has already been computed, assign it
                 if task_id in id2pr.keys():
                     
                     # Append task to the queue of tasks to be scheduled
@@ -396,21 +198,14 @@ def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
             # If the goal is worth pursuing (i.e. slack action is not the best)
             if best_a == -1:
 
-                # TODO: Slack-action ID... (?)
-                
                 # Get slack action associated with current goal
                 slack_action = goal.get_slack_action()
                 
-                # Set otpimal reward
+                # Set optimal reward
                 slack_action.set_optimal_reward(0)
                 
                 # Add slack action to the list of slack tasks
                 slack_tasks.append(slack_action)
-        
-        # TODO: Add slack-off action that reminds user to revise other goals
-        #     - Not sure if necessary, i.e. the method reaches this point...
-        else:
-            pass
         
     return {
         "optimal_tasks": optimal_tasks,
