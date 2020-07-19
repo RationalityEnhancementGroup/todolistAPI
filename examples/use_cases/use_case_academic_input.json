@@ -3,7 +3,7 @@
     "projects": [
         {
             "id": "g1",
-            "nm": "#CG1_Mathematics ==2000 DUE:2020-09-30",
+            "nm": "#CG1_Mathematics ==3000 DUE:2020-09-30",
             "lm": 0,
             "ch": [
                 {
@@ -40,12 +40,12 @@
                     "ch": [
                         {
                             "id": "g1-t2-t1",
-                            "nm": "Read lecture notes on \"Probability\" ~~1h",
+                            "nm": "Read lecture notes on \"Probability\" ~~1h DUE:2020-07-20 14:00",
                             "lm": 0
                         },
                         {
                             "id": "g1-t2-t2",
-                            "nm": "Solve exercises in the book ~~2h",
+                            "nm": "Solve exercises in the book ~~2h DUE:2020-07-23 14:00",
                             "lm": 0
                         },
                         {
@@ -60,12 +60,12 @@
         },
         {
             "id": "g2",
-            "nm": "#CG2_Causality_seminar ==1000 DUE:2020-07-31",
+            "nm": "#CG2_Causality_seminar ==2000 DUE:2020-08-31",
             "lm": 0,
             "ch": [
                 {
                     "id": "g2-t1",
-                    "nm": "Read proposed paper ~~4h",
+                    "nm": "Read proposed paper ~~4h #today",
                     "lm": 0
                 },
                 {
@@ -75,7 +75,7 @@
                 },
                 {
                     "id": "g2-t3",
-                    "nm": "Send presentation ~~15min #weekends",
+                    "nm": "Send presentation ~~15min",
                     "lm": 0
                 },
                 {
@@ -107,7 +107,7 @@
                 },
                 {
                     "id": "g3-t3",
-                    "nm": "Register for exams ~~25min #today DUE:2020-07-05",
+                    "nm": "Register for exams ~~25min #today DUE:2020-07-19 20:00",
                     "lm": 0
                 }
             ]
@@ -117,7 +117,7 @@
     "today_hours": [
         {
             "id": "_",
-            "nm": "#HOURS_TODAY ==10",
+            "nm": "#HOURS_TODAY ==12",
             "lm": 0
         }
     ],
@@ -129,5 +129,7 @@
         }
     ],
     "updated": 0,
-    "userkey": "__test__"
+    "userkey": "__test__",
+    "bias": 846.6619614393221,
+    "scale": 0.33165044494100293
 }
