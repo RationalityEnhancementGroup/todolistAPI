@@ -222,7 +222,7 @@ def assign_chain_smdp_points(projects, day_duration, smdp_params, timer,
         """ Run SMDP - Scheduling tasks """
         tic = time.time()
     
-        today_tasks = schedule_tasks_for_today(projects, optimal_tasks + suboptimal_tasks,
+        today_tasks = schedule_tasks_for_today(projects, optimal_tasks,
                                                duration_remaining=day_duration,
                                                time_zone=time_zone)
     
