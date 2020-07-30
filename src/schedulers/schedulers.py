@@ -32,6 +32,7 @@ def basic_scheduler(task_list, time_zone=0, duration_remaining=8 * 60,
                 # If task is marked to be scheduled today by the user
                 if task["scheduled_today"]:
                     today_tasks.append(task)
+                    duration_remaining -= task["est"]  # (!)
         
                 # If task is should be repetitively scheduled on today's day
                 elif is_repetitive_task(task, weekday=current_weekday):
@@ -102,9 +103,9 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
             
             # If task is marked to be scheduled today by the user
             if task_item["scheduled_today"]:
-                duration_remaining -= time_diff  # (!)
                 today_tasks.append(task_item)
-                
+                duration_remaining -= time_diff  # (!)
+
             # If task is should be repetitively scheduled on today's day
             elif is_repetitive_task(task_item, weekday=current_weekday):
                 today_tasks.append(task_item)

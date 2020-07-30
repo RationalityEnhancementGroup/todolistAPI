@@ -42,11 +42,9 @@ class Item:
         return id(self)
 
     def __str__(self):
-        return f"Description: {self.description}\n" \
-               f"Index: {self.idx}\n" \
-               f"Latest deadline time: {self.latest_deadline_time}\n"  \
-               f"Optimal reward: {self.optimal_reward}\n" \
-               f"Time estimate: {self.time_est}\n"
+        return f"{self.description} " \
+               f"~~{self.time_est} " \
+               f"DUE:{self.latest_deadline_time} "
 
     def compute_binning(self, num_bins=None):
         binned_distrib = get_binned_distrib(mu=self.time_est,
@@ -228,8 +226,7 @@ class Task(Item):
     #     return self.time_est < other.time_est
 
     def __str__(self):
-        return super().__str__() + \
-            f"Probability: {self.prob}\n"
+        return "--> " + super().__str__()
 
     def add_goal(self, goal):
         self.goals.add(goal)
@@ -289,6 +286,7 @@ class Goal(Item):
         )
         
         self.slack_reward = slack_reward
+        self.start_time = None
         
         # Initialize task list
         self.gamma = gamma
@@ -332,13 +330,12 @@ class Goal(Item):
         
         # Initialize dictionary of maximum future Q-values
         self.future_q = {
-            0: None
+            self.start_time: None
         }
         
     def __str__(self):
         return super().__str__() + \
-            f"Rewards: {self.rewards}\n" + \
-            f"Slack reward: {self.slack_reward}\n"
+            f"=={int(self.get_reward(t=0))}"
             
     def add_tasks(self, tasks):
         
@@ -376,7 +373,8 @@ class Goal(Item):
             task.set_time_est(task_time_est, self.num_bins)
             
             # Add time estimate
-            self.time_est += task_time_est
+            if not task.is_completed():
+                self.time_est += task_time_est
             
             # Set task index
             task.set_idx(idx)
@@ -518,8 +516,11 @@ class Goal(Item):
     def set_slack_reward(self, slack_reward):
         self.slack_action.set_reward(slack_reward)
         self.slack_reward = slack_reward
+        
+    def set_start_time(self, start_time):
+        self.start_time = start_time
 
-    def solve(self, available_time=np.PINF, start_time=0, verbose=False):
+    def solve(self, available_time=np.PINF, start_time=None, verbose=False):
         
         def solve_branching(curr_state, next_task=None, verbose=False):
             """
@@ -665,7 +666,7 @@ class Goal(Item):
         
         # Initialize starting (s)tate and (t)ime
         s = self.start_state
-        t = start_time
+        t = self.start_state if start_time is None else start_time
         
         # Initialize entries
         self.Q.setdefault(s, dict())
@@ -685,7 +686,7 @@ class Goal(Item):
         # Initialize list of tasks to iterate
         tasks_to_iterate = deque()
         
-        if t == 0:
+        if t == self.start_time:
             
             if available_time == np.PINF or available_time > self.time_est:
                 
@@ -723,7 +724,17 @@ class Goal(Item):
                             break
                 
         else:
-            tasks_to_iterate.append(self.sorted_tasks_by_deadlines[0])
+            idx = 0
+            
+            while True:
+                task = self.sorted_tasks_by_deadlines[idx]
+                
+                if task.is_completed():
+                    idx += 1
+                    
+                else:
+                    tasks_to_iterate.append(self.sorted_tasks_by_deadlines[idx])
+                    break
             
         # Append least-optimal action in order to get lower bound on f(s, a)
         last_task = self.sorted_tasks_by_deadlines[-1]
@@ -765,7 +776,7 @@ class Goal(Item):
                 
         toc = time.time()
 
-        if verbose and t == 0:
+        if verbose and t == self.start_time:
             print(
                 f"{t:>3d} | "
                 f"Number of tasks: {len(tasks_to_iterate)} | "
@@ -936,6 +947,9 @@ class ToDoList:
                 
             # Set goal index
             goal.set_idx(idx)
+            
+            # Set start time
+            goal.set_start_time(self.start_time)
 
     def compute_slack_reward(self, t=0):
         if self.slack_reward == 0:
@@ -1024,7 +1038,7 @@ class ToDoList:
         self.slack_action.set_reward(slack_reward)
         self.slack_reward = slack_reward
 
-    def solve(self, available_time=np.PINF, start_time=0, verbose=False):
+    def solve(self, available_time=np.PINF, verbose=False):
     
         def solve_next_goals(curr_state, verbose=False):
             """
@@ -1196,7 +1210,7 @@ class ToDoList:
 
         # Iterate procedure
         s = tuple(0 for _ in range(self.num_goals))
-        t = start_time
+        t = self.start_time
 
         # Initialize log probability
         self.log_prob.setdefault(s, dict())

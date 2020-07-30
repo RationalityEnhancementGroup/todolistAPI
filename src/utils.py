@@ -478,8 +478,8 @@ def parse_scheduling_tags(projects, allowed_task_time, default_time_est,
             # Process time estimation for a task
             try:
                 task["est"] = \
-                    process_time_est(task["nm"], allowed_task_time,
-                                     default_time_est) * planning_fallacy_const
+                    int(ceil(process_time_est(task["nm"], allowed_task_time,
+                             default_time_est) * planning_fallacy_const))
             except Exception as error:
                 raise Exception(f"Task {task['nm']}: {str(error)}")
             
@@ -588,8 +588,8 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
                     task["deadline"], task["deadline_datetime"] = \
                         process_deadline(task_deadline, today_minutes,
                                          typical_minutes,
-                                         current_datetime=user_datetime,
-                                         scheduled_today=task["scheduled_today"])
+                                         current_datetime=user_datetime)
+
                 except Exception as error:
                     raise Exception(f"Task {task['nm']}: {str(error)}")
 
@@ -657,7 +657,7 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
 
 
 def process_deadline(deadline, today_minutes, typical_minutes, current_datetime,
-                     default_deadline=None, scheduled_today=False):
+                     default_deadline=None):
     
     def time_delta_to_minutes(time_delta):
         return time_delta.days * 24 * 60 + time_delta.seconds // 60
@@ -676,6 +676,13 @@ def process_deadline(deadline, today_minutes, typical_minutes, current_datetime,
 
     # Parse deadline datetime
     deadline_datetime = date_str_to_datetime(deadline)
+    
+    # Weekday
+    weekday = deadline_datetime.weekday()
+    
+    # Compute time on last day
+    minutes_last_day = deadline_datetime.hour * 60 + deadline_datetime.minute
+    minutes_last_day = min(minutes_last_day, typical_minutes[weekday])
     
     # Check whether it is in the future
     if deadline_datetime < current_datetime:
@@ -705,7 +712,7 @@ def process_deadline(deadline, today_minutes, typical_minutes, current_datetime,
         minutes_after_today += typical_minutes[day_idx] * weeks_after_today
         
     # Add available time w.r.t. remainder days
-    for day in range(days_after_today % 7):
+    for day in range((days_after_today % 7) - 1):
         weekday = (current_weekday + day + 1) % 7
         minutes_after_today += typical_minutes[weekday]
 
@@ -716,13 +723,14 @@ def process_deadline(deadline, today_minutes, typical_minutes, current_datetime,
     minutes_left_today = int(ceil(minutes_left_today))
     
     # Update today minutes
-    if scheduled_today:
-        today_minutes = min(minutes_left_today, regular_deadline_minutes)
-    else:
-        today_minutes = min(minutes_left_today, today_minutes)
+    today_minutes = min(minutes_left_today,
+                        min(regular_deadline_minutes, today_minutes))
 
     # Calculate deadline value
     deadline_value = today_minutes + minutes_after_today
+    
+    if deadline_datetime.date() != current_datetime.date():
+        deadline_value += minutes_last_day
 
     return deadline_value, deadline_datetime
 

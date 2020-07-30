@@ -5,7 +5,8 @@ from pprint import pprint
 from todolistMDP.to_do_list import ToDoList, Goal
 
 
-def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
+def compute_start_state_pseudo_rewards(to_do_list: ToDoList,
+                                       bias=None, scale=None):
     
     # Get list of goals
     goals = to_do_list.get_goals()
@@ -19,10 +20,18 @@ def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
     best_q = np.NINF
     best_next_q = None
     
+    # Initialize start time
+    start_time = to_do_list.get_start_time()
+    
     # Initialize list of incentivized tasks
     incentivized_tasks = deque()
+
+    # Initialize total loss
+    total_loss = 0
     
     for goal in goals:
+        
+        print(goal)
         
         # Get slack reward
         slack_reward = goal.compute_slack_reward(0)
@@ -36,11 +45,11 @@ def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
         
         # Set future Q-value
         # future_q[goal_idx] = goal.get_future_q(t_)
-        future_q = goal.get_future_q(t_)
+        future_q = goal.get_future_q(start_time + t_)
         
         # Initialize (s)tate and (t)ime
         s = goal.get_start_state()
-        t = 0
+        t = start_time
         
         # Get all tasks
         tasks = goal.get_tasks()
@@ -51,6 +60,8 @@ def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
                 
                 # Get task object
                 task = tasks[a]
+                
+                print(task)
                 
                 # Compute task Q-value
                 q = goal.get_q_values(s, t, a) + future_q
@@ -64,6 +75,9 @@ def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
                 # Get expected task loss
                 loss = goal.R[s][t][a]
                 
+                # Update total loss
+                total_loss += loss
+
                 # Set expected task loss
                 task.set_expected_loss(loss)
     
@@ -77,25 +91,47 @@ def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
     
                 # Add tasks to the list of incentivized tasks (?!)
                 incentivized_tasks.append(task)
+        
+        print()
                 
     # Initialize minimum pseudo-reward value (bias for linear transformation)
     min_pr = 0
 
     # Initialize sum of pseudo-rewards
     sum_pr = 0
-    
+
+    # print(
+    #     f"{str('TASK NAME'):<70s} | "
+    #     # f"{best_next_q:>8.2f} | "
+    #     f"{str('V*(s)'):>8.2f} | "
+    #     # f"{task_q[task_id]:>8.2f} | "
+    #     f"{str('V*(s_ | s, a)'):>8.2f} | "
+    #     f"{str('r(s, a, s_)'):>8.2f} | "
+    #     f"{str('r_(s, a, s_)'):>8.2f}"
+    # )
+
     # Compute untransformed pseudo-rewards
     for task in incentivized_tasks:
         
         # Get task ID
         task_id = task.get_id()
         
-        # Get expected task loss
-        task_loss = task.get_expected_loss()
-        
         # Compute pseudo-reward
-        pr = task_q[task_id] - best_next_q + task_loss
+        # pr = task_q[task_id] - best_next_q
+        # pr = best_next_q - task_q[task_id]
         
+        # pr = task_q[task_id] - best_q
+        # pr = best_q - task_q[task_id]
+        
+        # pr = next_q[task_id] - task_q[task_id]
+        # pr = task_q[task_id] - next_q[task_id]
+        
+        pr = next_q[task_id] - best_q
+        # pr = best_q - next_q[task_id]
+        
+        if np.isclose(pr, 0, atol=1e-6):
+            pr = 0
+
         # Store pseudo-reward
         task.set_optimal_reward(pr)
         
@@ -108,15 +144,30 @@ def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
     # Compute sum of goal values
     sum_goal_values = sum([goal.get_reward() for goal in goals])
 
-    # Update sum of pseudo-rewards
-    sum_pr += len(incentivized_tasks) * (1 - min_pr)  # min_pr < 0 (!)
-    
     # Define scaling and shifting parameters
-    if bias is None or scale is None:
-        scale = sum_goal_values / sum_pr
-        bias = (1 - min_pr) * scale
+    # if bias is None or scale is None:
+    #
+    #     # Define scaling and shifting parameters
+    #     n = len(incentivized_tasks)
+    #     bias = - min_pr
+    #     scale = (sum_goal_values - n * bias - total_loss) / sum_pr
+    #
+    #     # print(sum_goal_values - len(incentivized_tasks) * bias - total_loss)
+    #     # print(sum_pr)
+    
+    # Set scale factor | TODO: Make this smarter...
+    scale = 1.25
+    
+    if bias is None:
+        n = len(incentivized_tasks)
+        bias = (sum_goal_values - scale * sum_pr) / n
         
-    print(bias, scale)
+        # Take total loss into account
+        bias -= (total_loss / n)
+        
+    print("Bias:", bias)
+    print("Scale:", scale)
+    print()
 
     # Initialize {Task ID: pseudo-reward} dictionary
     id2pr = dict()
@@ -125,14 +176,31 @@ def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
     sc_sum_pr = 0
 
     # Perform linear transformation on task pseudo-rewards
-    # for task in optimal_tasks + suboptimal_tasks + slack_tasks:
     for task in incentivized_tasks:
         
         # Get task unique identification
         task_id = task.get_id()
     
         # Transform pseudo-reward
-        pr = scale * task.get_optimal_reward() + bias
+        pr = f = scale * task.get_optimal_reward() + bias
+    
+        # Get expected task loss
+        task_loss = task.get_expected_loss()
+
+        # Add immediate reward to the pseudo-reward
+        pr += task_loss
+        
+        print(
+            f"{task.get_description():<70s} | "
+            # f"{best_next_q:>8.2f} | "
+            f"max Q*(s', a'): {next_q[task_id]:>8.2f} | "
+            f"Q*(s, a): {task_q[task_id]:>8.2f} | "
+            f"V*(s): {best_q:>8.2f} | "
+            f"f*(s, a): {task.get_optimal_reward():8.2f} | "
+            f"f*(s, a) + b: {f:8.2f} | "
+            f"r(s, a, s'): {task.get_expected_loss():>8.2f} | "
+            f"r'(s, a, s'): {pr:>8.2f}"
+        )
     
         # Store new (zero) pseudo-reward
         task.set_optimal_reward(pr)
@@ -146,13 +214,15 @@ def compute_start_state_pseudo_rewards(to_do_list, bias=None, scale=None):
         # Store pseudo-reward {Task ID: pseudo-reward}
         id2pr[task_id] = pr
         
+    print(f"\nTotal sum of pseudo-rewards: {sc_sum_pr:.2f}\n")
+    
     # Initialize tasks queue
     optimal_tasks = deque()
     suboptimal_tasks = deque()
     slack_tasks = deque()
     
     # Run goal-level optimal policy in order to get optimal sequence of goals
-    P, t = run_optimal_policy(to_do_list)
+    P, t = run_optimal_policy(to_do_list, t=start_time)
     
     for entry in P:
         

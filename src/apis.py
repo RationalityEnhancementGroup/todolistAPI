@@ -76,8 +76,7 @@ def assign_smdp_points(projects, day_duration, smdp_params, timer,
 
     """ Solve to-do list """
     tic = time.time()
-    to_do_list.solve(available_time=day_duration, start_time=start_time,
-                     verbose=verbose)
+    to_do_list.solve(available_time=day_duration, verbose=verbose)
     timer["Run SMDP - Solving SMDP"] = time.time() - tic
 
     """ Compute pseudo-rewards """
@@ -134,7 +133,7 @@ def assign_smdp_points(projects, day_duration, smdp_params, timer,
         # Add slack tasks to output
         for task in slack_tasks:
             goal = list(task.get_goals())[0]
-    
+
             task_json = {
                 'completed':         False,
                 'daily':             False,
@@ -146,7 +145,7 @@ def assign_smdp_points(projects, day_duration, smdp_params, timer,
                 'repetitive_days':   [False, False, False, False, False, False,
                                       False],
                 'scheduled_today':   True,
-        
+
                 'est':               25,
                 'id':                f"sa{goal.get_idx()}",
                 'lm':                0,
@@ -157,7 +156,7 @@ def assign_smdp_points(projects, day_duration, smdp_params, timer,
                 'today':             True,
                 'val':               0
             }
-    
+
             # today_tasks = [task_json] + today_tasks
             today_tasks.append(task_json)
 

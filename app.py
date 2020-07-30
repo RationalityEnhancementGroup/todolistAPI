@@ -273,7 +273,14 @@ class PostResource(RESTResource):
                     return json.dumps(status)
                 
                 # Set up current time and date according to the user (UTC + TZ)
-                user_datetime = datetime.utcnow() + timedelta(minutes=time_zone)
+                if "time" in jsonData.keys():
+                    user_datetime = datetime.strptime(jsonData["time"],
+                                                      "%Y-%m-%d %H:%M")
+                else:
+                    user_datetime = datetime.utcnow()
+                    
+                # Update time with time zone
+                user_datetime += timedelta(minutes=time_zone)
                 log_dict["user_datetime"] = user_datetime
 
                 log_dict.update({
@@ -411,7 +418,7 @@ class PostResource(RESTResource):
 
                 # Check whether today hours is in the pre-defined range
                 # 0 is an allowed value in case users want to skip a day
-                if not (0 <= today_hours <= 24):
+                if not (0 <= today_hours <= np.PINF):
                     store_log(db.request_log, log_dict,
                               status="Invalid today hours value.")
     
@@ -526,11 +533,6 @@ class PostResource(RESTResource):
                         if not task["d"] and not task["nvm"]:
                             today_minutes -= task["est"]
 
-                # Subtract time estimate for all tasks scheduled by the user on
-                # today's date from the total number of minutes for today
-                for goal in projects:
-                    today_minutes -= goal["today_est"]
-                
                 # Make 0 if the number of minutes is negative
                 today_minutes = max(today_minutes, 0)
 
