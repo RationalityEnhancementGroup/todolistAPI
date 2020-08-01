@@ -12,13 +12,11 @@ def compute_start_state_pseudo_rewards(to_do_list: ToDoList,
     goals = to_do_list.get_goals()
     
     # Get goal future Q-values
-    # future_q = dict()  # {Goal index: Future value after exec in s[0]}
     task_q = dict()  # {Task ID: Q-value for task execution in s[0]}
     next_q = dict()  # {Task ID: Q-value after task execution in s[0]}
     
     # Initialize best Q-value
     best_q = np.NINF
-    best_next_q = None
     
     # Initialize start time
     start_time = to_do_list.get_start_time()
@@ -31,20 +29,18 @@ def compute_start_state_pseudo_rewards(to_do_list: ToDoList,
     
     for goal in goals:
         
-        print(goal)
+        # print(goal)
         
         # Get slack reward
         slack_reward = goal.compute_slack_reward(0)
 
         if best_q <= slack_reward:
             best_q = slack_reward
-            best_next_q = 0
         
         # Get time step after executing goal
         t_ = goal.get_time_est()
         
         # Set future Q-value
-        # future_q[goal_idx] = goal.get_future_q(t_)
         future_q = goal.get_future_q(start_time + t_)
         
         # Initialize (s)tate and (t)ime
@@ -61,7 +57,7 @@ def compute_start_state_pseudo_rewards(to_do_list: ToDoList,
                 # Get task object
                 task = tasks[a]
                 
-                print(task)
+                # print(task)
                 
                 # Compute task Q-value
                 q = goal.get_q_values(s, t, a) + future_q
@@ -87,28 +83,17 @@ def compute_start_state_pseudo_rewards(to_do_list: ToDoList,
                 # Update best Q-value and best next Q-value
                 if best_q <= q:
                     best_q = q
-                    best_next_q = q - loss
     
                 # Add tasks to the list of incentivized tasks (?!)
                 incentivized_tasks.append(task)
         
-        print()
+        # print()
                 
     # Initialize minimum pseudo-reward value (bias for linear transformation)
     min_pr = 0
 
     # Initialize sum of pseudo-rewards
     sum_pr = 0
-
-    # print(
-    #     f"{str('TASK NAME'):<70s} | "
-    #     # f"{best_next_q:>8.2f} | "
-    #     f"{str('V*(s)'):>8.2f} | "
-    #     # f"{task_q[task_id]:>8.2f} | "
-    #     f"{str('V*(s_ | s, a)'):>8.2f} | "
-    #     f"{str('r(s, a, s_)'):>8.2f} | "
-    #     f"{str('r_(s, a, s_)'):>8.2f}"
-    # )
 
     # Compute untransformed pseudo-rewards
     for task in incentivized_tasks:
@@ -117,17 +102,7 @@ def compute_start_state_pseudo_rewards(to_do_list: ToDoList,
         task_id = task.get_id()
         
         # Compute pseudo-reward
-        # pr = task_q[task_id] - best_next_q
-        # pr = best_next_q - task_q[task_id]
-        
-        # pr = task_q[task_id] - best_q
-        # pr = best_q - task_q[task_id]
-        
-        # pr = next_q[task_id] - task_q[task_id]
-        # pr = task_q[task_id] - next_q[task_id]
-        
         pr = next_q[task_id] - best_q
-        # pr = best_q - next_q[task_id]
         
         if np.isclose(pr, 0, atol=1e-6):
             pr = 0
@@ -143,31 +118,28 @@ def compute_start_state_pseudo_rewards(to_do_list: ToDoList,
         
     # Compute sum of goal values
     sum_goal_values = sum([goal.get_reward() for goal in goals])
+    
+    # Set value of scaling parameter
+    if scale is None:
+        
+        # As defined in the report
+        scale = 1.10
 
-    # Define scaling and shifting parameters
-    # if bias is None or scale is None:
-    #
-    #     # Define scaling and shifting parameters
-    #     n = len(incentivized_tasks)
-    #     bias = - min_pr
-    #     scale = (sum_goal_values - n * bias - total_loss) / sum_pr
-    #
-    #     # print(sum_goal_values - len(incentivized_tasks) * bias - total_loss)
-    #     # print(sum_pr)
-    
-    # Set scale factor | TODO: Make this smarter...
-    scale = 1.25
-    
+    # Set value of bias parameter
     if bias is None:
+        
+        # Total number of incentivized tasks
         n = len(incentivized_tasks)
+        
+        # Derive value of the bias term
         bias = (sum_goal_values - scale * sum_pr) / n
         
         # Take total loss into account
         bias -= (total_loss / n)
         
-    print("Bias:", bias)
-    print("Scale:", scale)
-    print()
+    # print("Bias:", bias)
+    # print("Scale:", scale)
+    # print()
 
     # Initialize {Task ID: pseudo-reward} dictionary
     id2pr = dict()
@@ -190,17 +162,17 @@ def compute_start_state_pseudo_rewards(to_do_list: ToDoList,
         # Add immediate reward to the pseudo-reward
         pr += task_loss
         
-        print(
-            f"{task.get_description():<70s} | "
-            # f"{best_next_q:>8.2f} | "
-            f"max Q*(s', a'): {next_q[task_id]:>8.2f} | "
-            f"Q*(s, a): {task_q[task_id]:>8.2f} | "
-            f"V*(s): {best_q:>8.2f} | "
-            f"f*(s, a): {task.get_optimal_reward():8.2f} | "
-            f"f*(s, a) + b: {f:8.2f} | "
-            f"r(s, a, s'): {task.get_expected_loss():>8.2f} | "
-            f"r'(s, a, s'): {pr:>8.2f}"
-        )
+        # print(
+        #     f"{task.get_description():<70s} | "
+        #     # f"{best_next_q:>8.2f} | "
+        #     f"max Q*(s', a'): {next_q[task_id]:>8.2f} | "
+        #     f"Q*(s, a): {task_q[task_id]:>8.2f} | "
+        #     f"V*(s): {best_q:>8.2f} | "
+        #     f"f*(s, a): {task.get_optimal_reward():8.2f} | "
+        #     f"f*(s, a) + b: {f:8.2f} | "
+        #     f"r(s, a, s'): {task.get_expected_loss():>8.2f} | "
+        #     f"r'(s, a, s'): {pr:>8.2f}"
+        # )
     
         # Store new (zero) pseudo-reward
         task.set_optimal_reward(pr)
@@ -213,8 +185,8 @@ def compute_start_state_pseudo_rewards(to_do_list: ToDoList,
     
         # Store pseudo-reward {Task ID: pseudo-reward}
         id2pr[task_id] = pr
-        
-    print(f"\nTotal sum of pseudo-rewards: {sc_sum_pr:.2f}\n")
+
+    # print(f"\nTotal sum of pseudo-rewards: {sc_sum_pr:.2f}\n")
     
     # Initialize tasks queue
     optimal_tasks = deque()
