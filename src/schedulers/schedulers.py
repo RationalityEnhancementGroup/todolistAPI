@@ -94,7 +94,6 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
         task_id = task.get_id()
         task_item = task_dict[task_id]
         
-        time_diff = task.get_time_est() - task_item["est"]
         task_item["est"] = task.get_time_est()
         task_item["val"] = task.get_optimal_reward()
 
@@ -104,7 +103,7 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
             # If task is marked to be scheduled today by the user
             if task_item["scheduled_today"]:
                 today_tasks.append(task_item)
-                duration_remaining -= time_diff  # (!)
+                duration_remaining -= task_item["est"]  # (!)
 
             # If task is should be repetitively scheduled on today's day
             elif is_repetitive_task(task_item, weekday=current_weekday):
@@ -116,13 +115,10 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
                                              current_day, current_weekday):
                 remaining_tasks.append(task_item)
                 
-    # Schedule other tasks
-    while len(remaining_tasks) > 0:
-        
-        # If not time left, don't add additional tasks (without #today)
-        if duration_remaining == 0:
-            break
-        
+    # Schedule other tasks if time left
+    while len(remaining_tasks) > 0 and duration_remaining > 0:
+
+        # Get next task in the list
         task_item = remaining_tasks.popleft()
         
         # If there is enough time to schedule task
