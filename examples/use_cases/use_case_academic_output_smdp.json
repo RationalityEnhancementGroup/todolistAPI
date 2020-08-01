@@ -6,25 +6,7 @@
         "est": 35,
         "parentId": "g3",
         "pcp": false,
-        "val": 807.0
-    },
-    {
-        "id": "g1-t1-t1",
-        "nm": "1) Meet with exercise partner at the library (takes about 21 minutes)",
-        "lm": 0,
-        "est": 21,
-        "parentId": "g1",
-        "pcp": false,
-        "val": 766.0
-    },
-    {
-        "id": "g1-t1-t4",
-        "nm": "1) Revise and submit solutions (takes about 1 hour and 3 minutes)",
-        "lm": 0,
-        "est": 63,
-        "parentId": "g1",
-        "pcp": false,
-        "val": 753.0
+        "val": 566.0
     },
     {
         "id": "g1-t1-t2",
@@ -33,15 +15,33 @@
         "est": 334,
         "parentId": "g1",
         "pcp": false,
-        "val": 665.0
+        "val": 408.0
     },
     {
-        "id": "g2-t1",
-        "nm": "2) Read proposed paper (takes about 5 hours and 34 minutes)",
+        "id": "g1-t2-t1",
+        "nm": "1) Read lecture notes on \"Probability\" (takes about 1 hour and 24 minutes)",
         "lm": 0,
-        "est": 334,
+        "est": 84,
+        "parentId": "g1",
+        "pcp": false,
+        "val": 383.0
+    },
+    {
+        "id": "g1-t1-t1",
+        "nm": "1) Meet with exercise partner at the library (takes about 21 minutes)",
+        "lm": 0,
+        "est": 21,
+        "parentId": "g1",
+        "pcp": false,
+        "val": 377.0
+    },
+    {
+        "id": "g2-t3",
+        "nm": "2) Send presentation (takes about 21 minutes)",
+        "lm": 0,
+        "est": 21,
         "parentId": "g2",
         "pcp": false,
-        "val": 54.0
+        "val": -50.0
     }
 ]

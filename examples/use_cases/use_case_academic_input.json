@@ -3,7 +3,7 @@
     "projects": [
         {
             "id": "g1",
-            "nm": "#CG1_Mathematics ==3000 DUE:2020-09-30",
+            "nm": "#CG1_Mathematics ==1500 DUE:2020-09-15",
             "lm": 0,
             "ch": [
                 {
@@ -40,17 +40,17 @@
                     "ch": [
                         {
                             "id": "g1-t2-t1",
-                            "nm": "Read lecture notes on \"Probability\" ~~1h DUE:2020-07-20 14:00",
+                            "nm": "Read lecture notes on \"Probability\" ~~1h #today DUE:2020-08-03",
                             "lm": 0
                         },
                         {
                             "id": "g1-t2-t2",
-                            "nm": "Solve exercises in the book ~~2h DUE:2020-07-23 14:00",
+                            "nm": "Solve exercises in the book ~~2h DUE:2020-08-08 14:00",
                             "lm": 0
                         },
                         {
                             "id": "g1-t2-t3",
-                            "nm": "Write a document on what you have learned ~~1h",
+                            "nm": "Write a document on what you have learned ~~2h",
                             "lm": 0
                         }
                     ]
@@ -60,44 +60,44 @@
         },
         {
             "id": "g2",
-            "nm": "#CG2_Causality_seminar ==2000 DUE:2020-08-31",
+            "nm": "#CG2_Causality_seminar ==1200 DUE:2020-08-14",
             "lm": 0,
             "ch": [
                 {
                     "id": "g2-t1",
-                    "nm": "Read proposed paper ~~4h #today",
+                    "nm": "Read proposed paper ~~3h",
                     "lm": 0
                 },
                 {
                     "id": "g2-t2",
-                    "nm": "Compose slides for presentation ~~2.5h",
+                    "nm": "Compose slides for presentation ~~1.5h",
                     "lm": 0
                 },
                 {
                     "id": "g2-t3",
-                    "nm": "Send presentation ~~15min",
+                    "nm": "Send presentation ~~15min DUE:2020-08-05",
                     "lm": 0
                 },
                 {
                     "id": "g2-t4",
-                    "nm": "Write a summary paper ~~6h",
+                    "nm": "Write a summary paper ~~4h",
                     "lm": 0
                 },
                 {
                     "id": "g2-t5",
-                    "nm": "Review papers of 2 other participants ~~1.5h",
+                    "nm": "Review papers of 2 other participants ~~2h",
                     "lm": 0
                 }
             ]
         },
         {
             "id": "g3",
-            "nm": "#CG3_University ==500 DUE:2021-09-30",
+            "nm": "#CG3_University ==500 DUE:2020-09-30",
             "lm": 0,
             "ch": [
                 {
                     "id": "g3-t1",
-                    "nm": "Read exam regulations ~~1h #monday",
+                    "nm": "Read exam regulations ~~1h #thursday",
                     "lm": 0
                 },
                 {
@@ -107,17 +107,17 @@
                 },
                 {
                     "id": "g3-t3",
-                    "nm": "Register for exams ~~25min #today DUE:2020-07-19 20:00",
+                    "nm": "Register for exams ~~25min #today DUE:2020-08-03 09:00",
                     "lm": 0
                 }
             ]
         }
     ],
-    "timezoneOffsetMinutes": 60,
+    "timezoneOffsetMinutes": 0,
     "today_hours": [
         {
             "id": "_",
-            "nm": "#HOURS_TODAY ==12",
+            "nm": "#HOURS_TODAY ==10",
             "lm": 0
         }
     ],
@@ -130,6 +130,7 @@
     ],
     "updated": 0,
     "userkey": "__test__",
-    "bias": 846.6619614393221,
-    "scale": 0.33165044494100293
+    "bias": 562.5995346332909,
+    "scale": 1.1,
+    "time": "2020-08-03 08:00"
 }
