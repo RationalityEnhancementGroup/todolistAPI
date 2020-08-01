@@ -3,7 +3,7 @@ import os
 import stopit
 import sys
 
-from pymongo import MongoClient, DESCENDING
+from pymongo import MongoClient
 
 from src.apis import *
 from src.schedulers.schedulers import *
@@ -418,7 +418,7 @@ class PostResource(RESTResource):
 
                 # Check whether today hours is in the pre-defined range
                 # 0 is an allowed value in case users want to skip a day
-                if not (0 <= today_hours <= np.PINF):
+                if not (0 <= today_hours <= 24):
                     store_log(db.request_log, log_dict,
                               status="Invalid today hours value.")
     
