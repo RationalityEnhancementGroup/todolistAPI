@@ -1,4 +1,3 @@
-from copy import deepcopy
 from src.point_scalers import scale_optimal_rewards
 from src.utils import tree_to_old_structure
 from src.utils import incentivize_forced_pull
