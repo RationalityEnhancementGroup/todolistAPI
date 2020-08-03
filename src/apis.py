@@ -103,6 +103,12 @@ def assign_smdp_points(projects, day_duration, smdp_params, timer,
 
     timer["Run SMDP - Scaling rewards"] = time.time() - tic
     
+    # Convert task queue to a list
+    optimal_tasks = list(optimal_tasks)
+    
+    # Sort task in decreasing order w.r.t. optimal reward
+    optimal_tasks.sort(key=lambda task: -task.get_optimal_reward())
+    
     if json:
     
         """ Run SMDP - Scheduling tasks """
@@ -125,9 +131,7 @@ def assign_smdp_points(projects, day_duration, smdp_params, timer,
     else:
         today_tasks = optimal_tasks
 
-    today_tasks = list(today_tasks)
     if json:
-        today_tasks.sort(key=lambda task: task["val"])
         
         # Add slack tasks to output
         for task in slack_tasks:
@@ -156,13 +160,9 @@ def assign_smdp_points(projects, day_duration, smdp_params, timer,
                 'val':               0
             }
 
-            # today_tasks = [task_json] + today_tasks
             today_tasks.append(task_json)
-
-    else:
-        today_tasks.sort(key=lambda task: task.get_optimal_reward())
     
-    # Sort tasks in reversed order
-    today_tasks.reverse()
+        # Sort tasks in reversed order
+        # today_tasks.reverse()
     
     return today_tasks
