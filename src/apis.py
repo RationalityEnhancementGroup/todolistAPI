@@ -52,9 +52,8 @@ def assign_random_points(projects, distribution_fxn=np.random.normal,
     return projects
 
 
-def assign_smdp_points(projects, day_duration, smdp_params, timer,
-                       json=True, start_time=0, time_zone=0,
-                       verbose=False):
+def assign_smdp_points(projects, current_day, day_duration, smdp_params, timer,
+                       json=True, start_time=0, verbose=False):
     if json:
 
         """ Convert real goals from JSON to Goal class objects """
@@ -115,8 +114,8 @@ def assign_smdp_points(projects, day_duration, smdp_params, timer,
         tic = time.time()
     
         today_tasks = schedule_tasks_for_today(projects, optimal_tasks,
-                                               duration_remaining=day_duration,
-                                               time_zone=time_zone)
+                                               current_day=current_day,
+                                               duration_remaining=day_duration)
     
         timer["Run SMDP - Scheduling tasks"] = time.time() - tic
         

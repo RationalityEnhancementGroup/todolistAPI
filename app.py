@@ -680,8 +680,8 @@ class PostResource(RESTResource):
                     if api_method == "getTasksForToday":
                         
                         final_tasks = assign_smdp_points(
-                            projects, timer=timer, day_duration=today_minutes,
-                            smdp_params=smdp_params, time_zone=time_zone
+                            projects, current_day=user_datetime, timer=timer,
+                            day_duration=today_minutes, smdp_params=smdp_params
                         )
 
                 else:
@@ -710,7 +710,8 @@ class PostResource(RESTResource):
                         task_list = task_list_from_projects(projects)
     
                         final_tasks = \
-                            basic_scheduler(task_list, time_zone=time_zone,
+                            basic_scheduler(task_list,
+                                            current_day=user_datetime,
                                             duration_remaining=today_minutes)
                     except Exception as error:
                         status = str(error) + ' '
@@ -727,7 +728,8 @@ class PostResource(RESTResource):
                         task_list = task_list_from_projects(projects)
     
                         final_tasks = \
-                            deadline_scheduler(task_list, time_zone=time_zone,
+                            deadline_scheduler(task_list,
+                                               current_day=user_datetime,
                                                today_duration=today_minutes)
                     except Exception as error:
                         status = str(error) + ' '
