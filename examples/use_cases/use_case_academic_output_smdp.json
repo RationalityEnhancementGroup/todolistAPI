@@ -1,47 +1,38 @@
 [
     {
-        "id": "g3-t3",
-        "nm": "3) Register for exams (takes about 35 minutes)",
+        "id": "g1-t2-t1",
+        "nm": "1) Solve exercises (takes about 4 hours and 11 minutes)",
         "lm": 0,
-        "est": 35,
-        "parentId": "g3",
-        "pcp": false,
-        "val": 566.0
-    },
-    {
-        "id": "g1-t1-t2",
-        "nm": "1) Solve exercises (takes about 5 hours and 34 minutes)",
-        "lm": 0,
-        "est": 334,
+        "est": 251,
         "parentId": "g1",
         "pcp": false,
-        "val": 408.0
+        "val": 686.0
     },
     {
-        "id": "g1-t2-t1",
-        "nm": "1) Read lecture notes on \"Probability\" (takes about 1 hour and 24 minutes)",
+        "id": "g1-t2-t2",
+        "nm": "1) Write solutions in LaTeX (takes about 1 hour and 24 minutes)",
         "lm": 0,
         "est": 84,
         "parentId": "g1",
         "pcp": false,
-        "val": 383.0
+        "val": 684.0
     },
     {
-        "id": "g1-t1-t1",
-        "nm": "1) Meet with exercise partner at the library (takes about 21 minutes)",
+        "id": "g2-t2-t1",
+        "nm": "2) Read Hájek’s “Interpretations of Probability” (takes about 2 hours and 47 minutes)",
         "lm": 0,
-        "est": 21,
-        "parentId": "g1",
-        "pcp": false,
-        "val": 377.0
-    },
-    {
-        "id": "g2-t2",
-        "nm": "2) Compose slides for presentation (takes about 2 hours and 6 minutes)",
-        "lm": 0,
-        "est": 126,
+        "est": 167,
         "parentId": "g2",
         "pcp": false,
-        "val": -40.0
+        "val": 683.0
+    },
+    {
+        "id": "g3-t1-t1",
+        "nm": "3) Read exam regulations (takes about 1 hour and 24 minutes)",
+        "lm": 0,
+        "est": 84,
+        "parentId": "g3",
+        "pcp": false,
+        "val": 619.0
     }
 ]
