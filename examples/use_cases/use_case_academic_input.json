@@ -3,117 +3,181 @@
     "projects": [
         {
             "id": "g1",
-            "nm": "#CG1_Mathematics ==2000 DUE:2020-09-30",
+            "nm": "#CG1_Learn mathematical foundations of machine learning ==1000 DUE:2021-04-30",
             "lm": 0,
             "ch": [
                 {
                     "id": "g1-t1",
-                    "nm": "Complete weekly assignment ~~7h",
+                    "nm": "Lectures",
                     "lm": 0,
                     "ch": [
                         {
                             "id": "g1-t1-t1",
-                            "nm": "Meet with exercise partner at the library ~~15min #today",
+                            "nm": "Read lecture notes for the next lecture ~~3h #wednesdays",
                             "lm": 0
                         },
                         {
                             "id": "g1-t1-t2",
-                            "nm": "Solve exercises ~~4h #today",
-                            "lm": 0
-                        },
-                        {
-                            "id": "g1-t1-t3",
-                            "nm": "Write down solutions in LaTeX ~~2h",
-                            "lm": 0
-                        },
-                        {
-                            "id": "g1-t1-t4",
-                            "nm": "Revise and submit solutions ~~45min #sundays",
+                            "nm": "Attend lecture ~~2h #thursdays",
                             "lm": 0
                         }
                     ]
                 },
                 {
                     "id": "g1-t2",
-                    "nm": "Prepare for the next lecture ~~4h",
+                    "nm": "Weekly assignments",
                     "lm": 0,
                     "ch": [
                         {
                             "id": "g1-t2-t1",
-                            "nm": "Read lecture notes on \"Probability\" ~~1h",
+                            "nm": "Solve exercises ~~3h #mondays",
                             "lm": 0
                         },
                         {
                             "id": "g1-t2-t2",
-                            "nm": "Solve exercises in the book ~~2h",
+                            "nm": "Write solutions in LaTeX ~~1h #mondays",
                             "lm": 0
                         },
                         {
                             "id": "g1-t2-t3",
-                            "nm": "Write a document on what you have learned ~~1h",
+                            "nm": "Submit solutions ~~30m #thursdays DUE: 2020-11-05 14:00",
                             "lm": 0
                         }
                     ]
+                },
+                {
+                    "id": "g1-t3",
+                    "nm": "Final exam ~~2h #2021-02-20",
+                    "lm": 0
+                },
+                {
+                    "id": "g1-t4",
+                    "nm": "Everything else ~~60h #future",
+                    "lm": 0
                 }
-
             ]
         },
         {
             "id": "g2",
-            "nm": "#CG2_Causality_seminar ==1000 DUE:2020-07-31",
+            "nm": "#CG2_Take part in the seminar on causal inference ==500 DUE:2020-09-30",
             "lm": 0,
             "ch": [
                 {
                     "id": "g2-t1",
-                    "nm": "Read proposed paper ~~4h",
-                    "lm": 0
+                    "nm": "Prepare for the next session",
+                    "lm": 0,
+                    "ch": [
+                        {
+                            "id": "g2-t1-t1",
+                            "nm": "Read Spohn’s “Causation: An Alternative” ~~4h #wednesday",
+                            "lm": 0
+                        }
+                    ]
                 },
                 {
                     "id": "g2-t2",
-                    "nm": "Compose slides for presentation ~~2.5h",
-                    "lm": 0
+                    "nm": "Presentation",
+                    "lm": 0,
+                    "ch": [
+                        {
+                            "id": "g2-t2-t1",
+                            "nm": "Read Hájek’s “Interpretations of Probability” ~~2h #today",
+                            "lm": 0
+                        },
+                        {
+                            "id": "g2-t2-t2",
+                            "nm": "Compose slides for presentation ~~2h DUE: 2020-09-14",
+                            "lm": 0
+                        },
+                        {
+                            "id": "g2-t2-t3",
+                            "nm": "Send presentation ~~30min DUE: 2020-09-21",
+                            "lm": 0
+                        },
+                        {
+                            "id": "g2-t2-t4",
+                            "nm": "Pratice presentation ~~10h DUE: 2020-09-28",
+                            "lm": 0
+                        },
+                        {
+                            "id": "g2-t2-t5",
+                            "nm": "Presentation day ~~2h #2020-09-28",
+                            "lm": 0
+                        }
+                    ]
                 },
                 {
                     "id": "g2-t3",
-                    "nm": "Send presentation ~~15min #weekends",
-                    "lm": 0
-                },
-                {
-                    "id": "g2-t4",
-                    "nm": "Write a summary paper ~~6h",
-                    "lm": 0
-                },
-                {
-                    "id": "g2-t5",
-                    "nm": "Review papers of 2 other participants ~~1.5h",
+                    "nm": "Everything else ~~20h #future",
                     "lm": 0
                 }
             ]
         },
         {
             "id": "g3",
-            "nm": "#CG3_University ==500 DUE:2021-09-30",
+            "nm": "#CG3_Pursue a master’s degree in machine learning ==5000 DUE: 2021-09-30",
             "lm": 0,
             "ch": [
                 {
                     "id": "g3-t1",
-                    "nm": "Read exam regulations ~~1h #monday",
-                    "lm": 0
+                    "nm": "Summer semester 2020",
+                    "lm": 0,
+                    "ch": [
+                        {
+                            "id": "g3-t1-t1",
+                            "nm": "Read exam regulations ~~1h #today",
+                            "lm": 0
+                        },
+                        {
+                            "id": "g3-t1-t2",
+                            "nm": "Register for exams ~~2h DUE: 2020-08-30",
+                            "lm": 0
+                        }
+                    ]
                 },
                 {
                     "id": "g3-t2",
-                    "nm": "Choose courses for the next semester ~~2h",
-                    "lm": 0
+                    "nm": "Winter semester 2020",
+                    "lm": 0,
+                    "ch": [
+                        {
+                            "id": "g3-t2-t1",
+                            "nm": "Choose courses for the next semester ~~4h DUE: 2020-10-31",
+                            "lm": 0
+                        }
+                    ]
                 },
                 {
                     "id": "g3-t3",
-                    "nm": "Register for exams ~~25min #today DUE:2020-07-05",
-                    "lm": 0
+                    "nm": "Summer semester 2021",
+                    "lm": 0,
+                    "ch": [
+                        {
+                            "id": "g3-t3-t1",
+                            "nm": "Explore potential topics for master thesis ~~50h DUE: 2021-03-31",
+                            "lm": 0
+                        },
+                        {
+                            "id": "g3-t3-t2",
+                            "nm": "Write master thesis ~~400h #future",
+                            "lm": 0
+                        },
+                        {
+                            "id": "g3-t3-t3",
+                            "nm": "Prepare master thesis defense ~~50h #future",
+                            "lm": 0
+                        },
+                        {
+                            "id": "g3-t3-t4",
+                            "nm": "Defend master thesis ~~2h #2021-09-30",
+                            "lm": 0
+                        }
+                    ]
                 }
             ]
         }
     ],
-    "timezoneOffsetMinutes": 60,
+    "timezoneOffsetMinutes": 0,
     "today_hours": [
         {
             "id": "_",
@@ -124,10 +188,13 @@
     "typical_hours": [
         {
             "id": "_",
-            "nm": "#HOURS_TYPICAL ==8",
+            "nm": "#HOURS_TYPICAL ==10",
             "lm": 0
         }
     ],
     "updated": 0,
-    "userkey": "__test__"
+    "userkey": "__test__",
+    "bias": 683.2111000706025,
+    "scale": 1.1,
+    "time": "2020-08-03 08:00"
 }

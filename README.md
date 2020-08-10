@@ -8,6 +8,7 @@ After installing MongoDB, you should do the following steps:
 - Open a terminal window and start a connection with the database with the command `mongod --dbpath <pathToDatabase> --port 27017`
 - Open another terminal window and start the DB editor with the command `mongo`.
   - In order to create a user, initialize a collection etc., please refer to [MongoDB's official websie](https://www.mongodb.com/).
+  - Please initialize the following collections: `log_dict`, `pr_transform`, `trees`.
 - In the `if __name__ == '__main__'` part of the `app.py` file, the following info should be provided. Here is an example:
     ```
     uri = "mongodb://ai4productivity:ai4productivity@127.0.0.1/ai4productivity"
@@ -25,7 +26,7 @@ For successful communication with the API, a `POST` request should be sent via t
 The general URL for local testing looks like this: 
 `http://127.0.0.1:6789/api/<compulsoryParameters>/<additionalParameters>/tree/<userID>/<functionName>`
 
-The general URL for testing the server online (on Heroku) looks like this
+The general URL for using the server online (on Heroku) looks like this:
 `https://<HerokuAppCode>.herokuapp.com/api/<compulsoryParameters>/<additionalParameters>/tree/<userID>/<functionName>`
 
 Description of the URL parameters:
@@ -57,10 +58,9 @@ Description of the URL parameters:
 - `<additionalParameters>`: (Differ for each method. Described in their own section.)
 - `<userID>`: Unique user identification code.
 - `<functionName>`: Type of request.
-    - `updateTree`: Updates the stored tree.
     - `getTasksForToday`: Outputs list of task for today.
-    - `bestSpeedTestSMDP`: Speed test of the SMDP method in the best-case scenario.
-    - `worstSpeedTestSMDP`: Speed test of the SMDP method in the worst-case scenario.  
+    - `updateTransform`: Updates bias and scaling parameters for SMDP method.
+    - `updateTree`: Updates the stored tree.
 
 The additional parameters (`<additionalParameters>`) are dependent on the method that has been used (described below). 
 Important: The order of all URL parameters is **fixed**!
@@ -162,7 +162,7 @@ scale: 100
 <functionName>: getTasksForToday
 ```
 
-### SMDP point-assignment method
+### SMDP point-assignment method (`smdp`)
 - Additional parameters
     - `choice_mode`: Mode of making time transitions while executing optimal policy
         - `max`: Choose the path that is most-likely to happen.
@@ -173,10 +173,6 @@ scale: 100
     - `planning_fallacy_const`: Value that scales time estimates `float(0, inf)`
     - `slack_reward`: Reward associated with slack-off actions `float[-inf, inf)`
     - `unit_penalty`: Unit-time value that penalizes `float[0, inf]`
-    - `goal_pr_loc`: Bias value for goal pseudo-rewards `float(-inf, inf)`
-    - `goal_pr_scale`: Scaling value for goal pseudo-rewards `float(-inf, inf)`
-    - `task_pr_loc`: Bias value for task pseudo-rewards `float(-inf, inf)`
-    - `task_pr_scale`: Scaling value for task pseudo-rewards `float(-inf, inf)`
     - `scale_type` (optional): It represents the method by which points are scaled. If no scaling to be used, the inputting this parameter (and the `scale_min` and `scale_max` parameters) should be omitted.
         - `no_scaling`: Points are assigned according their pseudo-rewards (no change). 
         - `min_max`: Points are assigned according to this formula `task_reward = (task_reward - min_value) / (max_value - min_value) * (scale_max - scale_min) + scale_min`.
@@ -191,7 +187,7 @@ Notation:
 - `(lower_bound, upper_bound)`: open interval
 
 ```
-URL example: http://127.0.0.1:6789/api/smdp/mdp/30/14/inf/0/inf/0/inf/false/2/max/0.9999/1/2/1.39/0/0/0/1/0/1/min_max/1/2/tree/u123/getTasksForToday
+URL example: http://127.0.0.1:6789/api/smdp/mdp/30/14/inf/0/inf/0/inf/false/2/max/0.9999/1/2/1.39/0/0/min_max/1/2/tree/u123/getTasksForToday
 
 <method>: random
 <scheduler>: deadline
@@ -211,10 +207,6 @@ num_bins: 2
 planning_fallacy_const: 1.39
 slack_reward: 0
 unit_penalty: 0
-goal_pr_loc: 0
-goal_pr_scale: 1
-task_pr_locL 0
-task_pr_scale: 1
 scale_type: min_max
 scale_min: 1
 scale_max: 2
@@ -235,10 +227,10 @@ All required Python packages are listed in the `requirements.txt` file.
 
 If you use this code in academic work, please cite the report:
 
-<TBD>
+\<TBD\>
 
 ## Acknowledgements
 
 This project uses code from:
-- The Pacman Projects [http://ai.berkeley.edu]
+- [The Pacman Projects](http://ai.berkeley.edu)
 - [todolistMDP by Andrew Tan](https://github.com/andrewztan/todolistMDP)

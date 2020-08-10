@@ -1,12 +1,11 @@
 from collections import deque
-from datetime import datetime, timedelta
 
 from pprint import pprint
 from src.schedulers.helpers import *
 from src.utils import task_dict_from_projects
 
 
-def basic_scheduler(task_list, time_zone=0, duration_remaining=8 * 60,
+def basic_scheduler(task_list, current_day, duration_remaining=8 * 60,
                     with_today=True):
     """
     Takes in flattened project tree with "reward" from some API
@@ -19,11 +18,7 @@ def basic_scheduler(task_list, time_zone=0, duration_remaining=8 * 60,
     # Initialize queue of other tasks eligible to be scheduled today
     remaining_tasks = deque()
 
-    # Initialize overwork minutes
-    # overwork_minutes = 0
-
-    # Get information on current day and weekday
-    current_day = datetime.utcnow() + timedelta(minutes=time_zone)
+    # Get information on current weekday
     current_weekday = current_day.weekday()
 
     if with_today:
@@ -35,28 +30,18 @@ def basic_scheduler(task_list, time_zone=0, duration_remaining=8 * 60,
                 # If task is marked to be scheduled today by the user
                 if task["scheduled_today"]:
                     today_tasks.append(task)
+                    duration_remaining -= task["est"]
         
                 # If task is should be repetitively scheduled on today's day
                 elif is_repetitive_task(task, weekday=current_weekday):
                     today_tasks.append(task)
-                    duration_remaining -= task["est"]  # (!)
+                    duration_remaining -= task["est"]
         
                 # If the task is eligible to be scheduled today
                 elif check_additional_scheduling(
                         task, current_day, current_weekday):
                     remaining_tasks.append(task)
         
-                # If there is enough time to schedule the task
-                # if task["est"] <= duration_remaining:
-                #     today_tasks.append(task)
-                #     duration_remaining -= task["est"]
-                # else:
-                #     overwork_minutes += task_item["est"]
-
-    # overwork_minutes -= duration_remaining
-    # if overwork_minutes > 0:
-    #     raise Exception(generate_overwork_error_message(overwork_minutes))
-    
     # From: https://stackoverflow.com/a/73050
     sorted_by_deadline = sorted(list(remaining_tasks),
                                 key=lambda k: k['deadline'])
@@ -74,21 +59,21 @@ def basic_scheduler(task_list, time_zone=0, duration_remaining=8 * 60,
     return list(today_tasks)
 
 
-def deadline_scheduler(task_list, deadline_window=1, time_zone=0,
+def deadline_scheduler(task_list, current_day, deadline_window=1,
                        today_duration=8 * 60, with_today=True):
     # Tasks within deadline window are tagged with today
     for task in task_list:
         if task["deadline"] <= deadline_window:
             task["today"] = True
     
-    final_tasks = basic_scheduler(task_list, time_zone=time_zone,
+    final_tasks = basic_scheduler(task_list, current_day=current_day,
                                   duration_remaining=today_duration,
                                   with_today=with_today)
     return final_tasks
 
 
 def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
-                             time_zone=0):
+                             current_day):
     
     # Get task dictionary from JSON tree
     task_dict = task_dict_from_projects(projects)
@@ -99,18 +84,14 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
     # Initialize queue of other tasks eligible to be scheduled today
     remaining_tasks = deque()
     
-    # Initialize overwork minutes
-    # overwork_minutes = 0
-    
-    # Get information on current day and weekday
-    current_day = datetime.utcnow() + timedelta(minutes=time_zone)
+    # Get information on current weekday
     current_weekday = current_day.weekday()
 
     for task in ordered_tasks:
+        
         task_id = task.get_id()
         task_item = task_dict[task_id]
         
-        time_diff = task.get_time_est() - task_item["est"]
         task_item["est"] = task.get_time_est()
         task_item["val"] = task.get_optimal_reward()
 
@@ -119,37 +100,23 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
             
             # If task is marked to be scheduled today by the user
             if task_item["scheduled_today"]:
-                duration_remaining -= time_diff  # (!)
                 today_tasks.append(task_item)
-                
+                duration_remaining -= task_item["est"]
+
             # If task is should be repetitively scheduled on today's day
             elif is_repetitive_task(task_item, weekday=current_weekday):
                 today_tasks.append(task_item)
-                duration_remaining -= task_item["est"]  # (!)
+                duration_remaining -= task_item["est"]
 
             # If the task is eligible to be scheduled today
             elif check_additional_scheduling(task_item,
                                              current_day, current_weekday):
                 remaining_tasks.append(task_item)
                 
-            # If there is enough time to schedule the task
-            # if duration_remaining >= task_item["est"]:
-            #     today_tasks.append(task_item)
-            #     duration_remaining -= task_item["est"]
-            # else:
-            #     overwork_minutes += task_item["est"]
-    
-    # overwork_minutes -= duration_remaining
-    # if overwork_minutes > 0:
-    #     raise Exception(generate_overwork_error_message(overwork_minutes))
-    
-    # Schedule other tasks
-    while len(remaining_tasks) > 0:
-        
-        # If not time left, don't add additional tasks (without #today)
-        if duration_remaining == 0:
-            break
-        
+    # Schedule other tasks if time left
+    while len(remaining_tasks) > 0 and duration_remaining > 0:
+
+        # Get next task in the list
         task_item = remaining_tasks.popleft()
         
         # If there is enough time to schedule task
@@ -157,4 +124,7 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
             today_tasks.append(task_item)
             duration_remaining -= task_item["est"]
         
-    return list(today_tasks)
+    today_tasks = list(today_tasks)
+    today_tasks.sort(key=lambda task: -task["val"])
+    
+    return today_tasks

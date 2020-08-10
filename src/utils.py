@@ -2,6 +2,7 @@ import cherrypy
 import numpy as np
 import re
 
+from collections import deque
 from copy import deepcopy
 from datetime import datetime, timedelta
 from math import ceil
@@ -73,8 +74,8 @@ def compute_latest_start_time(goal):
         current_time -= int(task["est"])
     
         if current_time < 0:
-            # TODO: Task ... is unattainable... (instructions)...
-            raise Exception(f'Task {task["nm"]} is unattainable!')
+            raise Exception(f'Task {task["nm"]} is unattainable! '
+                            f'Please reschedule its deadline.')
     
     return current_time
 
@@ -276,13 +277,19 @@ def get_wf_task_id(task_name):
         return "__no_wf_id__"  # Return dummy WorkFlowy ID
 
 
-def incentivize_forced_pull(goals, default_value=0):
+def incentivize_forced_pull(goals, default_value=0, pr_dict=None):
     forced_tasks = deque()
     
     for goal in goals:
         for task in goal["ch"]:
-            if task["today"] and "val" not in task.keys():
-                task["val"] = default_value
+            if not task["completed"] and task["scheduled_today"] and \
+                    "val" not in task.keys():
+                
+                if pr_dict is None:
+                    task["val"] = default_value
+                    
+                else:
+                    task["val"] = pr_dict[task["id"]]
                 
                 forced_tasks.append(task)
 
@@ -445,7 +452,7 @@ def parse_hours(time_string):
 
 
 def parse_scheduling_tags(projects, allowed_task_time, default_time_est,
-                          user_datetime):
+                          planning_fallacy_const, user_datetime):
     # Initialize total daily tasks time estimation for each weekday
     weekday_tasks_time_est = [0 for _ in range(7)]
     
@@ -471,8 +478,8 @@ def parse_scheduling_tags(projects, allowed_task_time, default_time_est,
             # Process time estimation for a task
             try:
                 task["est"] = \
-                    process_time_est(task["nm"], allowed_task_time,
-                                     default_time_est)
+                    int(ceil(process_time_est(task["nm"], allowed_task_time,
+                             default_time_est) * planning_fallacy_const))
             except Exception as error:
                 raise Exception(f"Task {task['nm']}: {str(error)}")
             
@@ -563,7 +570,7 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
         
         # If the goal code is not a digit --> misc goal
         if goal["code"][0] not in digits+"^":
-            if ("_CS" in goal["nm"]):
+            if "_CS" in goal["nm"]:
                 goal["code"] = "💻"
             else:
                 goal["code"] = "&"
@@ -582,6 +589,7 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
                         process_deadline(task_deadline, today_minutes,
                                          typical_minutes,
                                          current_datetime=user_datetime)
+
                 except Exception as error:
                     raise Exception(f"Task {task['nm']}: {str(error)}")
 
@@ -593,7 +601,7 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
             else:
                 # If task has no deadline, set its deadline to be goal deadline
                 task["deadline"] = goal["deadline"]
-                task["deadline_datetime"] = None  # goal["deadline_datetime"]
+                task["deadline_datetime"] = goal["deadline_datetime"]
                 
             # Check whether the task has already been scheduled in CompliceX or
             # completed in WorkFlowy
@@ -648,8 +656,9 @@ def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
     return projects
 
 
-def process_deadline(deadline, today_minutes, typical_minutes,
-                     current_datetime, default_deadline=None):
+def process_deadline(deadline, today_minutes, typical_minutes, current_datetime,
+                     default_deadline=None):
+    
     def time_delta_to_minutes(time_delta):
         return time_delta.days * 24 * 60 + time_delta.seconds // 60
     
@@ -664,9 +673,26 @@ def process_deadline(deadline, today_minutes, typical_minutes,
                           re.IGNORECASE)
         else:
             raise Exception("Invalid or no deadline provided!")
-    
+
+    # Parse deadline datetime
     deadline_datetime = date_str_to_datetime(deadline)
+    
+    # Weekday
+    weekday = deadline_datetime.weekday()
+    
+    # Compute time on last day
+    minutes_last_day = deadline_datetime.hour * 60 + deadline_datetime.minute
+    minutes_last_day = min(minutes_last_day, typical_minutes[weekday])
+    
+    # Check whether it is in the future
+    if deadline_datetime < current_datetime:
+        raise Exception(f"Deadline not in the future! Please check your "
+                        f"deadline and your time zone.")
+
+    # Compute time difference
     time_delta = deadline_datetime - current_datetime
+    
+    # Convert time difference to minutes
     regular_deadline_minutes = time_delta_to_minutes(time_delta)
 
     # Calculate the number of days until the deadline
@@ -686,24 +712,25 @@ def process_deadline(deadline, today_minutes, typical_minutes,
         minutes_after_today += typical_minutes[day_idx] * weeks_after_today
         
     # Add available time w.r.t. remainder days
-    for day in range(days_after_today % 7):
+    for day in range((days_after_today % 7) - 1):
         weekday = (current_weekday + day + 1) % 7
         minutes_after_today += typical_minutes[weekday]
 
-    # Calculate how much time is left today & update today's minutes
+    # Calculate how much time is left today
     end_of_the_day = datetime(current_datetime.year, current_datetime.month,
                               current_datetime.day, 23, 59, 59)
-    minutes_left_today = (end_of_the_day - current_datetime).seconds // 60
-    today_minutes = min(today_minutes, minutes_left_today,
-                        regular_deadline_minutes)
+    minutes_left_today = (end_of_the_day - current_datetime).seconds / 60
+    minutes_left_today = int(ceil(minutes_left_today))
     
+    # Update today minutes
+    today_minutes = min(minutes_left_today,
+                        min(regular_deadline_minutes, today_minutes))
+
     # Calculate deadline value
     deadline_value = today_minutes + minutes_after_today
-
-    # Check whether it is in the future
-    if deadline_datetime < current_datetime:
-        raise Exception(f"Deadline not in the future! Please check your "
-                        f"deadline and your time zone.")
+    
+    if deadline_datetime.date() != current_datetime.date():
+        deadline_value += minutes_last_day
 
     return deadline_value, deadline_datetime
 
@@ -743,7 +770,7 @@ def process_time_est(task_name, allowed_task_time=float('inf'),
             time_est = "~~" + str(default_time_est) + "min"
         else:
             raise Exception("No time estimation or invalid time estimation provided!")
-
+        
     # Get time units (the number of hours or minutes) | Allows time fractions
     try:
         duration = re.search(r"\d+[\.\,]*\d*", time_est, re.IGNORECASE)[0]
@@ -915,25 +942,23 @@ def tree_to_old_structure(projects, params):
             # Create new task and add it to the task list
             tasks.append(
                 Task(
-                    # completed=task["completed"],
+                    completed=task["completed"],
                     deadline=task["deadline"],
-                    # deadline_datetime=task["deadline_datetime"],
+                    deadline_datetime=task["deadline_datetime"],
                     description=task["nm"],
-                    # scheduled=task["scheduled_today"],
                     task_id=task["id"],
-                    time_est=task["est"]
+                    time_est=task["est"],
+                    today=task["scheduled_today"]
                 )
             )
 
         # Create new goal and add it to the goal list
         goals.append(
             Goal(
+                deadline_datetime=goal["deadline_datetime"],
                 description=goal["nm"],
                 goal_id=goal["id"],
-                # effective_deadline=goal["effective_deadline"],
-                # latest_start_time=goal["latest_start_time"],
                 loss_rate=params["loss_rate"],
-                planning_fallacy_const=params["planning_fallacy_const"],
                 num_bins=params["num_bins"],
                 rewards={goal["deadline"]: goal["value"]},
                 slack_reward=params["slack_reward"],

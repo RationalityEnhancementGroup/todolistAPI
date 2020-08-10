@@ -3,18 +3,12 @@ import os
 import stopit
 import sys
 
-from copy import deepcopy
-from datetime import datetime
-from pprint import pprint
-from pymongo import MongoClient, DESCENDING
+from pymongo import MongoClient
 
 from src.apis import *
-from todolistMDP.smdp_test_generator import *
 from src.schedulers.schedulers import *
 from src.utils import *
-
-# from todolistMDP.mdp_solvers \
-#     import backward_induction, policy_iteration, value_iteration
+from todolistMDP.smdp_test_generator import *
 
 CONTACT = "If you continue to encounter this issue, please contact us at " \
           "reg.experiments@tuebingen.mpg.de."
@@ -82,6 +76,92 @@ class PostResource(RESTResource):
 
             try:
                 
+                api_method = vpath[-1]
+                
+                # Load fixed time if provided
+                if "time" in jsonData.keys():
+                    user_datetime = datetime.strptime(jsonData["time"],
+                                                      "%Y-%m-%d %H:%M")
+                else:
+                    user_datetime = datetime.utcnow()
+
+                if api_method in {"averageSpeedTestSMDP",
+                                  "bestSpeedTestSMDP",
+                                  "exhaustiveSpeedTestSMDP",
+                                  "realSpeedTestSMDP",
+                                  "worstSpeedTestSMDP"}:
+        
+                    smdp_params = {
+                        "choice_mode":            jsonData["choice_mode"],
+                        "gamma":                  jsonData["gamma"],
+                        "loss_rate":              jsonData["loss_rate"],
+                        "num_bins":               jsonData["n_bins"],
+                        "planning_fallacy_const": jsonData["planning_fallacy_const"],
+                        "slack_reward":           jsonData["slack_reward"],
+                        "unit_penalty":           jsonData["unit_penalty"],
+            
+                        "scale_type": jsonData["scale_type"],
+                        "scale_min":  jsonData["scale_min"],
+                        "scale_max":  jsonData["scale_max"],
+    
+                        "bias": None,
+                        "scale": None
+                    }
+
+                    if smdp_params["slack_reward"] == 0:
+                        smdp_params["slack_reward"] = np.NINF
+        
+                    """ Generating test case """
+                    tic = time.time()
+        
+                    test_goals = generate_test_case(
+                        api_method=api_method,
+                        n_bins=jsonData["n_bins"],
+                        n_goals=jsonData["n_goals"],
+                        n_tasks=jsonData["n_tasks"],
+                        time_est=jsonData["time_est"],
+                        unit_penalty=jsonData["unit_penalty"]
+                    )
+                    
+                    toc = time.time()
+                    timer["Generating test case"] = toc - tic
+        
+                    """ Run SMDP """
+                    tic = time.time()
+        
+                    assign_smdp_points(
+                        projects=test_goals,
+                        current_day=user_datetime,
+                        day_duration=jsonData["today_minutes"],
+                        smdp_params=smdp_params,
+                        timer=timer,
+                        json=False
+                    )
+        
+                    toc = time.time()
+                    timer["Run SMDP"] = toc - tic
+        
+                    """ Simulating task scheduling """
+                    tic = time.time()
+        
+                    simulate_task_scheduling(test_goals)
+        
+                    toc = time.time()
+                    timer["Simulating task scheduling"] = toc - tic
+        
+                    # Stop timer: Complete SMDP procedure
+                    main_toc = time.time()
+        
+                    status = f"Testing took {main_toc - main_tic:.3f} seconds!"
+        
+                    # Stop timer: Complete SMDP procedure
+                    timer["Complete SMDP procedure"] = main_toc - main_tic
+        
+                    return json.dumps({
+                        "status": status,
+                        "timer":  timer
+                    })
+    
                 # Start timer: reading parameters
                 tic = time.time()
                 
@@ -106,7 +186,89 @@ class PostResource(RESTResource):
                 # Casting to other data types is done in the functions that use
                 # these parameters
                 parameters = [item for item in vpath[11:-3]]
+
+                # Is there a user key
+                try:
+                    log_dict["user_id"] = jsonData["userkey"]
+                except:
+                    status = "We encountered a problem with the inputs " \
+                             "from Workflowy, please try again."
+                    store_log(db.request_log, log_dict, status=status)
+    
+                    cherrypy.response.status = 403
+                    return json.dumps(status + " " + CONTACT)
+
+                # Initialize SMDP parameters
+                smdp_params = dict({
+                    "planning_fallacy_const": 1
+                })
                 
+                """ Reading SMDP parameters """
+                if method == "smdp":
+                    
+                    try:
+                        tic = time.time()
+        
+                        smdp_params.update({
+                            "choice_mode":            parameters[0],
+                            "gamma":                  float(parameters[1]),
+                            "loss_rate":              - float(parameters[2]),
+                            "num_bins":               int(parameters[3]),
+                            "planning_fallacy_const": float(parameters[4]),
+                            "slack_reward":           float(parameters[5]),
+                            "unit_penalty":           float(parameters[6]),
+            
+                            'scale_type':             "no_scaling",
+                            'scale_min':              None,
+                            'scale_max':              None
+                        })
+        
+                        if smdp_params["slack_reward"] == 0:
+                            smdp_params["slack_reward"] = np.NINF
+        
+                        if len(parameters) >= 10:
+                            smdp_params['scale_type'] = parameters[7]
+                            smdp_params['scale_min'] = float(parameters[8])
+                            smdp_params['scale_max'] = float(parameters[9])
+            
+                            if smdp_params["scale_min"] == float("inf"):
+                                smdp_params["scale_min"] = None
+                            if smdp_params["scale_max"] == float("inf"):
+                                smdp_params["scale_max"] = None
+
+                        smdp_params["bias"] = None
+                        smdp_params["scale"] = None
+
+                        # Get bias and scale values from database (if available)
+                        query = list(db.pr_transform.find(
+                            {
+                                "user_id": jsonData["userkey"]
+                            }
+                        ))
+                        if len(query) > 0:
+                            query = query[-1]
+                            smdp_params["bias"] = query["bias"]
+                            smdp_params["scale"] = query["scale"]
+                        else:
+                            query = None
+                            
+                        if "bias" in jsonData.keys():
+                            smdp_params["bias"] = jsonData["bias"]
+        
+                        if "scale" in jsonData.keys():
+                            smdp_params["scale"] = jsonData["scale"]
+        
+                        toc = time.time()
+                        timer["Reading SMDP parameters"] = toc - tic
+                        
+                    except:
+                        status = "There was an issue with the API input " \
+                                 "(reading SMDP parameters) Please contact " \
+                                 "us at reg.experiments@tuebingen.mpg.de."
+                        store_log(db.request_log, log_dict, status=status)
+                        cherrypy.response.status = 403
+                        return json.dumps(status)
+
                 # JSON tree parameters
                 try:
                     time_zone = int(jsonData["timezoneOffsetMinutes"])
@@ -117,10 +279,6 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status)
                 
-                # Set up current time and date according to the user (UTC + TZ)
-                user_datetime = datetime.utcnow() + timedelta(minutes=time_zone)
-                log_dict["user_datetime"] = user_datetime
-
                 # Last two input parameters
                 try:
                     round_param = int(rounding)
@@ -142,8 +300,8 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status)
                 
-                # Set up current time and date according to the user (UTC + TZ)
-                user_datetime = datetime.utcnow() + timedelta(minutes=time_zone)
+                # Update time with time zone
+                user_datetime += timedelta(minutes=time_zone)
                 log_dict["user_datetime"] = user_datetime
 
                 log_dict.update({
@@ -232,17 +390,6 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
-
-                # Is there a user key
-                try:
-                    log_dict["user_id"] = jsonData["userkey"]
-                except:
-                    status = "We encountered a problem with the inputs " \
-                             "from Workflowy, please try again."
-                    store_log(db.request_log, log_dict, status=status)
-                    
-                    cherrypy.response.status = 403
-                    return json.dumps(status + " " + CONTACT)
 
                 # Parse today hours
                 try:
@@ -370,7 +517,9 @@ class PostResource(RESTResource):
                 # Get information about daily tasks time estimation
                 daily_tasks_time_est = \
                     parse_scheduling_tags(projects, allowed_task_time,
-                                          default_time_est, user_datetime)
+                                          default_time_est,
+                                          smdp_params["planning_fallacy_const"],
+                                          user_datetime)
 
                 # Subtract daily tasks time estimation from typical working hours
                 for weekday in range(len(typical_minutes)):
@@ -384,21 +533,6 @@ class PostResource(RESTResource):
                 # Store time: parsing scheduling tags
                 timer["Parsing scheduling tags"] = toc - tic
 
-                # Check whether users have assigned more tasks than their time allows.
-                # for weekday in range(len(typical_minutes)):
-                #     if typical_minutes[weekday] < 0:
-                #         # TODO: Change the error message once we introduce weekdays in WorkFlowy
-                #         status = f"You have {-typical_minutes[weekday]} more " \
-                #                  f"minutes assigned on a typical day. Please " \
-                #                  f"increase your typical working hours or " \
-                #                  f"remove some of the #daily tasks. "
-                #
-                #         # Store error in DB
-                #         store_log(db.request_log, log_dict, status=status)
-                #
-                #         cherrypy.response.status = 403
-                #         return json.dumps(status + CONTACT)
-
                 # Start timer: subtracting times
                 tic = time.time()
 
@@ -409,11 +543,6 @@ class PostResource(RESTResource):
                         if not task["d"] and not task["nvm"]:
                             today_minutes -= task["est"]
 
-                # Subtract time estimate for all tasks scheduled by the user on
-                # today's date from the total number of minutes for today
-                for goal in projects:
-                    today_minutes -= goal["today_est"]
-                
                 # Make 0 if the number of minutes is negative
                 today_minutes = max(today_minutes, 0)
 
@@ -555,160 +684,36 @@ class PostResource(RESTResource):
 
                         cherrypy.response.status = 403
                         return json.dumps(status + CONTACT)
-
-                # DP method
-                # elif method == "dp" or method == "greedy":
-                #     # Get mixing parameter | Default URL value: 0
-                #     mixing_parameter = float(parameters[0])
-                #
-                #     # Store the value of the mixing parameter in the log dict
-                #     log_dict['mixing_parameter'] = mixing_parameter
-                #
-                #     # Defined by the experimenter
-                #     if not (0 <= mixing_parameter < 1):
-                #         status = "There was an issue with the API input " \
-                #                  "(mixing-parameter value). Please contact " \
-                #                  "us at reg.experiments@tuebingen.mpg.de."
-                #         store_log(db.request_log, log_dict, status=status)
-                #         cherrypy.response.status = 403
-                #         return json.dumps(status)
-                #
-                #     scaling_inputs = {
-                #         'scale_type': "no_scaling",
-                #         'scale_min': None,
-                #         'scale_max': None
-                #     }
-                #
-                #     if len(parameters) >= 4:
-                #         scaling_inputs['scale_type'] = parameters[1]
-                #         scaling_inputs['scale_min'] = float(parameters[2])
-                #         scaling_inputs['scale_max'] = float(parameters[3])
-                #
-                #         if scaling_inputs["scale_min"] == float("inf"):
-                #             scaling_inputs["scale_min"] = None
-                #         if scaling_inputs["scale_max"] == float("inf"):
-                #             scaling_inputs["scale_max"] = None
-                #
-                #     solver_fn = run_dp_algorithm
-                #     if method == "greedy":
-                #         solver_fn = run_greedy_algorithm
-                #
-                #     # TODO: Get informative exceptions
-                #     try:
-                #         final_tasks = \
-                #             assign_dynamic_programming_points(
-                #                 projects,
-                #                 solver_fn=solver_fn,
-                #                 scaling_fn=utility_scaling,
-                #                 scaling_inputs=scaling_inputs,
-                #                 day_duration=today_minutes,
-                #                 mixing_parameter=mixing_parameter,
-                #                 time_zone=time_zone,
-                #                 verbose=False
-                #             )
-                #     except Exception as error:
-                #         cherrypy.response.status = 403
-                #         if to_ctx_mgr.state == to_ctx_mgr.TIMED_OUT:
-                #
-                #             error = "The API took too long processing your " \
-                #                     "Workflowy information, please try again. " \
-                #                     "Long processing times can arise from too " \
-                #                     "many or very late deadlines -- if you " \
-                #                     "can, you might want to reduce these."
-                #
-                #         return json.dumps(str(error) + " " + CONTACT)
                 
                 elif method == "smdp":
-                    
-                    """ Reading SMDP parameters """
-                    tic = time.time()
-                    
-                    smdp_params = {
-                        "choice_mode": parameters[0],
-                        "gamma": float(parameters[1]),  # 0.9999
-                        "loss_rate": - float(parameters[2]),  # -1
-                        "num_bins": int(parameters[3]),  # 1
-                        "planning_fallacy_const": float(parameters[4]),  # 1.39
-                        "slack_reward": float(parameters[5]),  # 1e-3
-                        "unit_penalty": float(parameters[6]),  # 1e-1
     
-                        "goal_pr_loc": float(parameters[7]),  # 1000
-                        "goal_pr_scale": float(parameters[8]),  # 1 - gamma
-                        "task_pr_loc": float(parameters[9]),  # 0
-                        "task_pr_scale": float(parameters[10]),  # 2
-                        
-                        'scale_type': "no_scaling",
-                        'scale_min':  None,
-                        'scale_max':  None
-                    }
-                    
-                    if smdp_params["slack_reward"] == 0:
-                        smdp_params["slack_reward"] = np.NINF
-    
-                    if len(parameters) >= 14:
-                        smdp_params['scale_type'] = parameters[11]
-                        smdp_params['scale_min'] = float(parameters[12])
-                        smdp_params['scale_max'] = float(parameters[13])
-        
-                        if smdp_params["scale_min"] == float("inf"):
-                            smdp_params["scale_min"] = None
-                        if smdp_params["scale_max"] == float("inf"):
-                            smdp_params["scale_max"] = None
+                    final_tasks = assign_smdp_points(
+                        projects, current_day=user_datetime, timer=timer,
+                        day_duration=today_minutes, smdp_params=smdp_params
+                    )
 
-                    toc = time.time()
-                    timer["Reading SMDP parameters"] = toc - tic
-                    
-                    if api_method == "getTasksForToday":
-                        final_tasks = assign_smdp_points(
-                            projects, timer=timer, day_duration=today_minutes,
-                            smdp_params=smdp_params, time_zone=time_zone
-                        )
+                    # Add database entry if one does not exist
+                    if query is None:
+                        db.pr_transform.insert_one({
+                            "user_id": jsonData["userkey"],
+                            "bias":    smdp_params["bias"],
+                            "scale":   smdp_params["scale"]
+                        })
 
-                    else:
+                    if api_method == "updateTransform":
                         
-                        """ Generating test case """
-                        tic = time.time()
-                        
-                        test_goals = generate_test_case(
-                            api_method=api_method,
-                            n_bins=jsonData["n_bins"],
-                            n_goals=jsonData["n_goals"],
-                            n_tasks=jsonData["n_tasks"],
-                            unit_penalty=smdp_params["unit_penalty"]
-                        )
+                        # Update bias and scaling parameters
+                        if query is not None:
+                            db.pr_transform.update_one(
+                                {"_id": query["_id"]},
+                                {
+                                    "$set": {
+                                        "bias": smdp_params["bias"],
+                                        "scale": smdp_params["scale"]
+                                    }
+                                }
+                            )
 
-                        toc = time.time()
-                        timer["Generating test case"] = toc - tic
-    
-                        """ Run SMDP """
-                        tic = time.time()
-    
-                        final_tasks = assign_smdp_points(
-                            projects=test_goals,
-                            timer=timer,
-                            day_duration=today_minutes,
-                            smdp_params=smdp_params,
-                            time_zone=time_zone,
-                            json=False
-                        )
-                        
-                        toc = time.time()
-                        timer["Run SMDP"] = toc - tic
-
-                        """ Simulating task scheduling """
-                        tic = time.time()
-
-                        simulate_task_scheduling(test_goals)
-                        
-                        toc = time.time()
-                        timer["Simulating task scheduling"] = toc - tic
-    
-                # TODO: Test and fix potential bugs!
-                # elif method == "old-report":
-                #     final_tasks = \
-                #         assign_old_api_points(projects, backward_induction,
-                #                               duration=today_minutes)
-                
                 else:
                     status = "API method does not exist. Please contact us " \
                              "at reg.experiments@tuebingen.mpg.de."
@@ -735,7 +740,8 @@ class PostResource(RESTResource):
                         task_list = task_list_from_projects(projects)
     
                         final_tasks = \
-                            basic_scheduler(task_list, time_zone=time_zone,
+                            basic_scheduler(task_list,
+                                            current_day=user_datetime,
                                             duration_remaining=today_minutes)
                     except Exception as error:
                         status = str(error) + ' '
@@ -752,7 +758,8 @@ class PostResource(RESTResource):
                         task_list = task_list_from_projects(projects)
     
                         final_tasks = \
-                            deadline_scheduler(task_list, time_zone=time_zone,
+                            deadline_scheduler(task_list,
+                                               current_day=user_datetime,
                                                today_duration=today_minutes)
                     except Exception as error:
                         status = str(error) + ' '
@@ -788,7 +795,7 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status="Update tree")
                     return None
                 
-                elif api_method == "getTasksForToday":
+                elif api_method in {"getTasksForToday", "updateTransform"}:
                     if len(final_tasks) == 0:
                         status = "The API has scheduled all of the tasks it " \
                                  "can for today, given your working hours. " \
@@ -837,30 +844,13 @@ class PostResource(RESTResource):
                     # Store time: Storing successful pull in database
                     timer["Storing successful pull in database"] = toc - tic
                     
+                    # print("\n===== Optimal tasks =====")
                     # for task in final_tasks:
                     #     print(task["nm"], "&", task["val"], "\\\\")
+                    # print()
 
                     # Return scheduled tasks
                     return json.dumps(final_tasks)
-                
-                elif api_method in ["averageSpeedTestSMDP",
-                                    "bestSpeedTestSMDP", "worstSpeedTestSMDP"]:
-    
-                    # Stop timer: Complete SMDP procedure
-                    main_toc = time.time()
-    
-                    status = f"Testing {api_method} with " \
-                             f"{jsonData['n_goals']} goals and " \
-                             f"{jsonData['n_tasks']} tasks per goal " \
-                             f"took {main_toc - main_tic:.3f} seconds!"
-                    
-                    # Stop timer: Complete SMDP procedure
-                    timer["Complete SMDP procedure"] = main_toc - main_tic
-
-                    return json.dumps({
-                        "status": status,
-                        "timer": timer
-                    })
                 
                 else:
                     status = "API Method not implemented. Please contact us " \

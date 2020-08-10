@@ -4,7 +4,7 @@ from todolistMDP.to_do_list import Goal, Task
 
 
 def generate_test_case(api_method, n_bins, n_goals, n_tasks, deadline_time=1e6,
-                       time_scale=1, unit_penalty=0):
+                       time_est=1, time_scale=1, unit_penalty=0):
     
     reward = n_tasks * (n_tasks + 1)
     
@@ -19,14 +19,30 @@ def generate_test_case(api_method, n_bins, n_goals, n_tasks, deadline_time=1e6,
         for task_idx in range(1, n_tasks+1):
             
             if api_method == "averageSpeedTestSMDP":
+    
+                time_est = task_idx * time_scale
+    
                 if task_idx % 10 == 0:
                     deadline = n_tasks - task_idx + 1
                 else:
                     deadline = task_idx
+                    
             elif api_method == "bestSpeedTestSMDP":
                 deadline = task_idx
+                time_est = task_idx * time_scale
+
+            elif api_method == "exhaustiveSpeedTestSMDP":
+                deadline = task_idx
+                time_est = 1
+                
+            elif api_method == "realSpeedTestSMDP":
+                deadline = task_idx
+                time_est = time_est
+                
             elif api_method == "worstSpeedTestSMDP":
                 deadline = n_tasks - task_idx + 1
+                time_est = task_idx * time_scale
+
             else:
                 raise NotImplementedError(
                     f"Method {api_method} not implemented!")
@@ -34,7 +50,7 @@ def generate_test_case(api_method, n_bins, n_goals, n_tasks, deadline_time=1e6,
             task = Task(
                 f"G{goal_idx} T{task_idx}",
                 deadline=deadline,
-                time_est=task_idx * time_scale
+                time_est=time_est
             )
             
             tasks.append(task)
@@ -43,7 +59,7 @@ def generate_test_case(api_method, n_bins, n_goals, n_tasks, deadline_time=1e6,
             description=f"G{goal_idx}",
             loss_rate=-1,
             num_bins=n_bins,
-            rewards={deadline_time: (goal_idx + 1) * reward},
+            rewards={(goal_idx + 1) * deadline_time + 1: reward},
             tasks=list(tasks),
             unit_penalty=unit_penalty
         )

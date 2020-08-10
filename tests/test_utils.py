@@ -294,7 +294,10 @@ def test_calculate_tasks_time_est():
     - daily = 1000 minutes
     - future = 10000 minutes
     """
-    result = parse_scheduling_tags(TAGS_TREE, float('inf'), default_time_est=1,
+    result = parse_scheduling_tags(TAGS_TREE,
+                                   allowed_task_time=float('inf'),
+                                   default_time_est=1,
+                                   planning_fallacy_const=1,
                                    user_datetime=datetime.utcnow())
     assert result == [1110 for _ in range(7)]
 
@@ -483,19 +486,28 @@ def test_get_wf_task_id():
     pass
 
 
-# TODO: Important functions to test next
+def test_process_deadline():
+    for dealdine, expected_output in (
+        (["DUE:2020-01-01 00:00"], 0),
+        (["DUE:2020-01-01 01:00"], 60),
+        (["DUE:2020-01-01 22:00"], 300),
+        (["DUE:2020-01-02 01:00"], 300 + 60),
+        (["DUE:2020-01-02 22:00"], 300 + 600),
+        (["DUE:2020-01-09 22:00"], 300 + 8 * 600),
+    ):
+        actual_output, _ = process_deadline(
+            deadline=dealdine,
+            today_minutes=300,
+            typical_minutes=[600] * 7,
+            current_datetime=datetime.strptime("2020-01-01 00:00", "%Y-%m-%d %H:%M"),
+        )
+        assert actual_output == expected_output
+
+
+# TODO: Functions to test next
 #     - test_create_projects_to_save
 #     - test_date_str_to_datetime
 #     - test_get_final_output
-#     - def test_process_deadline
-#       - Complex calculations, better to test it manually...
-#     - test_create_projects_to_save
 #     - test_parse_error_info
-
-# TODO: Other important functions to test
-#     - test_compute_latest_start_time (together with tests for the DP method)
 #     - test_parse_tree (too complex, better test all functions called by this one)
-
-# TODO: Other functions to test
 #     - test_tree_to_old_structure
-#     - test_separate_tasks_with_deadlines (not needed after DP speed-ups)
