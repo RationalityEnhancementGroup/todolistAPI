@@ -8,6 +8,7 @@ After installing MongoDB, you should do the following steps:
 - Open a terminal window and start a connection with the database with the command `mongod --dbpath <pathToDatabase> --port 27017`
 - Open another terminal window and start the DB editor with the command `mongo`.
   - In order to create a user, initialize a collection etc., please refer to [MongoDB's official websie](https://www.mongodb.com/).
+  - Please initialize the following collections: `log_dict`, `pr_transform`, `trees`.
 - In the `if __name__ == '__main__'` part of the `app.py` file, the following info should be provided. Here is an example:
     ```
     uri = "mongodb://ai4productivity:ai4productivity@127.0.0.1/ai4productivity"
