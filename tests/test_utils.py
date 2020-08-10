@@ -491,7 +491,7 @@ def test_process_deadline():
         (["DUE:2020-01-01 00:00"], 0),
         (["DUE:2020-01-01 01:00"], 60),
         (["DUE:2020-01-01 22:00"], 300),
-        (["DUE:2020-01-02 01:00"], 360 + 60),
+        (["DUE:2020-01-02 01:00"], 300 + 60),
         (["DUE:2020-01-02 22:00"], 300 + 600),
         (["DUE:2020-01-09 22:00"], 300 + 8 * 600),
     ):
@@ -500,7 +500,6 @@ def test_process_deadline():
             today_minutes=300,
             typical_minutes=[600] * 7,
             current_datetime=datetime.strptime("2020-01-01 00:00", "%Y-%m-%d %H:%M"),
-            scheduled_today=True
         )
         assert actual_output == expected_output
 
