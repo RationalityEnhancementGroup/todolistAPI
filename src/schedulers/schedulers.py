@@ -18,6 +18,7 @@ def basic_scheduler(task_list, current_day, duration_remaining=8 * 60,
     # Initialize queue of other tasks eligible to be scheduled today
     remaining_tasks = deque()
 
+    # Get information on current weekday
     current_weekday = current_day.weekday()
 
     if with_today:
@@ -83,7 +84,7 @@ def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
     # Initialize queue of other tasks eligible to be scheduled today
     remaining_tasks = deque()
     
-    # Get information on current day and weekday
+    # Get information on current weekday
     current_weekday = current_day.weekday()
 
     for task in ordered_tasks:
