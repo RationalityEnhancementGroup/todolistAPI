@@ -84,6 +84,10 @@ def assign_smdp_points(projects, current_day, day_duration, smdp_params, timer,
                                              scale=smdp_params["scale"])
     timer["Run SMDP - Compute pseudo-rewards"] = time.time() - tic
     
+    # Update bias and scale parameters
+    smdp_params["bias"] = prs["bias"]
+    smdp_params["scale"] = prs["scale"]
+    
     # Unpack pseudo-rewards
     optimal_tasks = prs["optimal_tasks"]
     suboptimal_tasks = prs["suboptimal_tasks"]

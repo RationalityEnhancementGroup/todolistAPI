@@ -58,8 +58,9 @@ Description of the URL parameters:
 - `<additionalParameters>`: (Differ for each method. Described in their own section.)
 - `<userID>`: Unique user identification code.
 - `<functionName>`: Type of request.
-    - `updateTree`: Updates the stored tree.
     - `getTasksForToday`: Outputs list of task for today.
+    - `updateTransform`: Updates bias and scaling parameters for SMDP method.
+    - `updateTree`: Updates the stored tree.
 
 The additional parameters (`<additionalParameters>`) are dependent on the method that has been used (described below). 
 Important: The order of all URL parameters is **fixed**!

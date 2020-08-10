@@ -106,7 +106,6 @@ class PostResource(RESTResource):
     
                         "bias": None,
                         "scale": None
-    
                     }
 
                     if smdp_params["slack_reward"] == 0:
@@ -187,13 +186,24 @@ class PostResource(RESTResource):
                 # Casting to other data types is done in the functions that use
                 # these parameters
                 parameters = [item for item in vpath[11:-3]]
-                
-                """ Reading SMDP parameters """
-                
+
+                # Is there a user key
+                try:
+                    log_dict["user_id"] = jsonData["userkey"]
+                except:
+                    status = "We encountered a problem with the inputs " \
+                             "from Workflowy, please try again."
+                    store_log(db.request_log, log_dict, status=status)
+    
+                    cherrypy.response.status = 403
+                    return json.dumps(status + " " + CONTACT)
+
+                # Initialize SMDP parameters
                 smdp_params = dict({
                     "planning_fallacy_const": 1
                 })
-
+                
+                """ Reading SMDP parameters """
                 if method == "smdp":
                     
                     try:
@@ -225,21 +235,36 @@ class PostResource(RESTResource):
                                 smdp_params["scale_min"] = None
                             if smdp_params["scale_max"] == float("inf"):
                                 smdp_params["scale_max"] = None
-        
+
                         smdp_params["bias"] = None
+                        smdp_params["scale"] = None
+
+                        # Get bias and scale values from database (if available)
+                        query = list(db.pr_transform.find(
+                            {
+                                "user_id": jsonData["userkey"]
+                            }
+                        ))
+                        if len(query) > 0:
+                            query = query[-1]
+                            smdp_params["bias"] = query["bias"]
+                            smdp_params["scale"] = query["scale"]
+                        else:
+                            query = None
+                            
                         if "bias" in jsonData.keys():
                             smdp_params["bias"] = jsonData["bias"]
         
-                        smdp_params["scale"] = None
                         if "scale" in jsonData.keys():
                             smdp_params["scale"] = jsonData["scale"]
         
                         toc = time.time()
                         timer["Reading SMDP parameters"] = toc - tic
+                        
                     except:
                         status = "There was an issue with the API input " \
-                                 "(reading SMDP parameters from URL) Please " \
-                                 "contact us at reg.experiments@tuebingen.mpg.de."
+                                 "(reading SMDP parameters) Please contact " \
+                                 "us at reg.experiments@tuebingen.mpg.de."
                         store_log(db.request_log, log_dict, status=status)
                         cherrypy.response.status = 403
                         return json.dumps(status)
@@ -365,17 +390,6 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
-
-                # Is there a user key
-                try:
-                    log_dict["user_id"] = jsonData["userkey"]
-                except:
-                    status = "We encountered a problem with the inputs " \
-                             "from Workflowy, please try again."
-                    store_log(db.request_log, log_dict, status=status)
-                    
-                    cherrypy.response.status = 403
-                    return json.dumps(status + " " + CONTACT)
 
                 # Parse today hours
                 try:
@@ -672,13 +686,33 @@ class PostResource(RESTResource):
                         return json.dumps(status + CONTACT)
                 
                 elif method == "smdp":
-                    
-                    if api_method == "getTasksForToday":
+    
+                    final_tasks = assign_smdp_points(
+                        projects, current_day=user_datetime, timer=timer,
+                        day_duration=today_minutes, smdp_params=smdp_params
+                    )
+
+                    # Add database entry if one does not exist
+                    if query is None:
+                        db.pr_transform.insert_one({
+                            "user_id": jsonData["userkey"],
+                            "bias":    smdp_params["bias"],
+                            "scale":   smdp_params["scale"]
+                        })
+
+                    if api_method == "updateTransform":
                         
-                        final_tasks = assign_smdp_points(
-                            projects, current_day=user_datetime, timer=timer,
-                            day_duration=today_minutes, smdp_params=smdp_params
-                        )
+                        # Update bias and scaling parameters
+                        if query is not None:
+                            db.pr_transform.update_one(
+                                {"_id": query["_id"]},
+                                {
+                                    "$set": {
+                                        "bias": smdp_params["bias"],
+                                        "scale": smdp_params["scale"]
+                                    }
+                                }
+                            )
 
                 else:
                     status = "API method does not exist. Please contact us " \
@@ -761,7 +795,7 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status="Update tree")
                     return None
                 
-                elif api_method == "getTasksForToday":
+                elif api_method in {"getTasksForToday", "updateTransform"}:
                     if len(final_tasks) == 0:
                         status = "The API has scheduled all of the tasks it " \
                                  "can for today, given your working hours. " \
