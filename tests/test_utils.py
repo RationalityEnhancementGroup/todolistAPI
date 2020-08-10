@@ -504,17 +504,10 @@ def test_process_deadline():
         assert actual_output == expected_output
 
 
-# TODO: Important functions to test next
+# TODO: Functions to test next
 #     - test_create_projects_to_save
 #     - test_date_str_to_datetime
 #     - test_get_final_output
-#     - test_create_projects_to_save
 #     - test_parse_error_info
-
-# TODO: Other important functions to test
-#     - test_compute_latest_start_time (together with tests for the DP method)
 #     - test_parse_tree (too complex, better test all functions called by this one)
-
-# TODO: Other functions to test
 #     - test_tree_to_old_structure
-#     - test_separate_tasks_with_deadlines (not needed after DP speed-ups)

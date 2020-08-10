@@ -61,7 +61,7 @@ for n_bins in N_BINS:
                 # Create path
                 os.makedirs(PATH_NAME, exist_ok=True)
                 
-                # Generate file name | TODO: Find a smarter way to generate names
+                # Generate file name
                 FILE_NAME = PATH_NAME + generate_file_name(
                     n_bins, n_goals, n_tasks, years
                 )

@@ -35,7 +35,7 @@ class Item:
             self.time_est: None
         }
         
-        self.expected_loss = None  # TODO: Implement this
+        self.expected_loss = None
         self.values = deque()
 
     def __hash__(self):
@@ -311,7 +311,6 @@ class Goal(Item):
 
         self.F = dict()
         self.R = dict()
-        self.log_prob = dict()
 
         # Initialize computations
         self.small_reward_pruning = 0
@@ -842,7 +841,6 @@ class ToDoList:
         
         self.F = dict()
         self.R = dict()
-        self.log_prob = dict()
 
         # Initialize computation counters
         self.small_reward_pruning = 0
@@ -942,8 +940,6 @@ class ToDoList:
             # Set slack reward for goal's slack-off action if not defined
             if goal.get_slack_reward() is None:
                 goal.set_slack_reward(self.slack_reward)
-                
-            # TODO: Add completed goals in start_state (?)
                 
             # Set goal index
             goal.set_idx(idx)
@@ -1108,10 +1104,6 @@ class ToDoList:
                     # TODO: Probability of transition to next state
                     prob = 1
 
-                    # Store log probability of the next state
-                    self.log_prob.setdefault(s_, dict())
-                    self.log_prob[s_][t_] = np.log(prob)
-
                     # Calculate total reward for next action
                     # result = next_goal.solve(start_time=t, verbose=verbose)
                     # r = result["r"]
@@ -1212,14 +1204,9 @@ class ToDoList:
         s = tuple(0 for _ in range(self.num_goals))
         t = self.start_time
 
-        # Initialize log probability
-        self.log_prob.setdefault(s, dict())
-        self.log_prob[s][t] = 0
-
         curr_state = {
             "s": s,
             "t": t
-            # TODO: log_prob
         }
 
         # Start iterating
