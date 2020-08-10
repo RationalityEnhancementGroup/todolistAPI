@@ -78,6 +78,13 @@ class PostResource(RESTResource):
                 
                 api_method = vpath[-1]
                 
+                # Load fixed time if provided
+                if "time" in jsonData.keys():
+                    user_datetime = datetime.strptime(jsonData["time"],
+                                                      "%Y-%m-%d %H:%M")
+                else:
+                    user_datetime = datetime.utcnow()
+
                 if api_method in {"averageSpeedTestSMDP",
                                   "bestSpeedTestSMDP",
                                   "exhaustiveSpeedTestSMDP",
@@ -125,10 +132,10 @@ class PostResource(RESTResource):
         
                     assign_smdp_points(
                         projects=test_goals,
-                        timer=timer,
+                        current_day=user_datetime,
                         day_duration=jsonData["today_minutes"],
                         smdp_params=smdp_params,
-                        time_zone=0,
+                        timer=timer,
                         json=False
                     )
         
@@ -247,10 +254,6 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status)
                 
-                # Set up current time and date according to the user (UTC + TZ)
-                user_datetime = datetime.utcnow() + timedelta(minutes=time_zone)
-                log_dict["user_datetime"] = user_datetime
-
                 # Last two input parameters
                 try:
                     round_param = int(rounding)
@@ -272,13 +275,6 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status)
                 
-                # Set up current time and date according to the user (UTC + TZ)
-                if "time" in jsonData.keys():
-                    user_datetime = datetime.strptime(jsonData["time"],
-                                                      "%Y-%m-%d %H:%M")
-                else:
-                    user_datetime = datetime.utcnow()
-                    
                 # Update time with time zone
                 user_datetime += timedelta(minutes=time_zone)
                 log_dict["user_datetime"] = user_datetime
