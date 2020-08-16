@@ -32,10 +32,6 @@ The general URL for using the server online (on Heroku) looks like this:
 Description of the URL parameters:
 - `<method>`: Method by which points are assigned
     - `constant`: Constant point assignment
-    <!--
-    - `dp`: Calculates optimal points by using a dynamic programming algorithm [Reference](http://www.cs.mun.ca/~kol/courses/2711-f13/dynprog.pdf) [pages: 5-8]
-    - `greedy`: Calculates optimal points by using the a greedy algorithm to solve the problem. 
-    -->
     - `length`: Length heuristics
     - `random`: Random point assignment from a Normal distribution.
     - `smdp`: Calculates optimal points by using semi-Markov decision processes.
@@ -43,7 +39,7 @@ Description of the URL parameters:
     - Schedulers for `constant`, `length` and `random` point-assignment methods:
         - `basic`: Basic scheduler
         - `deadline`: Deadline scheduler
-    - Schedulers for `smdp` <!-- `dp` and `greedy` --> point-assignment method:
+    - Schedulers for `smdp` point-assignment method:
         - `mdp`: Method used by the SMDP incentivizing method.
 - `<compulsoryParameters>`
     - `default_time_est`: Default task time estimate (in minutes) to fill in if it is not provided by the user.
@@ -71,7 +67,6 @@ You can use our [URL generator](https://aqueous-hollows-34193.herokuapp.com/stat
 - Additional parameters
   - `default_task_value`: Constant value of points to be assigned to each task.
 
-
 ```
 URL example: http://127.0.0.1:6789/api/constant/basic/30/14/inf/0/3000/0/60/t/2/10/tree/user123/getTasksForToday
 
@@ -90,28 +85,6 @@ default_task_value: 10
 <userID>: user123
 <functionName>: getTasksForToday
 ```
-
-<!--
-### Dynamic programming point-assignment method (`dp`)
-- Additional parameters
-    - `mixing_parameter`:
-        - Basically, it represents a level of mixing tasks from different goals. That is, the level rigidity/flexibility of a user to work on different goals in a (relatively) short time period. 
-        - It is a value between 0 (included; represents rigidity/no mixing) and 1 (excluded; represents flexibility complete mixing).
-    - `scale_type` (optional): It represents the method by which points are scaled. If no scaling to be used, the inputting this parameter (and the `scale_min` and `scale_max` parameters) should be omitted.
-        - `no_scaling`: Points are assigned according to this formula `task_reward = (goal_reward / goal_time_est) * task_time_est`. 
-        - `min_max`: Points are assigned according to this formula `task_reward = (task_reward - min_value) / (max_value - min_value) * (scale_max - scale_min) + scale_min`.
-        - `mean_value`: Points are assigned according to this formula `task_reward = (task_reward - mean_reward) / (max_value - min_value) * (scale_max - scale_min) / 2 + ((scale_max + scale_min) / 2)`
-    - `scale_min` (optional): It represents the lower interval bound, which scales the proposed task values to the provided interval. If `inf`, then the lower interval bound is not set.
-    - `scale_max` (optional): It represents the higher interval bound, which scales the proposed task values to the provided interval. If `inf`, then the upper interval bound is not set.
-
-- URL example: `http://127.0.0.1:6789/api/dp/mdp/30/14/inf/0/1000/40/60/0/min_max/5/10/cite/tree/u123/getTasksForToday`
-
-### Greedy-algorithm point-assignment method (`greedy`)
-- Additional parameters
-    - (Same as the `dp` method. See above.)
-
-- URL example: `http://127.0.0.1:6789/api/greedy/mdp/30/14/inf/0/1000/40/60/0/min_max/5/10/cite/tree/u123/getTasksForToday`
--->
 
 ### Length heuristics point-assignment method (`length`)
 - There are no additional parameters for this method.
@@ -134,7 +107,6 @@ rounding: 0
 <functionName>: getTasksForToday
 ```
     
-
 ### Random point-assignment method (`random`)
 - Additional parameters
   - `distribution`: The name of the probability distribution (according to [NumPy](https://numpy.org/)) and their own parameters. So far, these distributions have been implemented:
@@ -216,7 +188,7 @@ scale_max: 2
   
 ## Potential issues
 
-If you encounter any problem related to the API, please submit a Github issue.
+If you encounter any problem related to the API, please submit a GitHub issue.
 
   
 ## Required Python Packages
@@ -226,8 +198,16 @@ All required Python packages are listed in the `requirements.txt` file.
 ## Citation
 
 If you use this code in academic work, please cite the report:
-
-\<TBD\>
+```
+@misc{stojcheski2020optimal,
+    title={Optimal to-do list gamification},
+    author={Jugoslav Stojcheski and Valkyrie Felso and Falk Lieder},
+    year={2020},
+    eprint={2008.05228},
+    archivePrefix={arXiv},
+    primaryClass={cs.AI}
+}
+```
 
 ## Acknowledgements
 
