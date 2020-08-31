@@ -1179,6 +1179,10 @@ def tree_to_old_structure(projects, params):
                 
                 # Add reference from the goal node to the leaf/task node
                 goal_item.append_task(item)
+                
+                # If task has to be executed today
+                if item.is_today() and not item.is_completed():
+                    goal_item.add_today_item(item)
 
             # Add reference to goal
             item.add_goal(goal_item)

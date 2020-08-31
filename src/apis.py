@@ -55,6 +55,11 @@ def assign_random_points(projects, distribution_fxn=np.random.normal,
 def assign_smdp_points(projects, current_day, day_duration, leaf_projects,
                        smdp_params, timer, json=True, start_time=0, verbose=False):
     
+    # # TODO: Remove (!)
+    # for goal in leaf_projects:
+    #     for task in goal["ch"]:
+    #         print(task["nm"], task["scheduled_today"], task["today"])
+    
     # TODO: Remove (!)
     print("Before tree parsing...")
     
@@ -138,7 +143,7 @@ def assign_smdp_points(projects, current_day, day_duration, leaf_projects,
     # slack_tasks = prs["slack_tasks"]
     
     incentivized_tasks = prs["incentivized_tasks"]
-    # id2pr = prs["id2pr"]  # TODO: Remove (!)
+    id2pr = prs["id2pr"]  # TODO: Remove (!)
     
     # TODO: Potentially unnecessary (?!)
     # """ Run SMDP - Scaling rewards
@@ -177,7 +182,7 @@ def assign_smdp_points(projects, current_day, day_duration, leaf_projects,
         # tic = time.time()
         #
         # # TODO: Potentially unnecessary (?!)
-        # forced_pull = incentivize_forced_pull(projects, pr_dict=id2pr)
+        # forced_pull = incentivize_forced_pull(leaf_projects, pr_dict=id2pr)
         # today_tasks.extend(forced_pull)
         #
         # timer["Run SMDP - Incentivizing forced pull"] = time.time() - tic

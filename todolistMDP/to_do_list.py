@@ -121,8 +121,8 @@ class Item:
             # Set item index | TODO: Check whether there is a conflict in solve... (!)
             item.set_idx(idx)
 
-            if item.is_today():
-                self.today_items.add(item)
+            if item.is_today() and not item.is_completed():
+                self.add_today_item(item)
         
             if item.is_completed():
                 self.start_state[idx] = 1
@@ -145,6 +145,9 @@ class Item:
                 item.get_idx()
             )
         )
+        
+    def add_today_item(self, item):
+        self.today_items.add(item)
         
     def append_task(self, task, left=False):
         if left:
@@ -283,16 +286,17 @@ class Item:
         self.description = description
         
     def set_expected_reward(self, expected_reward):
-        
+    
+        # # TODO: Remove (!)
         # Sanity check
-        if self.expected_reward is not None:
-            
-            # assert self.expected_loss == expected_loss
-            
-            if self.expected_reward != expected_reward:
-                print(self.description)
-                print(self.expected_reward, expected_reward)
-                print()
+        # if self.expected_reward is not None:
+        #
+        #     # assert self.expected_loss == expected_loss
+        #
+        #     if self.expected_reward != expected_reward:
+        #         print(self.description)
+        #         print(self.expected_reward, expected_reward)
+        #         print()
         
         self.expected_reward = expected_reward
     
@@ -375,10 +379,10 @@ class Item:
                 available_time = deepcopy(available_time)
 
                 for task in self.tasks:
-
+                    
                     # If the task is not already marked to be executed
-                    if task not in self.today_items:
-
+                    if not task.is_completed():
+                        
                         # Get task time estimate
                         time_est = task.get_time_est()
 
@@ -392,12 +396,12 @@ class Item:
                         if available_time < 0:
                             break
 
-                # Append least-optimal action in order to get lower bound on the
-                # reward-shaping value
-                last_task = self.tasks[-1]
-    
-                # Add task item to the list of tasks to be executed
-                tasks_to_iterate.add(last_task)
+                # # Append least-optimal action in order to get lower bound on the
+                # # reward-shaping value
+                # last_task = self.tasks[-1]
+                #
+                # # Add task item to the list of tasks to be executed
+                # tasks_to_iterate.add(last_task)
                 
         # If the start time is in the future, find the next uncompleted task
         else:
@@ -423,10 +427,16 @@ class Item:
         # Start timer
         tic = time.time()
         
+        # TODO: Remove (!)
         betas = dict()
         exp_losses = dict()
         durations = dict()
         qs = dict()
+        
+        # TODO: Remove (!)
+        # if t == 0:
+        #     for task in tasks_to_iterate:
+        #         print(task.get_description())
 
         for task in tasks_to_iterate:
             
@@ -473,7 +483,7 @@ class Item:
             # print("Expected duration:", term_time - t)
             # print("Q-value:", q)
             # print()
-            #
+            
             # desc = self.get_description()
             #
             # if desc in betas.keys():
@@ -662,7 +672,9 @@ class Item:
         
                         # Update penalty for the next state
                         next_state["beta"] += total_penalty
-
+                        
+                        beta += total_penalty
+                        
                     # Solve branching of the next state
                     result = self.solve_branching(next_state, params,
                                                   verbose=verbose)
