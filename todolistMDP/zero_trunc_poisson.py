@@ -85,7 +85,7 @@ def get_bin_intervals(lb, ub, num_bins=1):
     return np.unique(np.linspace(lb, ub, num_bins+1, dtype=np.int))
 
 
-def get_binned_distrib(mu, num_bins, std=3):
+def get_binned_dist(mu, num_bins, std=3):
     
     if num_bins == 1:
         return {
@@ -176,4 +176,4 @@ def var(mu):
 
 
 if __name__ == '__main__':
-    pprint(get_binned_distrib(100, 2))
+    pprint(get_binned_dist(100, 2))

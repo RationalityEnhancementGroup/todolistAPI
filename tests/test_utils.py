@@ -482,7 +482,7 @@ def test_calculate_tasks_time_est():
 
 
 def test_get_wf_task_id():
-    assert "__no_wf_id__" == get_wf_task_id("bla bla bla 888.0")
+    assert "__no_wf_id__" == get_wf_item_id("bla bla bla 888.0")
     pass
 
 

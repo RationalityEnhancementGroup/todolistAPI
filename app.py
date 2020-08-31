@@ -96,9 +96,9 @@ class PostResource(RESTResource):
                         "gamma":                  jsonData["gamma"],
                         "loss_rate":              jsonData["loss_rate"],
                         "num_bins":               jsonData["n_bins"],
+                        "penalty_rate":           jsonData["penalty_rate"],
                         "planning_fallacy_const": jsonData["planning_fallacy_const"],
                         "slack_reward":           jsonData["slack_reward"],
-                        "unit_penalty":           jsonData["unit_penalty"],
             
                         "scale_type": jsonData["scale_type"],
                         "scale_min":  jsonData["scale_min"],
@@ -119,12 +119,11 @@ class PostResource(RESTResource):
                         n_bins=jsonData["n_bins"],
                         n_goals=jsonData["n_goals"],
                         n_tasks=jsonData["n_tasks"],
-                        time_est=jsonData["time_est"],
-                        unit_penalty=jsonData["unit_penalty"]
+                        penalty_rate=jsonData["penalty_rate"],
+                        time_est=jsonData["time_est"]
                     )
                     
-                    toc = time.time()
-                    timer["Generating test case"] = toc - tic
+                    timer["Generating test case"] = time.time() - tic
         
                     """ Run SMDP """
                     tic = time.time()
@@ -138,24 +137,19 @@ class PostResource(RESTResource):
                         json=False
                     )
         
-                    toc = time.time()
-                    timer["Run SMDP"] = toc - tic
+                    timer["Run SMDP"] = time.time() - tic
         
                     """ Simulating task scheduling """
                     tic = time.time()
         
                     simulate_task_scheduling(test_goals)
         
-                    toc = time.time()
-                    timer["Simulating task scheduling"] = toc - tic
+                    timer["Simulating task scheduling"] = time.time() - tic
+        
+                    status = f"Testing took {time.time() - main_tic:.3f} seconds!"
         
                     # Stop timer: Complete SMDP procedure
-                    main_toc = time.time()
-        
-                    status = f"Testing took {main_toc - main_tic:.3f} seconds!"
-        
-                    # Stop timer: Complete SMDP procedure
-                    timer["Complete SMDP procedure"] = main_toc - main_tic
+                    timer["Complete SMDP procedure"] = time.time() - main_tic
         
                     return json.dumps({
                         "status": status,
@@ -214,9 +208,9 @@ class PostResource(RESTResource):
                             "gamma":                  float(parameters[1]),
                             "loss_rate":              - float(parameters[2]),
                             "num_bins":               int(parameters[3]),
+                            "penalty_rate":           float(parameters[6]),
                             "planning_fallacy_const": float(parameters[4]),
                             "slack_reward":           float(parameters[5]),
-                            "unit_penalty":           float(parameters[6]),
             
                             'scale_type':             "no_scaling",
                             'scale_min':              None,
@@ -258,8 +252,7 @@ class PostResource(RESTResource):
                         if "scale" in jsonData.keys():
                             smdp_params["scale"] = jsonData["scale"]
         
-                        toc = time.time()
-                        timer["Reading SMDP parameters"] = toc - tic
+                        timer["Reading SMDP parameters"] = time.time() - tic
                         
                     except:
                         status = "There was an issue with the API input " \
@@ -436,21 +429,16 @@ class PostResource(RESTResource):
                              "The hours you work should be between 0 and 24."
                     cherrypy.response.status = 403
                     return json.dumps(status)
-
-                # Convert today hours into minutes
-                today_minutes = today_hours * 60
-
-                # Convert typical hours into typical minutes for each weekday
-                typical_minutes = [typical_hours * 60 for _ in range(7)]
+                
+                # Initialize vector of available time (0: today; 1-7: Mon-Sun)
+                available_time =\
+                    [today_hours * 60] + [typical_hours * 60 for _ in range(7)]
 
                 # Update last modified
                 log_dict["lm"] = jsonData["updated"]
                 
-                # Stop timer: reading parameters
-                toc = time.time()
-                
                 # Store time: reading parameters
-                timer["Reading parameters"] = toc - tic
+                timer["Reading parameters"] = time.time() - tic
                 
                 # Start timer: parsing current intentions
                 tic = time.time()
@@ -474,11 +462,51 @@ class PostResource(RESTResource):
                 # Store current intentions
                 log_dict["current_intentions"] = current_intentions
 
-                # Stop timer: parsing current intentions
-                toc = time.time()
-
                 # Store time: parsing current intentions
-                timer["Parsing current intentions"] = toc - tic
+                timer["Parsing current intentions"] = time.time() - tic
+                
+                """ <<<<< NEW CODE STARTS HERE >>>>> """
+                try:
+                    projects = generate_to_do_list(
+                        deepcopy(jsonData["projects"]),
+                        allowed_task_time=allowed_task_time,
+                        available_time=available_time,
+                        current_intentions=current_intentions,
+                        default_deadline=default_deadline,
+                        default_time_est=default_time_est,
+                        planning_fallacy_const=smdp_params["planning_fallacy_const"],
+                        user_datetime=user_datetime
+                    )
+
+                except Exception as error:
+                    
+                    status = str(error)
+
+                    # Remove personal data
+                    anonymous_error = parse_error_info(status)
+
+                    # Store error in DB
+                    store_log(db.request_log, log_dict, status=anonymous_error)
+
+                    status += " Please take a look at your Workflowy inputs " \
+                              "and then try again. "
+                    cherrypy.response.status = 403
+                    return json.dumps(status + CONTACT)
+
+                # pprint(projects)
+                # pprint(available_time)
+
+                today_minutes = available_time[0]
+                typical_minutes = available_time[1:]
+                
+                # Store anonymized to-do list in database
+                log_dict["tree"] = create_projects_to_save(projects)
+                
+                # Store today & typical daily minutes in database
+                log_dict["today_minutes"] = today_minutes
+                log_dict["typical_daily_minutes"] = typical_minutes
+
+                """ >>>>> NEW CODE ENDS HERE <<<<< """
                 
                 # Start timer: parsing hierarchical structure
                 tic = time.time()
@@ -486,12 +514,12 @@ class PostResource(RESTResource):
                 # New calculation + Save updated, user id, and skeleton
                 try:
                     flatten_projects = \
-                        flatten_intentions(deepcopy(jsonData["projects"]))
+                        flatten_intentions(deepcopy(projects))
                     log_dict["flatten_tree"] = \
                         create_projects_to_save(flatten_projects)
                     
-                    projects = get_leaf_intentions(jsonData["projects"])
-                    log_dict["tree"] = \
+                    leaf_projects = get_leaf_intentions(deepcopy(projects))
+                    log_dict["leaf_tree"] = \
                         create_projects_to_save(projects)
                 except:
                     status = "Something is wrong with your inputted " \
@@ -505,88 +533,59 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
                 
-                # Stop timer: parsing hierarchical structure
-                toc = time.time()
-                
                 # Store time: parsing hierarchical structure
-                timer["Parsing hierarchical structure"] = toc - tic
+                timer["Parsing hierarchical structure"] = time.time() - tic
                 
-                # Start timer: parsing scheduling tags
-                tic = time.time()
-                
-                # Get information about daily tasks time estimation
-                daily_tasks_time_est = \
-                    parse_scheduling_tags(projects, allowed_task_time,
-                                          default_time_est,
-                                          smdp_params["planning_fallacy_const"],
-                                          user_datetime)
+                # # Start timer: parsing scheduling tags
+                # tic = time.time()
+                #
+                # # # Get information about daily tasks time estimation
+                # # daily_tasks_time_est = \
+                # #     parse_scheduling_tags(projects, allowed_task_time,
+                # #                           default_time_est,
+                # #                           smdp_params["planning_fallacy_const"],
+                # #                           user_datetime)
+                # #
+                # # # Subtract daily tasks time estimation from typical working hours
+                # # for weekday in range(len(typical_minutes)):
+                # #     typical_minutes[weekday] -= daily_tasks_time_est[weekday]
+                #
+                # # Store time: parsing scheduling tags
+                # timer["Parsing scheduling tags"] = time.time() - tic
 
-                # Subtract daily tasks time estimation from typical working hours
-                for weekday in range(len(typical_minutes)):
-                    typical_minutes[weekday] -= daily_tasks_time_est[weekday]
-                    
-                log_dict["typical_daily_minutes"] = typical_minutes
-                
-                # Stop timer: parsing scheduling tags
-                toc = time.time()
-
-                # Store time: parsing scheduling tags
-                timer["Parsing scheduling tags"] = toc - tic
-
-                # Start timer: subtracting times
-                tic = time.time()
-
-                # Subtract time estimation of current intentions from available time
-                for tasks in current_intentions.values():
-                    for task in tasks:
-                        # If the task is not marked as completed or "nevermind"
-                        if not task["d"] and not task["nvm"]:
-                            today_minutes -= task["est"]
-
-                # Make 0 if the number of minutes is negative
-                today_minutes = max(today_minutes, 0)
-
-                # Stop timer: subtracting times
-                toc = time.time()
-
-                # Store time: subtracting times
-                timer["Subtracting times"] = toc - tic
-
-                # Start timer: parsing to-do list
-                tic = time.time()
-
-                # Parse to-do list
-                try:
-                    projects = \
-                        parse_tree(projects, current_intentions,
-                                   today_minutes, typical_minutes,
-                                   default_deadline=default_deadline,
-                                   min_sum_of_goal_values=min_sum_of_goal_values,
-                                   max_sum_of_goal_values=max_sum_of_goal_values,
-                                   min_goal_value_per_goal_duration=min_goal_value_per_goal_duration,
-                                   max_goal_value_per_goal_duration=max_goal_value_per_goal_duration,
-                                   user_datetime=user_datetime)
-                except Exception as error:
-                    status = str(error)
-                    
-                    # Remove personal data
-                    anonymous_error = parse_error_info(status)
-                    
-                    # Store error in DB
-                    store_log(db.request_log, log_dict, status=anonymous_error)
-                    
-                    status += " Please take a look at your Workflowy inputs " \
-                              "and then try again. "
-                    cherrypy.response.status = 403
-                    return json.dumps(status + CONTACT)
-                
-                log_dict["tree"] = create_projects_to_save(projects)
-
-                # Stop timer: parsing to-do list
-                toc = time.time()
-
-                # Store time: parsing to-do list
-                timer["Parsing to-do list"] = toc - tic
+                # # Start timer: parsing to-do list
+                # tic = time.time()
+                #
+                # # Parse to-do list
+                # try:
+                #     projects = \
+                #         parse_tree(projects, current_intentions,
+                #                    today_minutes, typical_minutes,
+                #                    default_deadline=default_deadline,
+                #                    min_sum_of_goal_values=min_sum_of_goal_values,
+                #                    max_sum_of_goal_values=max_sum_of_goal_values,
+                #                    min_goal_value_per_goal_duration=min_goal_value_per_goal_duration,
+                #                    max_goal_value_per_goal_duration=max_goal_value_per_goal_duration,
+                #                    user_datetime=user_datetime)
+                #
+                # except Exception as error:
+                #     status = str(error)
+                #
+                #     # Remove personal data
+                #     anonymous_error = parse_error_info(status)
+                #
+                #     # Store error in DB
+                #     store_log(db.request_log, log_dict, status=anonymous_error)
+                #
+                #     status += " Please take a look at your Workflowy inputs " \
+                #               "and then try again. "
+                #     cherrypy.response.status = 403
+                #     return json.dumps(status + CONTACT)
+                #
+                # log_dict["tree"] = create_projects_to_save(projects)
+                #
+                # # Store time: parsing to-do list
+                # timer["Parsing to-do list"] = time.time() - tic
 
                 # Start timer: storing parsed to-do list in database
                 tic = time.time()
@@ -596,10 +595,9 @@ class PostResource(RESTResource):
                 store_log(db.request_log, log_dict, status="Save parsed tree")
                 
                 # Stop timer: storing parsed to-do list in database
-                toc = time.time()
+                timer["Storing parsed to-do list in database"] = time.time() - tic
                 
-                # Stop timer: storing parsed to-do list in database
-                timer["Storing parsed to-do list in database"] = toc - tic
+                print("Checkpoint!")
                 
                 if method == "constant":
                     # Parse default task value
@@ -616,7 +614,7 @@ class PostResource(RESTResource):
                     
                     # Assign constant points
                     try:
-                        projects = assign_constant_points(projects,
+                        projects = assign_constant_points(leaf_projects,
                                                           default_task_value)
                     except:
                         status = "Problem while assigning points. "
@@ -630,7 +628,7 @@ class PostResource(RESTResource):
                 elif method == "length":
                     # Assign random points
                     try:
-                        projects = assign_length_points(projects)
+                        projects = assign_length_points(leaf_projects)
                     except:
                         status = "Problem while assigning points. "
         
@@ -674,7 +672,7 @@ class PostResource(RESTResource):
                     # Assign random points
                     try:
                         projects = assign_random_points(
-                            projects, distribution_fxn=distribution,
+                            leaf_projects, distribution_fxn=distribution,
                             fxn_args=distribution_params)
                     except:
                         status = "Problem while assigning points. "
@@ -689,7 +687,8 @@ class PostResource(RESTResource):
     
                     final_tasks = assign_smdp_points(
                         projects, current_day=user_datetime, timer=timer,
-                        day_duration=today_minutes, smdp_params=smdp_params
+                        day_duration=today_minutes, smdp_params=smdp_params,
+                        leaf_projects=leaf_projects
                     )
 
                     # Add database entry if one does not exist
@@ -727,11 +726,8 @@ class PostResource(RESTResource):
                 # Update values in the tree
                 log_dict["tree"] = create_projects_to_save(projects)
 
-                # Stop timer: Anonymizing data
-                toc = time.time()
-                
                 # Store time: Anonymizing date
-                timer["Anonymize data"] = toc - tic
+                timer["Anonymize data"] = time.time() - tic
 
                 # Schedule tasks for today
                 if scheduler == "basic":
@@ -784,11 +780,8 @@ class PostResource(RESTResource):
                 
                 store_log(db.trees, log_dict, status="Save tree!")
                 
-                # Stop timer: Storing incentivized tree in database
-                toc = time.time()
-                
                 # Store time: Storing incentivized tree in database
-                timer["Storing incentivized tree in database"] = toc - tic
+                timer["Storing incentivized tree in database"] = time.time() - tic
 
                 if api_method == "updateTree":
                     cherrypy.response.status = 204
@@ -815,11 +808,8 @@ class PostResource(RESTResource):
                             final_tasks, round_param, points_per_hour,
                             user_datetime=user_datetime)
                         
-                        # Stop timer: Storing human-readable output
-                        toc = time.time()
-                        
                         # Store time: Storing human-readable output
-                        timer["Storing human-readable output"] = toc - tic
+                        timer["Storing human-readable output"] = time.time() - tic
                         
                     except NameError as error:
                         store_log(db.request_log, log_dict,
@@ -838,11 +828,8 @@ class PostResource(RESTResource):
 
                     store_log(db.request_log, log_dict, status="Successful pull!")
 
-                    # Stop timer: Storing successful pull in database
-                    toc = time.time()
-                    
                     # Store time: Storing successful pull in database
-                    timer["Storing successful pull in database"] = toc - tic
+                    timer["Storing successful pull in database"] = time.time() - tic
                     
                     # print("\n===== Optimal tasks =====")
                     # for task in final_tasks:
@@ -874,10 +861,12 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict,
                               status=status + " " + anonymous_error)
                 except:
-                    store_log(db.request_log,
-                              {"start_time": log_dict["start_time"],
-                               "status": status + " " +
-                                         "Exception while storing anonymous error info."})
+                    store_log(
+                        db.request_log,
+                        {"start_time": log_dict["start_time"],
+                         "status":
+                             status + " " +
+                             "Exception while storing anonymous error info."})
                 
                 cherrypy.response.status = 403
                 return json.dumps(status + " " + CONTACT)

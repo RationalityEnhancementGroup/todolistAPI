@@ -1,10 +1,10 @@
 from collections import deque
 
-from todolistMDP.to_do_list import Goal, Task
+from todolistMDP.to_do_list import Item
 
 
 def generate_test_case(api_method, n_bins, n_goals, n_tasks, deadline_time=1e6,
-                       time_est=1, time_scale=1, unit_penalty=0):
+                       penalty_rate=0, time_est=1, time_scale=1):
     
     reward = n_tasks * (n_tasks + 1)
     
@@ -47,7 +47,7 @@ def generate_test_case(api_method, n_bins, n_goals, n_tasks, deadline_time=1e6,
                 raise NotImplementedError(
                     f"Method {api_method} not implemented!")
             
-            task = Task(
+            task = Item(
                 f"G{goal_idx} T{task_idx}",
                 deadline=deadline,
                 time_est=time_est
@@ -55,14 +55,16 @@ def generate_test_case(api_method, n_bins, n_goals, n_tasks, deadline_time=1e6,
             
             tasks.append(task)
 
-        goal = Goal(
+        goal = Item(
             description=f"G{goal_idx}",
+            deadline=(goal_idx + 1) * deadline_time + 1,
             loss_rate=-1,
             num_bins=n_bins,
-            rewards={(goal_idx + 1) * deadline_time + 1: reward},
-            tasks=list(tasks),
-            unit_penalty=unit_penalty
+            penalty_rate=penalty_rate,
+            value=reward
         )
+
+        goal.add_items(tasks)
         
         goals.append(goal)
 
