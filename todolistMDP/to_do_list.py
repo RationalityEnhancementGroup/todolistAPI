@@ -8,11 +8,10 @@ from pprint import pprint
 
 
 class Item:
-    def __init__(self, description, completed=False, deadline=None,
-                 deadline_datetime=None, item_id=None, parent_item=None,
-                 time_est=None, today=None, value=None):
+    def __init__(self, description, completed=None, deadline=None,
+                 deadline_datetime=None, item_id=None, items=None,
+                 parent_item=None, time_est=None, today=None, value=None):
         # TODO: Add parameter description (!)
-        # TODO: Check default values (!)
         # TODO: Implement item predecessors/dependencies (+)
       
         # Compulsory parameters
@@ -31,10 +30,7 @@ class Item:
         if self.item_id is None:
             self.item_id = self.description
 
-        # Initialize set of goals
-        self.goals = set()
-
-        # Initialize expected loss
+        # Initialize expected reward
         self.expected_reward = None
 
         # Initialize dictionary of maximum future Q-values
@@ -42,12 +38,18 @@ class Item:
             None: None
         }
 
+        # Initialize set of goals
+        self.goals = set()
+
         # Initialize index
         self.idx = None
 
         # Initialize list of sub-items
         self.items = deque()
         
+        # Initialize set of items to iterate
+        self.items_to_iterate = None
+
         # Initialize next item to execute
         self.next_item = None
 
@@ -57,41 +59,34 @@ class Item:
         # Initialize optimal reward
         self.optimal_reward = np.NINF
         
+        # Initialize dictionary of Q-values at (s, t): (0, 0)
+        self.Q_s0 = dict()
+        
         # Initialize 0-th state
         self.start_state = list()
         
+        # Initialize start time
+        self.start_time = None
+
         # Initialize queue of tasks
         self.tasks = None
 
-        # Initialize today items set
-        self.today_items = set()
-        
-        # Initialize start time
-        self.start_time = None
-        
         # Initialize time transitions
         self.time_transitions = {
-            self.time_est: None
+            self.time_est: 1.
         }
-        
+
+        # Initialize today items set
+        self.today_items = set()
+
         # Initialize computations
         self.already_computed_pruning = 0
-        self.small_reward_pruning = 0
         self.total_computations = 0
 
-        # TODO: Some of these might be unnecessary
-        # Initialize policy, Q-value function and pseudo-rewards
-        self.P = dict()  # {state: {time: action}}
-        self.Q = dict()  # {state: {time: {action: {time': value}}}}
-        self.PR = dict()  # Pseudo-rewards {(s, t, a): PR(s, t, a)}
-        self.tPR = dict()  # Transformed PRs {(s, t, a): tPR(s, t, a)}
-
-        self.F = dict()  # TODO: Describe structure
-        self.R = dict()  # TODO: Describe structure
-
-        # Initialize dictionary of Q-values at (s, t): (0, 0)
-        self.Q_s0 = dict()
-
+        # Add items on the next level/depth
+        if items is not None:
+            self.add_items(items)
+        
     def __hash__(self):
         return id(self)
 
@@ -104,51 +99,98 @@ class Item:
     
     def add_goal(self, goal):
         self.goals.add(goal)
-        
-    def add_items(self, items):
-        
-        # Update number of tasks
-        self.num_items += + len(items)
 
-        # Initialize start state
-        self.start_state = list(0 for _ in range(self.num_items))
-    
+    def add_items(self, items, available_time=np.PINF, prepare_solve=False):
+        
+        # Initialize state for the next tasks
+        appended_state = list(0 for _ in range(len(items)))
+        
+        if prepare_solve:
+            self.items = deque()
+            self.num_items = 0
+            self.today_items = set()
+            self.start_state = appended_state
+        else:
+            self.start_state = list(self.start_state) + appended_state
+
         for idx, item in enumerate(items):
-    
+            
+            # Shift item index
+            idx += self.num_items
+            
             # If item has no deadline, set super-item's deadline
-            item.set_deadline(self.deadline, compare=True)
+            if not prepare_solve:
+                item.set_deadline(self.deadline, compare=True)
 
-            # Set item index | TODO: Check whether there is a conflict in solve... (!)
+            # Set item index
             item.set_idx(idx)
 
+            # Add item that has to be executed today
             if item.is_today() and not item.is_completed():
-                self.add_today_item(item)
-        
+                self.today_items.add(item)
+
+            # Set item as completed in the start state
             if item.is_completed():
                 self.start_state[idx] = 1
-        
+
             # Add items
             self.items.append(item)
-    
+            
+            # Set goal as a parent item
+            if prepare_solve:
+                item.set_parent_item(self)
+
         # Convert start state from list to tuple
         self.start_state = tuple(self.start_state)
+
+        # TODO: Check whether this works with in_depth (+)
+        if prepare_solve:
     
-        # Compute goal-level bins | TODO: Increase to > 1 (!)
-        self.compute_binning(num_bins=1)
-    
-        # Sort list of tasks by deadline (break ties with time estimate, idx)
-        self.items = list(self.items)
-        self.items.sort(
-            key=lambda item: (
-                item.get_deadline(),
-                item.get_time_est(),
-                item.get_idx()
+            # Sort item list by deadline (break ties with time estimate, idx)
+            self.items = list(self.items)
+            self.items.sort(
+                key=lambda item: (
+                    item.get_deadline(),
+                    item.get_time_est(),
+                    item.get_idx()
+                )
             )
-        )
+    
+            # Set next item
+            idx = 0
+            while idx < len(self.items):
+                item = self.items[idx]
         
-    def add_today_item(self, item):
-        self.today_items.add(item)
-        
+                if item.is_completed:
+                    idx += 1
+                else:
+                    self.next_item = item
+                    break
+    
+            # Set number of items
+            self.num_items = len(self.start_state)
+    
+            for item in self.items:
+    
+                # If the item is not already marked as executed
+                if not item.is_completed():
+    
+                    # Add item to the list of tasks to be executed
+                    self.today_items.add(item)
+
+                    # Get item time estimate
+                    time_est = item.get_time_est()
+                    
+                    # If the item does not has to be executed today
+                    if not item.is_today():
+                        
+                        # Decrease available time by the task time estimate
+                        available_time -= time_est
+
+                    # Stop the procedure if there is no available time
+                    if available_time < 0:
+                        break
+                    
     def append_task(self, task, left=False):
         if left:
             self.tasks.appendleft(task)
@@ -168,11 +210,11 @@ class Item:
             prob = bin_probs[i]
         
             self.time_transitions[mean] = prob
-            
+
     def convert_task_list(self):
         self.tasks = list(self.tasks)
 
-    def get_best_action(self, slack_reward, t):
+    def get_best_action(self, slack_reward):
     
         # Initialize best action and Q-value to be the slack action
         best_a = None
@@ -198,7 +240,7 @@ class Item:
     def get_description(self):
         return self.description
 
-    def get_expected_loss(self):
+    def get_expected_reward(self):
         return self.expected_reward
 
     def get_future_q(self, t=None):
@@ -218,6 +260,9 @@ class Item:
     def get_items(self):
         return self.items
     
+    def get_items_to_iterate(self):
+        return self.items_to_iterate
+    
     def get_next_item(self):
         return self.next_item
 
@@ -233,9 +278,6 @@ class Item:
     def get_reward(self, beta=0., discount=1.):
         return discount * self.value / (1 + beta)
 
-    def get_start_state(self):
-        return self.start_state
-    
     def get_task_list(self):
         return self.tasks
 
@@ -247,12 +289,6 @@ class Item:
             return self.time_transitions
         return self.time_transitions[t]
     
-    def get_total_loss(self, loss_rate, cum_discount=None):
-        # TODO: Find a better implementation.
-        if cum_discount is None:
-            return loss_rate * self.time_est
-        return loss_rate * cum_discount
-
     def get_value(self):
         return self.value
     
@@ -268,6 +304,45 @@ class Item:
     def is_today(self):
         return self.today
     
+    def parse_sub_goals(self, low_time_est=0, high_time_est=0):
+        # TODO: Add comments (!)
+        
+        if high_time_est == float('inf'):
+            return self.items
+        
+        # If no limit has been defined
+        if high_time_est == 0:
+            return self.tasks
+        
+        # TODO: Write exception
+        assert low_time_est <= high_time_est
+        
+        sub_goals = deque()
+        
+        # If the time estimate fits the time limit
+        if low_time_est <= self.time_est <= high_time_est:
+            
+            # If it is a goal node
+            if self.parent_item is None:
+                sub_goals.extend(self.items)
+            
+            # If it is an item within a goal
+            else:
+                sub_goals.append(self)
+        
+        # If it is a leaf node
+        elif self.num_items == 0:
+            
+            sub_goals.append(self)
+        
+        else:
+            for item in self.items:
+                item_sub_goals = item.parse_sub_goals(
+                    low_time_est=low_time_est, high_time_est=high_time_est)
+                sub_goals.extend(item_sub_goals)
+            
+        return sub_goals
+        
     def print_recursively(self, level=0, indent=2):
         print(f"{' ' * (level * indent)}- {self}")
         for item in self.items:
@@ -286,23 +361,11 @@ class Item:
         self.description = description
         
     def set_expected_reward(self, expected_reward):
-    
-        # # TODO: Remove (!)
-        # Sanity check
-        # if self.expected_reward is not None:
-        #
-        #     # assert self.expected_loss == expected_loss
-        #
-        #     if self.expected_reward != expected_reward:
-        #         print(self.description)
-        #         print(self.expected_reward, expected_reward)
-        #         print()
-        
         self.expected_reward = expected_reward
     
     def set_future_q(self, t, value, compare=False):
-        # TODO: Comment this function
         
+        # Set future Q-value
         self.future_q.setdefault(t, value)
         
         if compare:
@@ -310,6 +373,9 @@ class Item:
 
     def set_idx(self, idx):
         self.idx = idx
+        
+    def set_items_to_iterate(self, items_to_iterate):
+        self.items_to_iterate = items_to_iterate
         
     def set_next_item(self, next_item):
         self.next_item = next_item
@@ -320,13 +386,9 @@ class Item:
     def set_parent_item(self, parent_item):
         self.parent_item = parent_item
         
-    def set_reward(self, reward):
-        # TODO: Implement this (!)
-        raise NotImplementedError()
-
     def set_start_time(self, start_time):
         self.start_time = start_time
-
+        
     def set_time_est(self, time_est):
         self.time_est = time_est
         
@@ -345,231 +407,138 @@ class Item:
             )
         )
         
-    # ==================== SOLVERS ====================
-    def solve(self, params, available_time=np.PINF,
-              start_time=None, verbose=False):
-        
+    # ================================ SOLVERS =================================
+    def solve(self, params, in_depth=True, start_time=None, verbose=False):
+    
         # Initialize start state & time
-        s = self.start_state
-        t = self.start_state if start_time is None else start_time
-
-        # Initialize Q-function entries
-        self.Q.setdefault(s, dict())
-        self.Q[s].setdefault(t, dict())
-
-        # Initialize list of tasks to iterate
-        tasks_to_iterate = set()
+        t = self.start_time if start_time is None else start_time
         
+        items_to_iterate = set()
+    
         # If the current time is the same with the initial time of the procedure
         if t == self.start_time:
-
-            # If there is no time limit or there is more time than necessary
-            if available_time == np.PINF or available_time > self.time_est:
-
-                # Add all tasks
-                tasks_to_iterate.update(self.tasks)
-
-            else:
-
-                # Add today tasks
-                tasks_to_iterate.update(self.today_items)
-                
-                # Add other tasks that might be scheduled today
-                
-                available_time = deepcopy(available_time)
-
-                for task in self.tasks:
-                    
-                    # If the task is not already marked to be executed
-                    if not task.is_completed():
-                        
-                        # Get task time estimate
-                        time_est = task.get_time_est()
-
-                        # Add task to the list of tasks to be executed
-                        tasks_to_iterate.add(task)
-
-                        # Decrease available time by the task time estimate
-                        available_time -= time_est
-
-                        # Stop the procedure if there is no available time
-                        if available_time < 0:
-                            break
-
-                # # Append least-optimal action in order to get lower bound on the
-                # # reward-shaping value
-                # last_task = self.tasks[-1]
-                #
-                # # Add task item to the list of tasks to be executed
-                # tasks_to_iterate.add(last_task)
-                
+            
+            items_to_iterate = deepcopy(self.today_items)
+        
         # If the start time is in the future, find the next uncompleted task
         else:
-            
+        
             # Initialize task index
             idx = 0
-
+        
             # While uncompleted task has been found or list iterated
             while True:
-                
+            
                 # Get task
-                task = self.items[idx]
-
+                item = self.items[idx]
+            
                 # If the task is completed, move to the next one
-                if task.is_completed():
+                if item.is_completed():
                     idx += 1
-
+            
                 # If the task in uncompleted, add it for future execution
                 else:
-                    tasks_to_iterate.add(self.items[idx])
+                    items_to_iterate.add(self.items[idx])
                     break
 
         # Start timer
         tic = time.time()
-        
-        # TODO: Remove (!)
-        betas = dict()
-        exp_losses = dict()
-        durations = dict()
-        qs = dict()
-        
-        # TODO: Remove (!)
-        # if t == 0:
-        #     for task in tasks_to_iterate:
-        #         print(task.get_description())
-
-        for task in tasks_to_iterate:
+    
+        # Initialize maximum Q-value
+        max_q = np.NINF
+    
+        for item in items_to_iterate:
             
             # Initialize current item
-            current_item = task
-            
+            current_item = item
+        
             # Initialize parent item
-            parent_item = task.get_parent_item()
-
+            parent_item = item.get_parent_item()
+        
             # Until goal node has been reached
             while parent_item is not None:
                 
                 # Set first item to be executed in the sub-tree
                 parent_item.set_next_item(current_item)
-                
+            
                 # Assign parent item as current item
                 current_item = parent_item
             
                 # Move up in the item hierarchy
                 parent_item = parent_item.get_parent_item()
-
+        
             # Solve goal
             result = current_item.solve_goal(
-                params=params, start_time=t, verbose=verbose
+                params=params, in_depth=in_depth, start_time=t, verbose=verbose
             )
-            
+        
             beta = result["beta"]
-            exp_loss = result["exp_loss"]
+            exp_reward = result["exp_reward"]
             term_time = result["term_time"]
             duration = int(np.ceil(term_time - t))
-            
+        
             # Get discount
             gamma = ToDoList.get_discount(duration)
-            
+        
             # Compute Q-value
-            q = self.get_reward(beta=beta, discount=gamma) + exp_loss
-            
-            # # TODO: Remove (!)
-            # print(self.description)
-            # print("Starting time:", t)
-            # print("Beta:", beta)
-            # print("Expected loss:", exp_loss)
-            # print("Termination time:", term_time)
-            # print("Expected duration:", term_time - t)
-            # print("Q-value:", q)
-            # print()
-            
-            # desc = self.get_description()
-            #
-            # if desc in betas.keys():
-            #     # print("Beta")
-            #     assert np.isclose(betas[desc], beta, atol=1e-9)
-            # else:
-            #     betas[desc] = beta
-            #
-            # if desc in durations.keys():
-            #     # print("Duration")
-            #     assert np.isclose(durations[desc], duration, atol=1e-9)
-            # else:
-            #     durations[desc] = duration
-            #
-            # if desc in exp_losses.keys():
-            #     # print("Expected loss")
-            #     assert np.isclose(exp_losses[desc], exp_loss, atol=1e-9)
-            # else:
-            #     exp_losses[desc] = exp_loss
-            #
-            # if desc in qs.keys():
-            #     # print("Q-value")
-            #     assert np.isclose(qs[desc], q, atol=1e-9)
-            # else:
-            #     qs[desc] = q
-
+            q = self.get_reward(beta=beta, discount=gamma) + exp_reward
+        
             # Store initial-state Q-value (if initial time applies)
             if t == self.start_time:
-                self.Q_s0[task] = q
-            
+                self.Q_s0[item] = q
+                
+            # Update maximum Q-value
+            max_q = max(max_q, q)
+        
             # Initialize next item
             next_item = current_item.get_next_item()
-            
-            # Get item index
-            a = self.next_item.get_idx()
-            
-            # Assign default value
-            self.Q[s][t].setdefault(a, np.NINF)
-            
-            # Store Q-value | TODO: Potentially unnecessary (?!)
-            self.Q[s][t][a] = max(self.Q[s][t][a], q)
-            
+        
             # Until leaf node has been reached
             while next_item is not None:
                 
                 # Set next item to be None
                 current_item.set_next_item(None)
-                
+            
                 # Assign next item to the current item
                 current_item = next_item
-                
+            
                 # Get next item
                 next_item = current_item.get_next_item()
-
+    
         if verbose and t == self.start_time:
             print(
                 f"{t:>3d} | "
-                f"Number of tasks: {len(tasks_to_iterate)} | "
+                f"Number of tasks: {len(items_to_iterate)} | "
                 f"Time: {time.time() - tic:.2f}\n"
             )
-
-        # Return maximum Q-value
-        return max(self.Q[s][t].values())
-
-    def solve_goal(self, params, beta=None, start_time=None, verbose=False):
     
+        # Return maximum Q-value
+        return max_q
+
+    def solve_goal(self, params, in_depth=True, start_time=None, verbose=False):
+        
         # Initialize start state & time
         s = self.start_state
-        t = self.start_state if start_time is None else start_time
+        t = self.start_time if start_time is None else start_time
 
         # Initialize state
         curr_state = {
             "s":    deepcopy(s),
             "t":    t,
-            "idx":  0,
-            "beta": 0. if beta is None else beta  # TODO: Correct (?!)
+            "idx":  0
         }
     
         # Get next item to be executed
         next_item = self.get_next_item()
+
+        # Solve sub-tree
+        return self.solve_branching(
+            curr_state=curr_state, in_depth=in_depth, next_item=next_item,
+            params=params, verbose=verbose
+        )
         
-        # Return dictionary of information
-        return self.solve_branching(curr_state=curr_state, next_item=next_item,
-                                    params=params, verbose=verbose)
-        
-    def solve_branching(self, curr_state, params, next_item=None, verbose=False):
+    def solve_branching(self, curr_state, params, next_item=None, in_depth=True,
+                        verbose=False):
         """
             - s: current state
             - t: current time
@@ -622,7 +591,7 @@ class Item:
             
         # Initialize result variables
         beta = 0
-        exp_loss = 0
+        exp_reward = 0
         term_time = 0
 
         if next_item is not None:
@@ -635,17 +604,63 @@ class Item:
             next_state["s"] = s_
             next_state["idx"] = idx
 
-            # If next_item is a task node
-            if next_item.get_num_items() == 0:
-    
-                # Get deadline time for next item
-                task_deadline = next_item.get_deadline()
+            # Get deadline time for next item
+            task_deadline = next_item.get_deadline()
 
+            # Initialize expected reward
+            exp_task_reward = 0
+
+            # If next_item is a sub-goal and detailed computations are needed
+            if next_item.get_num_items() != 0 and in_depth:
+    
+                # Solve sub-goal
+                result = next_item.solve_goal(
+                    params=params, start_time=t, verbose=verbose
+                )
+                
+                # TODO: Allow other probability values
+                prob = 1
+
+                # Update expected task reward
+                exp_task_reward = prob * result["exp_reward"]
+
+                # Update expected future penalty
+                beta += prob * result["beta"]
+                
+                # Update expected future reward
+                exp_reward += exp_task_reward
+
+                # Get time estimate of the sub-goal
+                time_est = next_item.get_time_est()
+
+                # Make time transition
+                t_ = t + time_est
+                
+                # Set next state's time
+                next_state["t"] = t_
+
+                # Solve branching of the next state
+                result = self.solve_branching(
+                    next_state, params, verbose=verbose
+                )
+
+                # Compute discount factor
+                gamma = ToDoList.get_discount(time_est)
+
+                # Update expected future penalty
+                beta += prob * result["beta"]
+
+                # Update expected future reward
+                exp_reward += prob * gamma * result["exp_reward"]
+
+                # Update expected termination time
+                term_time = prob * result["term_time"]
+
+            # If no detailed computations are needed (i.e. use abstraction)
+            else:
+    
                 # Get time transitions of the next state
                 time_transitions = next_item.get_time_transitions().items()
-                
-                # Initialize expected loss
-                exp_task_loss = 0
                 
                 for time_est, prob_t_ in time_transitions:
     
@@ -654,34 +669,36 @@ class Item:
     
                     # Make time transition
                     t_ = t + time_est
+
+                    # Set next state's time
                     next_state["t"] = t_
 
                     # Get cumulative discount w.r.t. item duration
                     cum_discount = ToDoList.get_cum_discount(time_est)
         
                     # Calculate total loss for next action (immediate "reward")
-                    r = next_item.get_total_loss(loss_rate=params["loss_rate"],
-                                                 cum_discount=cum_discount)
+                    r = ToDoList.compute_total_loss(
+                        cum_discount=cum_discount, loss_rate=params["loss_rate"]
+                    )
+
+                    # Update expected reward for (state, time, action)
+                    exp_task_reward += prob_t_ * r
 
                     # Add deadline to the missed deadlines if not attained
                     if next_item.is_deadline_missed(t_):
                         
                         # Compute total penalty for missing item deadline
-                        total_penalty = params["penalty_rate"] * \
-                                        (t_ - task_deadline)
+                        total_penalty = \
+                            params["penalty_rate"] * (t_ - task_deadline)
         
-                        # Update penalty for the next state
-                        next_state["beta"] += total_penalty
-                        
-                        beta += total_penalty
+                        # Update penalty
+                        beta += prob_t_ * total_penalty
                         
                     # Solve branching of the next state
-                    result = self.solve_branching(next_state, params,
-                                                  verbose=verbose)
+                    result = self.solve_branching(
+                        next_state, params, verbose=verbose
+                    )
                     
-                    # Update expected loss for (state, time, action)
-                    exp_task_loss += prob_t_ * r
-    
                     """ Compute total reward for the current state-time action
                         Immediate + Expected future reward """
                     
@@ -701,62 +718,14 @@ class Item:
                     # Update expected future penalty
                     beta += prob_t_ * result["beta"]
                     
-                    # Update expected future loss
-                    exp_loss += prob_t_ * (r + gamma * result["exp_loss"])
+                    # Update expected future reward
+                    exp_reward += prob_t_ * (r + gamma * result["exp_reward"])
                     
                     # Update expected termination time
                     term_time += prob_t_ * result["term_time"]
                     
-                # Assign expected loss
-                next_item.set_expected_reward(exp_task_loss)
-
-            # If next_item is a sub-goal node
-            else:
-                
-                # Get time estimate of the sub-goal
-                time_est = next_item.get_time_est()
-                
-                # Make time transition
-                t_ = t + time_est
-                
-                result = next_item.solve_goal(
-                    params=params, beta=deepcopy(curr_state["beta"]),
-                    start_time=t_, verbose=verbose
-                )
-                
-                # TODO: Allow other probability values
-                prob = 1
-
-                # Update expected future penalty
-                beta += prob * result["beta"]
-
-                # Update expected future loss
-                exp_loss += prob * result["exp_loss"]
-
-                # Generate next item-level state (by updating current state)
-                next_state = deepcopy(curr_state)
-                next_state["s"] = s_
-                next_state["t"] = t_
-                next_state["idx"] = idx
-
-                # Solve branching of the next state
-                result = self.solve_branching(next_state, params,
-                                              verbose=verbose)
-                
-                # Compute discount factor
-                gamma = ToDoList.get_discount(time_est)
-
-                # TODO: Allow other probability values
-                prob = 1
-
-                # Update expected future penalty
-                beta += prob * result["beta"]
-        
-                # Update expected future loss
-                exp_loss += prob * gamma * result["exp_loss"]
-        
-                # Update expected termination time
-                term_time = prob * result["term_time"]
+            # Assign expected reward
+            next_item.set_expected_reward(exp_task_reward)
 
         # Terminal state
         else:
@@ -766,9 +735,9 @@ class Item:
 
         # Return Q-value of the current state
         return {
-            "beta":      beta,
-            "exp_loss":  exp_loss,
-            "term_time": term_time
+            "beta":       beta,
+            "exp_reward": exp_reward,
+            "term_time":  term_time
         }
     
     
@@ -829,14 +798,9 @@ class ToDoList:
         # Initialize policy, Q-value function and pseudo-rewards
         self.P = dict()  # Optimal policy {state: action}
         self.Q = dict()  # Action-value function {state: {action: value}}
-        self.PR = dict()  # Pseudo-rewards {(s, t, a): PR(s, t, a)}
-        self.tPR = dict()  # Transformed PRs {(s, t, a): tPR(s, t, a)}
-        
-        self.F = dict()
-        self.R = dict()
+        self.R = dict()  # Expected rewards
 
         # Initialize computation counters
-        self.small_reward_pruning = 0
         self.already_computed_pruning = 0
         self.total_computations = 0
         
@@ -866,6 +830,10 @@ class ToDoList:
             
         return ToDoList.DISCOUNTS, ToDoList.CUM_DISCOUNTS
 
+    @staticmethod
+    def compute_total_loss(cum_discount, loss_rate):
+        return loss_rate * cum_discount
+
     @classmethod
     def get_cum_discount(cls, t):
         n = len(ToDoList.CUM_DISCOUNTS)
@@ -893,29 +861,6 @@ class ToDoList:
                 return obj.P[s][t]
             return obj.P[s]
         return obj.P
-
-    @staticmethod
-    def get_pseudo_rewards(obj, s=None, t=None, a=None, transformed=False):
-        """
-        Pseudo-rewards are stored as a 3-level dictionaries:
-            {state: {time: {action: pseudo-reward}}}
-        """
-        if transformed:
-            if s is not None:
-                if t is not None:
-                    if a is not None:
-                        return obj.tPR[s][t][a]
-                    return obj.tPR[s][t]
-                return obj.tPR[s]
-            return obj.tPR
-    
-        if s is not None:
-            if t is not None:
-                if a is not None:
-                    return obj.PR[s][t][a]
-                return obj.PR[s][t]
-            return obj.PR[s]
-        return obj.PR
 
     @staticmethod
     def get_q_values(obj, s=None, t=None, a=None, t_=None):
@@ -1057,14 +1002,14 @@ class ToDoList:
     def set_planning_fallacy_const(self, planning_fallacy_const):
         self.planning_fallacy_const = planning_fallacy_const
 
-    def solve(self, available_time=np.PINF, verbose=False):
+    def solve(self, in_depth=True, verbose=False):
         
         params = {
             "loss_rate": self.loss_rate,
             "penalty_rate": self.penalty_rate
         }
     
-        def solve_next_goals(curr_state, verbose=False):
+        def solve_next_goals(curr_state, in_depth=in_depth, verbose=False):
             """
                 - s: current state
                 - t: current time
@@ -1089,7 +1034,6 @@ class ToDoList:
 
             # Initialize policy entries for state and (state, time))
             self.P.setdefault(s, dict())
-            self.P[s].setdefault(t, dict())
 
             # Initialize Q-function entry for the (state, time) pair
             self.Q.setdefault(s, dict())
@@ -1098,7 +1042,7 @@ class ToDoList:
             # Initialize reward entries for state and (state, time))
             self.R.setdefault(s, dict())
             self.R[s].setdefault(t, dict())
-            
+
             # Find the next uncompleted goal
             for goal_idx in range(self.num_goals):
     
@@ -1154,8 +1098,9 @@ class ToDoList:
                         self.R[s][t].setdefault(a, 0)
 
                         r = next_goal.solve(params=params,
-                                            available_time=available_time,
-                                            start_time=t, verbose=verbose)
+                                            in_depth=in_depth,
+                                            start_time=t,
+                                            verbose=verbose)
                         
                         self.R[s][t][a] += prob * r
     
@@ -1213,7 +1158,7 @@ class ToDoList:
         }
 
         # Start iterating
-        solve_next_goals(curr_state, verbose=verbose)
+        solve_next_goals(curr_state, in_depth=in_depth, verbose=verbose)
         
         # Get best action in the start state and its corresponding reward
         a, r = ToDoList.max_from_dict(self.Q[s][t])

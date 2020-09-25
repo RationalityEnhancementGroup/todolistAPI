@@ -37,33 +37,6 @@ TAGS = ["future", "daily", "today", "weekdays", "weekends"] + \
        [weekday.lower() for weekday in WEEKDAYS.values()]
 
 
-def are_there_tree_differences(old_tree, new_tree):
-    """
-    input: two trees
-    output: boolean of whether or not we need to rerun the point calculations
-    (e.g. we don't need to if only day durations change or #today has been added)
-    """
-    def create_tree_dict(tree):
-        """
-        input: parsed tree
-        output: a dict with info we may want to use to compare trees
-        """
-        final_dict = {}
-        for goal in tree:
-            final_dict[goal["id"]] = (goal["deadline_datetime"], goal["value"])
-            for task in goal["ch"]:
-                final_dict[task["id"]] = \
-                    (task["day_datetime"], task["deadline_datetime"],
-                     task["est"], task["days"])
-        return final_dict
-
-    if len(set(create_tree_dict(old_tree).items()) ^
-           set(create_tree_dict(new_tree).items())) == 0:
-        return False
-    else:
-        return True
-
-
 def compute_latest_start_time(goal):
     # Initialize current time
     current_time = goal["deadline"]
@@ -78,23 +51,6 @@ def compute_latest_start_time(goal):
                             f'Please reschedule its deadline.')
     
     return current_time
-
-
-def create_projects_to_save(projects):
-    projects_to_save = deepcopy(projects)
-    for project in projects_to_save:
-        del project["nm"]
-        try:
-            del project["no"]
-        except:
-            pass
-        for task in project["ch"]:
-            del task["nm"]
-            try:
-                del task["no"]
-            except:
-                pass
-    return projects_to_save
 
 
 def date_str_to_datetime(date):
@@ -138,6 +94,37 @@ def date_str_to_datetime(date):
     return date_datetime
 
 
+def delete_sensitive_data(projects):
+    
+    def recursive_deletion(super_item):
+        
+        # Delete item name
+        del super_item["nm"]
+        
+        # TODO: What is "no"
+        try:
+            del super_item["no"]
+        except:
+            pass
+
+        # Delete sensitive data recursively (if item has children nodes)
+        if "ch" in super_item.keys():
+            
+            for item in super_item["ch"]:
+                
+                recursive_deletion(item)
+
+    # Make deep copy of the complete data dictionary
+    items = deepcopy(projects)
+
+    # Delete sensitive data recursively
+    for item in items:
+        
+        recursive_deletion(item)
+        
+    return items
+
+
 def flatten_intentions(projects):
     for goal in projects:
         for task in goal["ch"]:
@@ -147,110 +134,113 @@ def flatten_intentions(projects):
     return projects
 
 
-def get_final_output(task_list, round_param, points_per_hour, user_datetime):
+def get_final_output(item_list, round_param, points_per_hour, user_datetime):
     """
-    Input is list of tasks
-    Outputs list of tasks for today with fields:
+    Input is list of items
+    Outputs list of items for today with fields:
         id, nm, lm, parentId, pcp, est, val (=reward)
     """
     
-    def get_human_readable_name(task):
-        task_name = task["nm"]
+    def get_human_readable_name(item):
+        item_name = item["nm"]
         
         # Remove #date regex
-        task_name = re.sub(fr"#\s*{DATE_REGEX}", "", task_name, re.IGNORECASE)
+        item_name = re.sub(fr"#\s*{DATE_REGEX}", "", item_name, re.IGNORECASE)
 
         # Remove deadline
-        task_name = re.sub(DEADLINE_REGEX, "", task_name, re.IGNORECASE)
+        item_name = re.sub(DEADLINE_REGEX, "", item_name, re.IGNORECASE)
         
         # Remove time estimation
-        task_name = re.sub(TIME_EST_REGEX, "", task_name, re.IGNORECASE)
+        item_name = re.sub(TIME_EST_REGEX, "", item_name, re.IGNORECASE)
         
         # Remove tags
         for tag in TAGS:
             tag_regex = get_tag_regex(tag)
-            task_name = re.sub(tag_regex, "", task_name, re.IGNORECASE)
+            item_name = re.sub(tag_regex, "", item_name, re.IGNORECASE)
         
-        task_name = task_name.strip()
+        item_name = item_name.strip()
         
-        if len(re.sub(OUTPUT_GOAL_CODE_REGEX, "", task_name).strip()) == 0:
-            raise NameError(f"Task {task['nm']} has no name!")
+        if len(re.sub(OUTPUT_GOAL_CODE_REGEX, "", item_name).strip()) == 0:
+            raise NameError(f"Item {item['nm']} has no name!")
         
         # Append time information
-        hours, minutes = task["est"] // 60, task["est"] % 60
+        hours, minutes = item["est"] // 60, item["est"] % 60
         
-        task_name += " (takes about "
+        item_name += " (takes about "
         if hours > 0:
             if hours == 1:
-                task_name += f"1 hour"
+                item_name += f"1 hour"
             else:
-                task_name += f"{hours} hours"
+                item_name += f"{hours} hours"
         if minutes > 0:
             if hours > 0:
-                task_name += " and "
+                item_name += " and "
             if minutes == 1:
-                task_name += f"1 minute"
+                item_name += f"1 minute"
             else:
-                task_name += f"{minutes} minutes"
+                item_name += f"{minutes} minutes"
 
-        if hasattr(task, "deadline_datetime") and \
-                task["deadline_datetime"] is not None:
-            task_name += ", due on "
+        if hasattr(item, "deadline_datetime") and \
+                item["deadline_datetime"] is not None:
+            item_name += ", due on "
 
-            td = task["deadline_datetime"] - user_datetime
+            td = item["deadline_datetime"] - user_datetime
             if td.days < 7:
-                weekday = task["deadline_datetime"].weekday()
-                task_name += WEEKDAYS[weekday]
+                weekday = item["deadline_datetime"].weekday()
+                item_name += WEEKDAYS[weekday]
             else:
-                task_name += str(task["deadline_datetime"])[:-3]
+                item_name += str(item["deadline_datetime"])[:-3]
         
-        task_name += ")"
+        item_name += ")"
         
-        return task_name
+        return item_name
     
     keys_needed = ["id", "nm", "lm", "parentId", "pcp", "est", "val"]
     
     # for now only look at first dictionary
-    current_keys = set(task_list[0].keys())
+    current_keys = set(item_list[0].keys())
     extra_keys = list(current_keys - set(keys_needed))
     missing_keys = list(set(keys_needed) - current_keys)
     
-    for task in task_list:
+    for item in item_list:
         
-        task["nm"] = get_human_readable_name(task)
+        item["nm"] = get_human_readable_name(item)
         
         if points_per_hour:
-            task["val"] = str(round(task["pph"], round_param)) + '/h'
+            item["val"] = str(round(item["pph"], round_param)) + '/h'
         else:
-            task["val"] = round(task["val"], round_param)
+            item["val"] = round(item["val"], round_param)
 
         for extra_key in extra_keys:
-            if extra_key in task:
-                del task[extra_key]
+            if extra_key in item:
+                del item[extra_key]
         
         for missing_key in missing_keys:
-            if missing_key not in task:
-                task[missing_key] = None
+            if missing_key not in item:
+                item[missing_key] = None
     
-    return task_list
+    return item_list
 
 
 def get_leaf_intentions(projects):
     for goal in projects:
-        tasks = []
+        
+        tasks = deque()
         
         item_queue = deque(goal["ch"])
         
         while len(item_queue) > 0:
-            task = item_queue.popleft()
+            item = item_queue.popleft()
 
-            # If the task has no children tasks (i.e. it is a leaf node)
-            if "ch" not in task.keys() or len(task["ch"]) == 0:
-                tasks.append(task)
+            # If item has no children items (i.e. it is a leaf node)
+            if "ch" not in item.keys() or len(item["ch"]) == 0:
+                tasks.append(item)
+            
+            # If item is an intermediate node
             else:
-                item_queue.extend(task["ch"])
+                item_queue.extend(item["ch"])
         
-        goal["ch"] = tasks
+        goal["ch"] = list(tasks)
     
     return projects
 
@@ -259,16 +249,16 @@ def get_tag_regex(tag):
     return fr"#{tag}(?:\b|)"
 
 
-def get_wf_item_id(task_name):
+def get_wf_item_id(item_name):
     """
-    Extracts the WorkFlowy ID from the name of the task.
+    Extracts the WorkFlowy ID from the name of the item.
     Args:
-        task_name: Task name
+        item_name: Item name
 
     Returns:
-        Task ID
+        Item ID
     """
-    split = task_name.split("$wf:")
+    split = item_name.split("$wf:")
     
     # If there is a WorkFlowy ID included in the intention name
     if len(split) > 1:
@@ -277,26 +267,331 @@ def get_wf_item_id(task_name):
         return "__no_wf_id__"  # Return dummy WorkFlowy ID
 
 
-def incentivize_forced_pull(goals, default_value=0, pr_dict=None):
-    forced_tasks = deque()
+def generate_to_do_list(projects, allowed_task_time, available_time,
+                        current_intentions, default_deadline, default_time_est,
+                        planning_fallacy_const, user_datetime,
+                        min_sum_of_goal_values=np.NINF,
+                        max_sum_of_goal_values=np.PINF,
+                        min_goal_value_per_duration=np.NINF,
+                        max_goal_value_per_duration=np.PINF):
+    # TODO: Change function input to be parameters (dict)
     
-    for goal in goals:
-        for task in goal["ch"]:
-            if not task["completed"] and task["scheduled_today"] and \
-                    "val" not in task.keys():
+    # Initialize sum of goal values
+    sum_of_goal_values = 0
+    
+    for goal in projects:
+        
+        """ ===== Initialization =====
+            - Goal code
+            - Goal value
+        """
+        
+        # Remove formatting / HTML formatting
+        goal["nm"] = re.sub(HTML_REGEX, "", goal["nm"],
+                            count=LARGE_NUMBER, flags=re.IGNORECASE)
+        
+        # Extract goal code
+        goal["code"] = re.search(INPUT_GOAL_CODE_REGEX, goal["nm"],
+                                 re.IGNORECASE)[1]
+        
+        if goal["code"][0] not in digits + "^":
+            if "_CS" in goal["nm"]:
+                goal["code"] = "💻"
+            else:
+                goal["code"] = "&"
+        
+        # Initialize completed
+        goal["completed"] = None
+        
+        # Process goal value and check whether the value is valid
+        try:
+            goal["value"] = process_goal_value(goal)
+        except Exception as error:
+            raise Exception(f"Goal {goal['nm']}: {str(error)}")
+        
+        # Update sum of goal values
+        sum_of_goal_values += goal["value"]
+        
+        # # Initialize dict of all task deadlines
+        # goal["task_deadlines"] = dict()
+        
+        # # Set latest start time
+        # goal["latest_start_time"] = compute_latest_start_time(goal)
+        
+        # # Set estimated goal deadline
+        # goal["effective_deadline"] = goal["latest_start_time"] + goal["est"]
+        
+        """ ===== 1st traversal =====
+            - Passing down
+                - Goal code
+                - Parent ID
+                - Scheduling tags (?)
+                - Value of sub-goals (?)
+
+            - Initialize
+                - Item completed
+                - Item name with goal code up front
+                - Parent completed
+                - Scheduling tags
+                - Time estimate
+                - Time allocated for today
+
+            - Passing up
+                - Total time estimate for children nodes
+                - Time allocated for today (inplace update)
+                - Time allocated for recurring tasks (inplace update)
+        """
+        
+        # Traverse sub-tree
+        first_traversal(super_item=goal,
+                        allowed_task_time=allowed_task_time,
+                        available_time=available_time,
+                        current_intentions=current_intentions,
+                        default_time_est=default_time_est,
+                        planning_fallacy_const=planning_fallacy_const,
+                        user_datetime=user_datetime)
+        
+        # Check goal value per duration
+        value_per_duration = goal["value"] / goal["est"]
+        if not (
+                min_goal_value_per_duration <= value_per_duration <= max_goal_value_per_duration):
+            raise Exception(f"Goal {goal['nm']} has value per duration of "
+                            f"{value_per_duration:.2f} and it should be in the "
+                            f"range between {min_goal_value_per_duration:.2f} "
+                            f"and {max_goal_value_per_duration:.2f}."
+                            f"Please change your goal values.")
+        
+        # Subtract time estimate of current intentions from available time
+        # TODO: Check whether it works properly (!)
+        for tasks in current_intentions.values():
+            for task in tasks:
                 
-                if pr_dict is None:
-                    task["val"] = default_value
+                # If the task is not marked as completed or "nevermind"
+                if not task["d"] and not task["nvm"]:
+                    available_time[0] -= task["est"]
+        
+        # Make 0 if the number of minutes is negative
+        available_time[0] = max(available_time[0], 0)
+        
+        """ ===== 2nd traversal =====
+            Pass down:
+                - Deadline (if not assigned)
+                - Deadline datetime (if not assigned)
+                - Value proportion
+                
+            Initialize:
+                - Deadline
+                - Deadline datetime
+                - Point per hour
+        """
+        # Extract goal deadline
+        goal_deadline = re.search(DEADLINE_REGEX, goal["nm"], re.IGNORECASE)
+        
+        # Process goal deadline and check whether the value is valid
+        try:
+            goal["deadline"], goal["deadline_datetime"] = \
+                process_deadline(goal_deadline,
+                                 current_datetime=user_datetime,
+                                 default_deadline=default_deadline,
+                                 today_minutes=available_time[0],
+                                 typical_minutes=available_time[1:])
+        except Exception as error:
+            raise Exception(f"Goal {goal['nm']}: {str(error)}")
+
+        second_traversal(goal,
+                         today_minutes=available_time[0],
+                         typical_minutes=available_time[1:],
+                         user_datetime=user_datetime)
+        
+    # Check goal value per duration
+    if not (min_sum_of_goal_values <= sum_of_goal_values <= max_sum_of_goal_values):
+        raise Exception(f"Your goals have total values of {sum_of_goal_values} "
+                        f"and this value should be in the range between "
+                        f"{min_sum_of_goal_values:.2f} and "
+                        f"{max_sum_of_goal_values:.2f}. "
+                        f"Please change your goal values.")
+    
+    return projects
+
+
+def first_traversal(super_item, allowed_task_time, available_time,
+                    current_intentions, default_time_est,
+                    planning_fallacy_const, user_datetime):
+    
+    # Initialize goal time estimate
+    super_item["est"] = 0
+    
+    for item in super_item["ch"]:
+        
+        # Remove formatting / HTML tags
+        item["nm"] = re.sub(HTML_REGEX, "", item["nm"],
+                            count=LARGE_NUMBER, flags=re.IGNORECASE)
+        
+        # Default initialization
+        item["code"] = super_item["code"]
+        item["parentId"] = super_item["id"]
+        item["pcp"] = False  # pcp: Parent completed
+        
+        item["completed"] = None
+        item["days"] = [None] * 7
+        item["day_datetime"] = None
+        item["daily"] = None
+        item["future"] = None
+        item["repetitive_days"] = [None] * 7
+        item["scheduled_today"] = None
+        
+        # If the sub-item is not a leaf node (i.e. sub-goal)
+        if "ch" in item.keys() and len(item["ch"]) > 0:
+            
+            # Traverse sub-trees
+            first_traversal(super_item=item,
+                            current_intentions=current_intentions,
+                            allowed_task_time=allowed_task_time,
+                            available_time=available_time,
+                            default_time_est=default_time_est,
+                            planning_fallacy_const=planning_fallacy_const,
+                            user_datetime=user_datetime)
+        
+        # If the sub-item is a leaf node (i.e. task)
+        else:
+            
+            """ Process time estimate """
+            try:
+                # Parse task time estimate
+                item["est"] = \
+                    process_time_est(item["nm"],
+                                     allowed_task_time, default_time_est)
+                
+                # Apply planning fallacy
+                item["est"] = int(ceil(item["est"] * planning_fallacy_const))
+            
+            except Exception as error:
+                raise Exception(f"Task {item['nm']}: {str(error)}")
+            
+            """ Process scheduling tags """
+            # TODO: Not sure whether this should apply to intermediate nodes
+            
+            # Check whether weekday preferences are given
+            item["days"], item["repetitive_days"] = process_task_days(item)
+            
+            # Check whether it is a daily task
+            item["daily"] = process_tagged_item("daily", item)
+            
+            if item["daily"]:
+                for weekday in range(len(item["repetitive_days"])):
+                    item["repetitive_days"][weekday] = True
                     
-                else:
-                    task["val"] = pr_dict[task["id"]]
+                    # Subtract time estimate from typical working time
+                    available_time[weekday + 1] -= item["est"]
+            
+            # Subtract busy time from each scheduled weekday
+            for weekday, repetitive in enumerate(item["repetitive_days"]):
+                if repetitive:
+                    available_time[weekday + 1] -= item["est"]
+            
+            # Check whether a specific date is given
+            item['day_datetime'] = process_working_date(item)
+            
+            # Check whether a task has been marked to be completed in the future
+            item["future"] = process_tagged_item("future", item)
+            
+            # Check whether a task has been marked to be completed today
+            item["today"] = process_tagged_item("today", item)
+            
+            # Check whether the task should be scheduled today (w/o repetition!)
+            weekday = user_datetime.date().weekday()
+            
+            item["scheduled_today"] = (
+                    item["today"] or item["days"][weekday] or
+                    (item["day_datetime"] is not None and
+                     item["day_datetime"].date() == user_datetime.date())
+            )
+            
+            # Subtract the time estimate needed to be scheduled today
+            if item["scheduled_today"]:
+                available_time[0] -= item["est"]
+            
+            """ Check whether task has already been completed """
+            # Get the last part of the HEX ID code for the task in WorkFlowy
+            item_id = item["id"].split("-")[-1]
+            
+            # Check whether the task has already been scheduled or completed
+            if item_id in current_intentions.keys() or \
+                    ("cp" in item.keys() and item["cp"] >= item["lm"]):
+                item["completed"] = True
+            else:
+                item["completed"] = False
                 
-                forced_tasks.append(task)
+        # Append goal's name to task's name
+        item["nm"] = super_item["code"] + ") " + item["nm"]
 
-    return forced_tasks
+        # Update time estimate
+        if not item["completed"]:
+            super_item["est"] += item["est"]
+
+    return
 
 
-def parse_current_intentions_list(current_intentions, default_time_est=None):
+def second_traversal(super_item, today_minutes, typical_minutes, user_datetime):
+    
+    # Initialize sanity check
+    total_value = 0
+    
+    for item in super_item["ch"]:
+    
+        # Assign points per hour
+        item["pph"] = super_item["value"] / super_item["est"] * 60
+        
+        """ Process deadline """
+        # Get item deadline (if provided)
+        deadline = re.search(DEADLINE_REGEX, item["nm"], re.IGNORECASE)
+        
+        if deadline:
+            try:
+                item["deadline"], item["deadline_datetime"] = \
+                    process_deadline(deadline,
+                                     current_datetime=user_datetime,
+                                     # default_deadline=default_deadline,
+                                     today_minutes=today_minutes,
+                                     typical_minutes=typical_minutes)
+            
+            except Exception as error:
+                raise Exception(f"Item {item['nm']}: {str(error)}")
+            
+            # Check whether item deadline is after goal deadline
+            if item["deadline"] > super_item["deadline"]:
+                raise Exception(f"Item {item['nm']}: "
+                                f"Item deadline "
+                                f"{item['deadline_datetime']} "
+                                f"should be before (sub-)goal's deadline "
+                                f"{super_item['deadline_datetime']}.")
+        
+        # If item has no deadline, set its deadline to be (sub-)goal deadline
+        else:
+            item["deadline"] = super_item["deadline"]
+            item["deadline_datetime"] = super_item["deadline_datetime"]
+        
+        # Compute sub-tree value
+        item["value"] = item["est"] / super_item["est"] * super_item["value"]
+        
+        # Update total value
+        if not item["completed"]:
+            total_value += item["value"]
+        
+        # Traverse sub-tree recursively
+        if "ch" in item.keys() and len(item["ch"]) > 0:
+            second_traversal(item,
+                             today_minutes=today_minutes,
+                             typical_minutes=typical_minutes,
+                             user_datetime=user_datetime)
+    
+    # Sanity check
+    assert np.isclose(super_item["value"], total_value, atol=1e-6)
+    
+    return
+
+
+def parse_current_intentions_list(current_intentions):
     """
     Extracts necessary information from CompliceX's current intentions list.
     
@@ -368,500 +663,6 @@ def parse_error_info(error):
 
 def parse_hours(time_string):
     return int(re.search(TOTAL_VALUE_REGEX, time_string, re.IGNORECASE)[1])
-
-
-def parse_scheduling_tags(projects, allowed_task_time, default_time_est,
-                          planning_fallacy_const, user_datetime):
-    
-    # Initialize total daily tasks time estimation for each weekday
-    weekday_tasks_time_est = [0 for _ in range(7)]
-    
-    for goal in projects:
-        
-        # Remove formatting / HTML formatting
-        goal["nm"] = re.sub(HTML_REGEX, "", goal["nm"],
-                            count=LARGE_NUMBER, flags=re.IGNORECASE)
-        
-        # Initialize goal time estimate
-        goal["est"] = 0
-        
-        # Initialize goal today time estimate for tasks scheduled by the user on
-        # today's day/date
-        goal["today_est"] = 0
-        
-        for task in goal["ch"]:
-            
-            # Remove formatting / HTML tags
-            task["nm"] = re.sub(HTML_REGEX, "", task["nm"],
-                                count=LARGE_NUMBER, flags=re.IGNORECASE)
-            
-            # Process task time estimate
-            try:
-                task["est"] = \
-                    int(ceil(process_time_est(task["nm"], allowed_task_time,
-                             default_time_est) * planning_fallacy_const))
-            except Exception as error:
-                raise Exception(f"Task {task['nm']}: {str(error)}")
-            
-            # Update goal time estimation
-            goal["est"] += task["est"]
-            
-            # Check whether weekday preferences are given
-            task["days"], task["repetitive_days"] = process_task_days(task)
-            
-            # Check whether it is a daily task
-            task["daily"] = process_tagged_item("daily", task)
-            
-            if task["daily"]:
-                for weekday in range(len(task["repetitive_days"])):
-                    task["repetitive_days"][weekday] = True
-            
-            # Add busy time for each weekday on which the task is scheduled
-            for weekday, repetitive in enumerate(task["repetitive_days"]):
-                if repetitive:
-                    weekday_tasks_time_est[weekday] += task["est"]
-            
-            # Check whether a specific date is given
-            task['day_datetime'] = process_working_date(task)
-            
-            # Check whether a task has been marked to be completed in the future
-            task["future"] = process_tagged_item("future", task)
-            
-            # Check whether a task has been marked to be completed today
-            task["today"] = process_tagged_item("today", task)
-            
-            # Check whether the task should be scheduled today (w/o repetition!)
-            weekday = user_datetime.date().weekday()
-            
-            task["scheduled_today"] = (
-                    task["today"] or task["days"][weekday] or
-                    (task["day_datetime"] is not None and
-                     task["day_datetime"].date() == user_datetime.date())
-            )
-            
-            # Add up the time estimate needed to be scheduled today
-            if task["scheduled_today"]:
-                goal["today_est"] += task["est"]
-                
-    return weekday_tasks_time_est
-
-
-def generate_to_do_list(projects, allowed_task_time, available_time,
-                        current_intentions, default_deadline, default_time_est,
-                        planning_fallacy_const, user_datetime):
-    
-    # TODO: Change function input to be parameters (dict)
-    
-    # Initialize sum of goal values
-    sum_of_goal_values = 0
-
-    for goal in projects:
-    
-        """ ===== 1ST TRAVERSAL: Initialization =====
-            - Goal code
-            -
-
-        """
-
-        # Remove formatting / HTML formatting
-        goal["nm"] = re.sub(HTML_REGEX, "", goal["nm"],
-                            count=LARGE_NUMBER, flags=re.IGNORECASE)
-
-        # Extract goal code
-        goal["code"] = re.search(INPUT_GOAL_CODE_REGEX, goal["nm"],
-                                 re.IGNORECASE)[1]
-        
-        # Initialize completed
-        goal["completed"] = None
-        
-        # If the goal code is not a digit --> misc goal
-        if goal["code"][0] not in digits + "^":
-            if "_CS" in goal["nm"]:
-                goal["code"] = "💻"
-            else:
-                goal["code"] = "&"
-        
-        # Process goal value and check whether the value is valid
-        try:
-            goal["value"] = goal["prop_value"] = process_goal_value(goal)
-        except Exception as error:
-            raise Exception(f"Goal {goal['nm']}: {str(error)}")
-        
-        # Update sum of goal values
-        sum_of_goal_values += goal["value"]
-        
-        """ ===== 1ST TRAVERSAL =====
-            - Initialize
-                - Goal code
-                - Goal value
-                
-                - Scheduling tags
-                - Time estimate
-                - Time allocated for today
-                - Transition probabilities (?)
-        
-            - Passing down
-                - Goal code
-                - Scheduling tags (?)
-                - Value of sub-goals (?)
-                
-            - Return
-                - Time estimate
-                - Time allocated for today (inplace update)
-                - Time allocated for recurring tasks (inplace update)
-                - Transition probabilities (?)
-        """
-        
-        # Traverse sub-tree
-        first_traversal(super_item=goal,
-                        allowed_task_time=allowed_task_time,
-                        available_time=available_time,
-                        current_intentions=current_intentions,
-                        default_time_est=default_time_est,
-                        planning_fallacy_const=planning_fallacy_const,
-                        user_datetime=user_datetime)
-
-        # Subtract time estimate of current intentions from available time
-        # TODO: Check whether it works properly
-        for tasks in current_intentions.values():
-            for task in tasks:
-                # If the task is not marked as completed or "nevermind"
-                if not task["d"] and not task["nvm"]:
-                    available_time[0] -= task["est"]
-
-        # Make 0 if the number of minutes is negative
-        available_time[0] = max(available_time[0], 0)
-
-        """ ===== 2ND TRAVERSAL =====
-            Initialize:
-                - deadline
-                - deadline_datetime
-                
-            Pass down:
-                - Deadline
-                - Deadline datetime
-                - Scheduling tags (?)
-                - Value proportion
-        """
-        # Extract goal deadline
-        goal_deadline = re.search(DEADLINE_REGEX, goal["nm"], re.IGNORECASE)
-
-        # Process goal deadline and check whether the value is valid
-        try:
-            goal["deadline"], goal["deadline_datetime"] = \
-                process_deadline(goal_deadline,
-                                 current_datetime=user_datetime,
-                                 default_deadline=default_deadline,
-                                 today_minutes=available_time[0],
-                                 typical_minutes=available_time[1:])
-        except Exception as error:
-            raise Exception(f"Goal {goal['nm']}: {str(error)}")
-        
-        second_traversal(goal,
-                         today_minutes=available_time[0],
-                         typical_minutes=available_time[1:],
-                         user_datetime=user_datetime)
-
-    return projects
-
-
-def first_traversal(super_item, allowed_task_time, available_time,
-                    current_intentions, default_time_est,
-                    planning_fallacy_const, user_datetime):
-    
-    # Initialize goal time estimate
-    super_item["est"] = 0
-
-    for item in super_item["ch"]:
-    
-        # Remove formatting / HTML tags
-        item["nm"] = re.sub(HTML_REGEX, "", item["nm"],
-                            count=LARGE_NUMBER, flags=re.IGNORECASE)
-    
-        # Default initialization
-        item["code"] = super_item["code"]
-        item["parentId"] = super_item["id"]
-        item["pcp"] = False  # pcp: Parent completed
-        
-        item["completed"] = None
-        item["scheduled_today"] = None
-        
-        # If the sub-item is not a leaf node (i.e. sub-goal)
-        if "ch" in item.keys() and len(item["ch"]) > 0:
-            
-            # Traverse sub-trees
-            first_traversal(super_item=item,
-                            current_intentions=current_intentions,
-                            allowed_task_time=allowed_task_time,
-                            available_time=available_time,
-                            default_time_est=default_time_est,
-                            planning_fallacy_const=planning_fallacy_const,
-                            user_datetime=user_datetime)
-            
-        # If the sub-item is a leaf node (i.e. task)
-        else:
-            
-            """ Process time estimate """
-            try:
-                # Parse task time estimate
-                item["est"] = \
-                    process_time_est(item["nm"],
-                                     allowed_task_time, default_time_est)
-                
-                # Apply planning fallacy
-                item["est"] = int(ceil(item["est"] * planning_fallacy_const))
-                
-            except Exception as error:
-                raise Exception(f"Task {item['nm']}: {str(error)}")
-
-            """ Process scheduling tags """
-            # TODO: Not sure whether this should apply to intermediate nodes
-
-            # Check whether weekday preferences are given
-            item["days"], item["repetitive_days"] = process_task_days(item)
-
-            # Check whether it is a daily task
-            item["daily"] = process_tagged_item("daily", item)
-
-            if item["daily"]:
-                for weekday in range(len(item["repetitive_days"])):
-                    item["repetitive_days"][weekday] = True
-                    
-                    # Subtract time estimate from typical working time
-                    available_time[weekday + 1] -= item["est"]
-
-            # Subtract busy time from each scheduled weekday
-            for weekday, repetitive in enumerate(item["repetitive_days"]):
-                if repetitive:
-                    available_time[weekday + 1] -= item["est"]
-
-            # Check whether a specific date is given
-            item['day_datetime'] = process_working_date(item)
-
-            # Check whether a task has been marked to be completed in the future
-            item["future"] = process_tagged_item("future", item)
-
-            # Check whether a task has been marked to be completed today
-            item["today"] = process_tagged_item("today", item)
-
-            # Check whether the task should be scheduled today (w/o repetition!)
-            weekday = user_datetime.date().weekday()
-            
-            item["scheduled_today"] = (
-                    item["today"] or item["days"][weekday] or
-                    (item["day_datetime"] is not None and
-                     item["day_datetime"].date() == user_datetime.date())
-            )
-            
-            # Subtract the time estimate needed to be scheduled today
-            if item["scheduled_today"]:
-                
-                available_time[0] -= item["est"]
-                
-            """ Check whether task has already been completed """
-            # Get the last part of the HEX ID code for the task in WorkFlowy
-            item_id = get_wf_item_id(item["id"])
-            
-            # Check whether the task has already been scheduled or completed
-            if item_id in current_intentions.keys() or \
-                    ("cp" in item.keys() and item["cp"] >= item["lm"]):
-                item["completed"] = True
-            else:
-                item["completed"] = False
-            
-            # # Append goal's name to task's name
-            # item["nm"] = goal["code"] + ") " + task["nm"]
-        
-        # Update time estimate
-        super_item["est"] += item["est"]
-        
-    return  # TODO: How to handle this (?)
-
-
-def second_traversal(super_item, today_minutes, typical_minutes, user_datetime):
-    
-    # Initialize sanity check | TODO: Remove
-    total_value = 0
-    
-    for item in super_item["ch"]:
-    
-        # Assign points per hour
-        item["pph"] = super_item["value"] / super_item["est"] * 60
-        
-        """ Process deadline """
-        # Get task deadline (if provided)
-        deadline = re.search(DEADLINE_REGEX, item["nm"], re.IGNORECASE)
-    
-        if deadline:
-            try:
-                item["deadline"], item["deadline_datetime"] = \
-                    process_deadline(deadline,
-                                     current_datetime=user_datetime,
-                                     # default_deadline=default_deadline,
-                                     today_minutes=today_minutes,
-                                     typical_minutes=typical_minutes)
-    
-            except Exception as error:
-                raise Exception(f"Item {item['nm']}: {str(error)}")
-    
-            # Check whether task deadline is after goal deadline
-            if item["deadline"] > super_item["deadline"]:
-                raise Exception(f"Item {item['nm']}: "
-                                f"Item deadline "
-                                f"{item['deadline_datetime']} "
-                                f"should be before (sub-)goal's deadline "
-                                f"{super_item['deadline_datetime']}.")
-    
-        # If task has no deadline, set its deadline to be (sub-)goal deadline
-        else:
-            item["deadline"] = super_item["deadline"]
-            item["deadline_datetime"] = super_item["deadline_datetime"]
-            
-        # Compute sub-tree value
-        item["prop_value"] = item["est"] / super_item["est"] * super_item["prop_value"]
-        item["value"] = super_item["value"]
-        
-        # TODO: Remove (!)
-        total_value += item["prop_value"]
-            
-        # Traverse sub-tree recursively
-        if "ch" in item.keys() and len(item["ch"]) > 0:
-            second_traversal(item,
-                             today_minutes=today_minutes,
-                             typical_minutes=typical_minutes,
-                             user_datetime=user_datetime)
-
-    # Sanity check | TODO: Remove (!)
-    # print(super_item["value"], total_value, super_item["value"] == total_value)
-
-
-def parse_tree(projects, current_intentions, today_minutes, typical_minutes,
-               default_deadline, min_sum_of_goal_values,
-               max_sum_of_goal_values, min_goal_value_per_goal_duration,
-               max_goal_value_per_goal_duration, user_datetime):
-    """
-    This function reads in a flattened project tree and parses fields like goal
-    code, total value, duration and deadline
-    """
-    def get_wf_task_id(task_name):
-        return task_name.split("-")[-1]
-    
-    # Initialize sum of goal values
-    sum_of_goal_values = 0
-    
-    for goal in projects:
-        
-        # Extract goal information
-        goal["code"] = re.search(INPUT_GOAL_CODE_REGEX, goal["nm"],
-                                 re.IGNORECASE)[1]
-        goal_deadline = re.search(DEADLINE_REGEX, goal["nm"], re.IGNORECASE)
-
-        # Process goal deadline and check whether the value is valid
-        try:
-            goal["deadline"], goal["deadline_datetime"] = \
-                process_deadline(goal_deadline, today_minutes,
-                                 typical_minutes,
-                                 current_datetime=user_datetime,
-                                 default_deadline=default_deadline)
-        except Exception as error:
-            raise Exception(f"Goal {goal['nm']}: {str(error)}")
-
-        # Process goal value and check whether the value is valid
-        try:
-            goal["value"] = process_goal_value(goal)
-            sum_of_goal_values += goal["value"]
-        except Exception as error:
-            raise Exception(f"Goal {goal['nm']}: {str(error)}")
-        
-        # Initialize dict of all task deadlines
-        goal["task_deadlines"] = dict()
-        
-        # If the goal code is not a digit --> misc goal
-        if goal["code"][0] not in digits+"^":
-            if "_CS" in goal["nm"]:
-                goal["code"] = "💻"
-            else:
-                goal["code"] = "&"
-            
-        for task in goal["ch"]:
-            
-            # Get the last part of the HEX ID code for the task in WorkFlowy
-            task_id = get_wf_task_id(task["id"])
-            
-            # Get task deadline (if provided)
-            task_deadline = re.search(DEADLINE_REGEX, task["nm"], re.IGNORECASE)
-            
-            if task_deadline:
-                try:
-                    task["deadline"], task["deadline_datetime"] = \
-                        process_deadline(task_deadline, today_minutes,
-                                         typical_minutes,
-                                         current_datetime=user_datetime)
-
-                except Exception as error:
-                    raise Exception(f"Task {task['nm']}: {str(error)}")
-
-                # Check whether task deadline is after goal deadline
-                if task["deadline"] > goal["deadline"]:
-                    raise Exception(f"Task {task['nm']}: Task deadline should "
-                                    f"be before goal's deadline.")
-                
-            else:
-                # If task has no deadline, set its deadline to be goal deadline
-                task["deadline"] = goal["deadline"]
-                task["deadline_datetime"] = goal["deadline_datetime"]
-                
-            # Check whether the task has already been scheduled in CompliceX or
-            # completed in WorkFlowy
-            if task_id in current_intentions.keys() or \
-                    ("cp" in task.keys() and task["cp"] >= task["lm"]):
-                task["completed"] = True
-            else:
-                task["completed"] = False
-                
-            # Store parent ID
-            task["parentId"] = goal["id"]
-            
-            # Set parent as not completed
-            task["pcp"] = False
-            
-            # Append goal's name to task's name
-            task["nm"] = goal["code"] + ") " + task["nm"]
-            
-            # Assign points per hour
-            task["pph"] = goal["value"] / goal["est"] * 60
-
-        # Sort tasks w.r.t their deadline
-        goal["ch"].sort(key=lambda task: task["deadline"])
-
-        # Set latest start time
-        # goal["latest_start_time"] = compute_latest_start_time(goal)
-
-        # Set estimated goal deadline
-        # goal["effective_deadline"] = goal["latest_start_time"] + goal["est"]
-        
-        # Check goal value per duration
-        value_per_duration = goal["value"] / goal["est"]
-        if min_goal_value_per_goal_duration != float('inf') and \
-                max_goal_value_per_goal_duration != float('inf') and not \
-                min_goal_value_per_goal_duration <= value_per_duration <= max_goal_value_per_goal_duration:
-            raise Exception(f"Goal {goal['nm']} has value per duration of "
-                            f"{value_per_duration:.2f} and it should be in the "
-                            f"range between {min_goal_value_per_goal_duration:.2f} "
-                            f"and {max_goal_value_per_goal_duration:.2f}."
-                            f"Please change your goal values.")
-
-    # Check goal value per duration
-    if min_sum_of_goal_values != float('inf') and \
-            max_sum_of_goal_values != float('inf') and not \
-            min_sum_of_goal_values <= sum_of_goal_values <= max_sum_of_goal_values:
-        raise Exception(f"Your goals have total values of {sum_of_goal_values} "
-                        f"and this value should be in the range between "
-                        f"{min_sum_of_goal_values:.2f} and "
-                        f"{max_sum_of_goal_values:.2f}. "
-                        f"Please change your goal values.")
-
-    return projects
 
 
 def process_deadline(deadline, today_minutes, typical_minutes, current_datetime,
@@ -959,9 +760,9 @@ def process_goal_value(goal):
     return goal_value
 
 
-def process_tagged_item(tag, task):
+def process_tagged_item(tag, item):
     tag_regex = get_tag_regex(tag)
-    tag_present = re.search(tag_regex, task["nm"].lower(), re.IGNORECASE)
+    tag_present = re.search(tag_regex, item["nm"].lower(), re.IGNORECASE)
     
     if tag_present:  # ... is not None
         return True
@@ -969,10 +770,10 @@ def process_tagged_item(tag, task):
         return False
 
 
-def process_time_est(task_name, allowed_task_time=float('inf'),
+def process_time_est(item_name, allowed_task_time=float('inf'),
                      default_time_est=None):
     try:
-        time_est = re.search(TIME_EST_REGEX, task_name, re.IGNORECASE)[0]
+        time_est = re.search(TIME_EST_REGEX, item_name, re.IGNORECASE)[0]
     except:
         if default_time_est is not None:
             time_est = "~~" + str(default_time_est) + "min"
@@ -998,10 +799,10 @@ def process_time_est(task_name, allowed_task_time=float('inf'),
     
     # Check whether the value is valid
     if duration <= 0:
-        raise Exception(f"{task_name}: Time estimation is not a "
+        raise Exception(f"{item_name}: Time estimation is not a "
                         f"positive number!")
     if duration > allowed_task_time:
-        raise Exception(f"{task_name}: Time duration not allowed!")
+        raise Exception(f"{item_name}: Time duration not allowed!")
     
     # Convert time to minutes. If fractional, get the higher rounded value!
     duration = int(ceil(duration))
@@ -1052,41 +853,6 @@ def process_working_date(task):
     return date_datetime
 
 
-def separate_tasks_with_deadlines(goals):
-    tasks_with_deadlines = []
-    
-    for goal in goals:
-        separated_tasks = []
-        
-        for task in goal["ch"]:
-            if task["deadline"] is not None:
-                task_goal = deepcopy(goal)
-                
-                task_goal["deadline"] = task["deadline"]
-                task_goal["deadline_datetime"] = task["deadline_datetime"]
-                task_goal["est"] = task["est"]
-                task_goal["id"] = task["id"]
-                task_goal["nm"] = task["nm"]
-                task_goal["parentId"] = task["parentId"]
-                
-                task_goal["value"] *= task["est"] / goal["est"]
-                task_goal["value"] = ceil(task_goal["value"])
-
-                task_goal["ch"] = [task]
-    
-                separated_tasks += [task_goal]
-                
-        tasks_with_deadlines += separated_tasks
-        
-        # Separate task from goal tasks & subtract time estimation and value
-        for task in separated_tasks:
-            goal["ch"].remove(task["ch"][0])
-            goal["est"] = max(goal["est"] - task["est"], 0)
-            goal["value"] = max(goal["value"] - task["value"], 0)
-
-    return goals + tasks_with_deadlines
-    
-
 def store_log(db_collection, log_dict, **params):
     """
     Stores the provided log dictionary in the DB collection with the additional
@@ -1117,11 +883,11 @@ def store_log(db_collection, log_dict, **params):
     return log_dict
 
 
-def task_dict_from_projects(projects):
+def item_dict_from_projects(projects):
     return {
-        task["id"]: task
+        item["id"]: item
         for goal in projects
-        for task in goal["ch"]
+        for item in goal["ch"]
     }
 
 
@@ -1141,12 +907,13 @@ def tree_to_old_structure(projects, params):
     output: structure that can be inputted to old project code
     """
     def generate_sub_tree(items, goal_item: Item, parent_item=None):
-        # TODO: Make variable naming intuitive
-    
+
+        # Initialize list of items
         item_list = deque()
     
         for item_dict in items:
             
+            # Initialize item
             item = Item(
                 description=item_dict["nm"],
                 
@@ -1174,27 +941,30 @@ def tree_to_old_structure(projects, params):
             # If it is a leaf node (i.e. task)
             else:
                 
-                # Compute potential time estimates
-                item.compute_binning(num_bins=params["num_bins"])
-                
                 # Add reference from the goal node to the leaf/task node
                 goal_item.append_task(item)
                 
                 # If task has to be executed today
                 if item.is_today() and not item.is_completed():
-                    goal_item.add_today_item(item)
+                    goal_item.today_items.add(item)
 
+            # Compute potential time estimates
+            item.compute_binning(num_bins=params["num_bins"])
+            
             # Add reference to goal
             item.add_goal(goal_item)
 
             # Create new item and add it to the item list
             item_list.append(item)
-            
+
         return item_list
     
+    # Initialize list of goals
     goals = deque()
+    
     for goal in projects:
     
+        # Initialize goal
         goal_item = Item(
             description=goal["nm"],
             
@@ -1217,7 +987,7 @@ def tree_to_old_structure(projects, params):
             
             # Add list of sub-items to the parent item
             goal_item.add_items(sub_items)
-            
+
         # Convert queue of tasks to list
         goal_item.convert_task_list()
         

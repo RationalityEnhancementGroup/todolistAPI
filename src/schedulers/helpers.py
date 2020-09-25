@@ -39,5 +39,5 @@ def generate_overwork_error_message(overwork_minutes):
            f"or #today for some of the tasks."
 
 
-def is_repetitive_task(task, weekday):
+def is_repetitive_item(task, weekday):
     return task["daily"] or task["repetitive_days"][weekday]

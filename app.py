@@ -76,8 +76,6 @@ class PostResource(RESTResource):
 
             try:
                 
-                api_method = vpath[-1]
-                
                 # Load fixed time if provided
                 if "time" in jsonData.keys():
                     user_datetime = datetime.strptime(jsonData["time"],
@@ -85,100 +83,29 @@ class PostResource(RESTResource):
                 else:
                     user_datetime = datetime.utcnow()
 
-                if api_method in {"averageSpeedTestSMDP",
-                                  "bestSpeedTestSMDP",
-                                  "exhaustiveSpeedTestSMDP",
-                                  "realSpeedTestSMDP",
-                                  "worstSpeedTestSMDP"}:
-        
-                    smdp_params = {
-                        "choice_mode":            jsonData["choice_mode"],
-                        "gamma":                  jsonData["gamma"],
-                        "loss_rate":              jsonData["loss_rate"],
-                        "num_bins":               jsonData["n_bins"],
-                        "penalty_rate":           jsonData["penalty_rate"],
-                        "planning_fallacy_const": jsonData["planning_fallacy_const"],
-                        "slack_reward":           jsonData["slack_reward"],
-            
-                        "scale_type": jsonData["scale_type"],
-                        "scale_min":  jsonData["scale_min"],
-                        "scale_max":  jsonData["scale_max"],
-    
-                        "bias": None,
-                        "scale": None
-                    }
-
-                    if smdp_params["slack_reward"] == 0:
-                        smdp_params["slack_reward"] = np.NINF
-        
-                    """ Generating test case """
-                    tic = time.time()
-        
-                    test_goals = generate_test_case(
-                        api_method=api_method,
-                        n_bins=jsonData["n_bins"],
-                        n_goals=jsonData["n_goals"],
-                        n_tasks=jsonData["n_tasks"],
-                        penalty_rate=jsonData["penalty_rate"],
-                        time_est=jsonData["time_est"]
-                    )
-                    
-                    timer["Generating test case"] = time.time() - tic
-        
-                    """ Run SMDP """
-                    tic = time.time()
-        
-                    assign_smdp_points(
-                        projects=test_goals,
-                        current_day=user_datetime,
-                        day_duration=jsonData["today_minutes"],
-                        smdp_params=smdp_params,
-                        timer=timer,
-                        json=False
-                    )
-        
-                    timer["Run SMDP"] = time.time() - tic
-        
-                    """ Simulating task scheduling """
-                    tic = time.time()
-        
-                    simulate_task_scheduling(test_goals)
-        
-                    timer["Simulating task scheduling"] = time.time() - tic
-        
-                    status = f"Testing took {time.time() - main_tic:.3f} seconds!"
-        
-                    # Stop timer: Complete SMDP procedure
-                    timer["Complete SMDP procedure"] = time.time() - main_tic
-        
-                    return json.dumps({
-                        "status": status,
-                        "timer":  timer
-                    })
-    
                 # Start timer: reading parameters
                 tic = time.time()
                 
                 # Compulsory parameters
                 method = vpath[0]
                 scheduler = vpath[1]
-                default_time_est = vpath[2]  # This has to be in minutes
-                default_deadline = vpath[3]  # This has to be in days
-                allowed_task_time = vpath[4]
+                default_time_est = vpath[2]  # ... in minutes
+                default_deadline = vpath[3]  # ... in days
+                allowed_task_time = vpath[4]  # ... in minutes
                 min_sum_of_goal_values = vpath[5]
                 max_sum_of_goal_values = vpath[6]
-                min_goal_value_per_goal_duration = vpath[7]
-                max_goal_value_per_goal_duration = vpath[8]
+                min_goal_value_per_duration = vpath[7]
+                max_goal_value_per_duration = vpath[8]
                 points_per_hour = vpath[9]
-                rounding = vpath[10]
+                rounding = vpath[10]  # Number of decimals
                 
                 # tree = vpath[-3]  # Dummy parameter
                 user_key = vpath[-2]
                 api_method = vpath[-1]
                 
                 # Additional parameters (the order of URL input matters!)
-                # Casting to other data types is done in the functions that use
-                # these parameters
+                # Casting to other data types is done within the functions that
+                # use these parameters
                 parameters = [item for item in vpath[11:-3]]
 
                 # Is there a user key
@@ -208,19 +135,20 @@ class PostResource(RESTResource):
                             "gamma":                  float(parameters[1]),
                             "loss_rate":              - float(parameters[2]),
                             "num_bins":               int(parameters[3]),
-                            "penalty_rate":           float(parameters[6]),
                             "planning_fallacy_const": float(parameters[4]),
                             "slack_reward":           float(parameters[5]),
+                            "penalty_rate":           float(parameters[6]),
+                            # "sub_goal_max_time":      float(parameters[7]),
             
-                            'scale_type':             "no_scaling",
+                            'scale_type':             None,
                             'scale_min':              None,
                             'scale_max':              None
                         })
-        
+                        
                         if smdp_params["slack_reward"] == 0:
                             smdp_params["slack_reward"] = np.NINF
         
-                        if len(parameters) >= 10:
+                        if len(parameters) > 7:
                             smdp_params['scale_type'] = parameters[7]
                             smdp_params['scale_min'] = float(parameters[8])
                             smdp_params['scale_max'] = float(parameters[9])
@@ -239,7 +167,7 @@ class PostResource(RESTResource):
                                 "user_id": jsonData["userkey"]
                             }
                         ))
-                        if len(query) > 0:
+                        if len(query) > 0 and api_method != "updateTransform":
                             query = query[-1]
                             smdp_params["bias"] = query["bias"]
                             smdp_params["scale"] = query["scale"]
@@ -251,6 +179,11 @@ class PostResource(RESTResource):
         
                         if "scale" in jsonData.keys():
                             smdp_params["scale"] = jsonData["scale"]
+                            
+                        if "timeFrame" in jsonData.keys():
+                            smdp_params["sub_goal_max_time"] = float(jsonData["timeFrame"])
+                        else:
+                            smdp_params["sub_goal_max_time"] = 0
         
                         timer["Reading SMDP parameters"] = time.time() - tic
                         
@@ -284,7 +217,9 @@ class PostResource(RESTResource):
                     return json.dumps(status)
                 
                 try:
-                    points_per_hour = (points_per_hour.lower() in ["true", "1", "t", "yes"])
+                    points_per_hour = (
+                        points_per_hour.lower() in ["true", "1", "t", "yes"]
+                    )
                 except:
                     status = "There was an issue with the API input (point " \
                              "per hour vs completion parameter). Please " \
@@ -313,10 +248,10 @@ class PostResource(RESTResource):
                     
                     "min_sum_of_goal_values": min_sum_of_goal_values,
                     "max_sum_of_goal_values": max_sum_of_goal_values,
-                    "min_goal_value_per_goal_duration":
-                        min_goal_value_per_goal_duration,
-                    "max_goal_value_per_goal_duration":
-                        max_goal_value_per_goal_duration,
+                    "min_goal_value_per_duration":
+                        min_goal_value_per_duration,
+                    "max_goal_value_per_duration":
+                        max_goal_value_per_duration,
                     
                     # Must be provided on each store (if needed)
                     "lm": None,
@@ -365,17 +300,17 @@ class PostResource(RESTResource):
                 try:
                     min_sum_of_goal_values = float(min_sum_of_goal_values)
                     max_sum_of_goal_values = float(max_sum_of_goal_values)
-                    min_goal_value_per_goal_duration = \
-                        float(min_goal_value_per_goal_duration)
-                    max_goal_value_per_goal_duration = \
-                        float(max_goal_value_per_goal_duration)
+                    min_goal_value_per_duration = \
+                        float(min_goal_value_per_duration)
+                    max_goal_value_per_duration = \
+                        float(max_goal_value_per_duration)
                     
                     log_dict["min_sum_of_goal_values"] = min_sum_of_goal_values
                     log_dict["max_sum_of_goal_values"] = max_sum_of_goal_values
-                    log_dict["min_goal_value_per_goal_duration"] = \
-                        min_goal_value_per_goal_duration,
-                    log_dict["max_goal_value_per_goal_duration"] = \
-                        max_goal_value_per_goal_duration,
+                    log_dict["min_goal_value_per_duration"] = \
+                        min_goal_value_per_duration,
+                    log_dict["max_goal_value_per_duration"] = \
+                        max_goal_value_per_duration,
                 except:
                     status = "There was an issue with the API input " \
                              "(goal-value limits). Please contact us at " \
@@ -421,7 +356,7 @@ class PostResource(RESTResource):
 
                 # Check whether today hours is in the pre-defined range
                 # 0 is an allowed value in case users want to skip a day
-                if not (0 <= today_hours <= 24):
+                if not (0 <= today_hours <= np.PINF):
                     store_log(db.request_log, log_dict,
                               status="Invalid today hours value.")
     
@@ -441,13 +376,12 @@ class PostResource(RESTResource):
                 timer["Reading parameters"] = time.time() - tic
                 
                 # Start timer: parsing current intentions
-                tic = time.time()
+                tic = time.ti
                 
                 # Parse current intentions
                 try:
                     current_intentions = parse_current_intentions_list(
-                        jsonData["currentIntentionsList"],
-                        default_time_est=default_time_est)
+                        jsonData["currentIntentionsList"])
                 except:
                     status = "An error related to the current " \
                              "intentions has occurred."
@@ -464,8 +398,11 @@ class PostResource(RESTResource):
 
                 # Store time: parsing current intentions
                 timer["Parsing current intentions"] = time.time() - tic
-                
-                """ <<<<< NEW CODE STARTS HERE >>>>> """
+
+                # Start timer: parsing generating to-do list
+                tic = time.time()
+
+                # Generate to-do list
                 try:
                     projects = generate_to_do_list(
                         deepcopy(jsonData["projects"]),
@@ -475,7 +412,11 @@ class PostResource(RESTResource):
                         default_deadline=default_deadline,
                         default_time_est=default_time_est,
                         planning_fallacy_const=smdp_params["planning_fallacy_const"],
-                        user_datetime=user_datetime
+                        user_datetime=user_datetime,
+                        min_sum_of_goal_values=min_sum_of_goal_values,
+                        max_sum_of_goal_values=max_sum_of_goal_values,
+                        min_goal_value_per_duration=min_goal_value_per_duration,
+                        max_goal_value_per_duration=max_goal_value_per_duration,
                     )
 
                 except Exception as error:
@@ -493,34 +434,39 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 403
                     return json.dumps(status + CONTACT)
 
-                # pprint(projects)
-                # pprint(available_time)
-
                 today_minutes = available_time[0]
                 typical_minutes = available_time[1:]
                 
                 # Store anonymized to-do list in database
-                log_dict["tree"] = create_projects_to_save(projects)
+                log_dict["tree"] = delete_sensitive_data(projects)
                 
                 # Store today & typical daily minutes in database
                 log_dict["today_minutes"] = today_minutes
                 log_dict["typical_daily_minutes"] = typical_minutes
 
-                """ >>>>> NEW CODE ENDS HERE <<<<< """
-                
+                # Store time: parsing to-do list
+                timer["Generating to-do list"] = time.time() - tic
+
                 # Start timer: parsing hierarchical structure
                 tic = time.time()
 
                 # New calculation + Save updated, user id, and skeleton
                 try:
+                    # Convert internal tree structure to items
                     flatten_projects = \
                         flatten_intentions(deepcopy(projects))
-                    log_dict["flatten_tree"] = \
-                        create_projects_to_save(flatten_projects)
                     
+                    # Anonymize and save flattened tree
+                    log_dict["flatten_tree"] = \
+                        delete_sensitive_data(flatten_projects)
+                    
+                    # Discard internal tree structure
                     leaf_projects = get_leaf_intentions(deepcopy(projects))
+                    
+                    # Anonymize and save tree with leaves
                     log_dict["leaf_tree"] = \
-                        create_projects_to_save(projects)
+                        delete_sensitive_data(projects)
+                    
                 except:
                     status = "Something is wrong with your inputted " \
                              "goals and tasks. Please take a look at your " \
@@ -536,57 +482,6 @@ class PostResource(RESTResource):
                 # Store time: parsing hierarchical structure
                 timer["Parsing hierarchical structure"] = time.time() - tic
                 
-                # # Start timer: parsing scheduling tags
-                # tic = time.time()
-                #
-                # # # Get information about daily tasks time estimation
-                # # daily_tasks_time_est = \
-                # #     parse_scheduling_tags(projects, allowed_task_time,
-                # #                           default_time_est,
-                # #                           smdp_params["planning_fallacy_const"],
-                # #                           user_datetime)
-                # #
-                # # # Subtract daily tasks time estimation from typical working hours
-                # # for weekday in range(len(typical_minutes)):
-                # #     typical_minutes[weekday] -= daily_tasks_time_est[weekday]
-                #
-                # # Store time: parsing scheduling tags
-                # timer["Parsing scheduling tags"] = time.time() - tic
-
-                # # Start timer: parsing to-do list
-                # tic = time.time()
-                #
-                # # Parse to-do list
-                # try:
-                #     projects = \
-                #         parse_tree(projects, current_intentions,
-                #                    today_minutes, typical_minutes,
-                #                    default_deadline=default_deadline,
-                #                    min_sum_of_goal_values=min_sum_of_goal_values,
-                #                    max_sum_of_goal_values=max_sum_of_goal_values,
-                #                    min_goal_value_per_goal_duration=min_goal_value_per_goal_duration,
-                #                    max_goal_value_per_goal_duration=max_goal_value_per_goal_duration,
-                #                    user_datetime=user_datetime)
-                #
-                # except Exception as error:
-                #     status = str(error)
-                #
-                #     # Remove personal data
-                #     anonymous_error = parse_error_info(status)
-                #
-                #     # Store error in DB
-                #     store_log(db.request_log, log_dict, status=anonymous_error)
-                #
-                #     status += " Please take a look at your Workflowy inputs " \
-                #               "and then try again. "
-                #     cherrypy.response.status = 403
-                #     return json.dumps(status + CONTACT)
-                #
-                # log_dict["tree"] = create_projects_to_save(projects)
-                #
-                # # Store time: parsing to-do list
-                # timer["Parsing to-do list"] = time.time() - tic
-
                 # Start timer: storing parsed to-do list in database
                 tic = time.time()
 
@@ -597,12 +492,12 @@ class PostResource(RESTResource):
                 # Stop timer: storing parsed to-do list in database
                 timer["Storing parsed to-do list in database"] = time.time() - tic
                 
-                print("Checkpoint!")
-                
                 if method == "constant":
+                    
                     # Parse default task value
                     try:
                         default_task_value = float(parameters[0])
+                        
                     except:
                         status = "Error while parsing default task value. "
                         
@@ -626,9 +521,11 @@ class PostResource(RESTResource):
                         return json.dumps(status + CONTACT)
                     
                 elif method == "length":
+                    
                     # Assign random points
                     try:
                         projects = assign_length_points(leaf_projects)
+                        
                     except:
                         status = "Problem while assigning points. "
         
@@ -639,9 +536,11 @@ class PostResource(RESTResource):
                         return json.dumps(status + CONTACT)
 
                 elif method == "random":
+                    
                     # Parse distribution name
                     try:
                         distribution = parameters[0].lower()
+                        
                     except:
                         status = "Error while parsing distribution name. "
     
@@ -655,6 +554,7 @@ class PostResource(RESTResource):
                     try:
                         distribution_params = [float(param)
                                                for param in parameters[1:]]
+                        
                     except:
                         status = "Error while parsing distribution parameters. "
     
@@ -674,6 +574,7 @@ class PostResource(RESTResource):
                         projects = assign_random_points(
                             leaf_projects, distribution_fxn=distribution,
                             fxn_args=distribution_params)
+                        
                     except:
                         status = "Problem while assigning points. "
     
@@ -685,12 +586,15 @@ class PostResource(RESTResource):
                 
                 elif method == "smdp":
     
+                    tic = time.time()
+                    
                     final_tasks = assign_smdp_points(
                         projects, current_day=user_datetime, timer=timer,
-                        day_duration=today_minutes, smdp_params=smdp_params,
-                        leaf_projects=leaf_projects
+                        day_duration=today_minutes,
+                        all_json_items=flatten_projects,
+                        smdp_params=smdp_params
                     )
-
+                    
                     # Add database entry if one does not exist
                     if query is None:
                         db.pr_transform.insert_one({
@@ -713,6 +617,8 @@ class PostResource(RESTResource):
                                 }
                             )
 
+                    timer["Run SMDP"] = time.time() - tic
+
                 else:
                     status = "API method does not exist. Please contact us " \
                              "at reg.experiments@tuebingen.mpg.de."
@@ -724,7 +630,7 @@ class PostResource(RESTResource):
                 tic = time.time()
                 
                 # Update values in the tree
-                log_dict["tree"] = create_projects_to_save(projects)
+                log_dict["tree"] = delete_sensitive_data(projects)
 
                 # Store time: Anonymizing date
                 timer["Anonymize data"] = time.time() - tic
@@ -788,7 +694,8 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status="Update tree")
                     return None
                 
-                elif api_method in {"getTasksForToday", "updateTransform"}:
+                elif api_method in \
+                        {"getTasksForToday", "speedTest", "updateTransform"}:
                     if len(final_tasks) == 0:
                         status = "The API has scheduled all of the tasks it " \
                                  "can for today, given your working hours. " \
@@ -831,13 +738,29 @@ class PostResource(RESTResource):
                     # Store time: Storing successful pull in database
                     timer["Storing successful pull in database"] = time.time() - tic
                     
-                    # print("\n===== Optimal tasks =====")
+                    # print("\n===== Optimal items =====")
                     # for task in final_tasks:
-                    #     print(task["nm"], "&", task["val"], "\\\\")
+                    #     # print(f"{task['nm']} & {task['val']} \\\\")
+                    #     print(f"{task['nm']:100s} | {task['val']}")
                     # print()
+                    
+                    if api_method == "speedTest":
+                        
+                        status = f"The procedure took " \
+                                 f"{time.time() - main_tic:.3f} seconds!"
+    
+                        # Stop timer: Complete SMDP procedure
+                        timer["Complete SMDP procedure"] = \
+                            time.time() - main_tic
+    
+                        return json.dumps({
+                            "status": status,
+                            "timer":  timer
+                        })
 
-                    # Return scheduled tasks
-                    return json.dumps(final_tasks)
+                    else:
+                        # Return scheduled tasks
+                        return json.dumps(final_tasks)
                 
                 else:
                     status = "API Method not implemented. Please contact us " \

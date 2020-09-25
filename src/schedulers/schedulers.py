@@ -2,129 +2,129 @@ from collections import deque
 
 from pprint import pprint
 from src.schedulers.helpers import *
-from src.utils import task_dict_from_projects
+from src.utils import item_dict_from_projects
 
 
-def basic_scheduler(task_list, current_day, duration_remaining=8 * 60,
+def basic_scheduler(item_list, current_day, duration_remaining=8 * 60,
                     with_today=True):
     """
     Takes in flattened project tree with "reward" from some API
-    Outputs list of tasks for today
+    Outputs list of items for today
     """
 
-    # Initialize queue of tasks for today
-    today_tasks = deque()
+    # Initialize queue of items for today
+    today_items = deque()
 
-    # Initialize queue of other tasks eligible to be scheduled today
-    remaining_tasks = deque()
+    # Initialize queue of other items eligible to be scheduled today
+    remaining_items = deque()
 
     # Get information on current weekday
     current_weekday = current_day.weekday()
 
     if with_today:
-        for task in task_list:
+        for item in item_list:
     
-            # If the task is not completed and not indefinitely postponed (future)
-            if not task["completed"] and not task["future"]:
+            # If item is not completed and not indefinitely postponed (future)
+            if not item["completed"] and not item["future"]:
         
-                # If task is marked to be scheduled today by the user
-                if task["scheduled_today"]:
-                    today_tasks.append(task)
-                    duration_remaining -= task["est"]
+                # If item is marked to be scheduled today by the user
+                if item["scheduled_today"]:
+                    today_items.append(item)
+                    duration_remaining -= item["est"]
         
-                # If task is should be repetitively scheduled on today's day
-                elif is_repetitive_task(task, weekday=current_weekday):
-                    today_tasks.append(task)
-                    duration_remaining -= task["est"]
+                # If item is should be repetitively scheduled on today's day
+                elif is_repetitive_item(item, weekday=current_weekday):
+                    today_items.append(item)
+                    duration_remaining -= item["est"]
         
-                # If the task is eligible to be scheduled today
+                # If the item is eligible to be scheduled today
                 elif check_additional_scheduling(
-                        task, current_day, current_weekday):
-                    remaining_tasks.append(task)
+                        item, current_day, current_weekday):
+                    remaining_items.append(item)
         
     # From: https://stackoverflow.com/a/73050
-    sorted_by_deadline = sorted(list(remaining_tasks),
+    sorted_by_deadline = sorted(list(remaining_items),
                                 key=lambda k: k['deadline'])
-    for task in sorted_by_deadline:
+    for item in sorted_by_deadline:
         
-        # If not time left, don't add additional tasks (without #today)
+        # If no time left, don't add additional items (without #today)
         if duration_remaining == 0:
             break
 
-        # If there is enough time to schedule task
-        if task["est"] <= duration_remaining:
-            today_tasks.append(task)
-            duration_remaining -= task["est"]
+        # If there is enough time to schedule item
+        if item["est"] <= duration_remaining:
+            today_items.append(item)
+            duration_remaining -= item["est"]
 
-    return list(today_tasks)
+    return list(today_items)
 
 
-def deadline_scheduler(task_list, current_day, deadline_window=1,
+def deadline_scheduler(item_list, current_day, deadline_window=1,
                        today_duration=8 * 60, with_today=True):
-    # Tasks within deadline window are tagged with today
-    for task in task_list:
-        if task["deadline"] <= deadline_window:
-            task["today"] = True
+    # items within deadline window are tagged with today
+    for item in item_list:
+        if item["deadline"] <= deadline_window:
+            item["today"] = True
     
-    final_tasks = basic_scheduler(task_list, current_day=current_day,
+    final_items = basic_scheduler(item_list, current_day=current_day,
                                   duration_remaining=today_duration,
                                   with_today=with_today)
-    return final_tasks
+    return final_items
 
 
-def schedule_tasks_for_today(projects, ordered_tasks, duration_remaining,
+def schedule_items_for_today(projects, ordered_items, duration_remaining,
                              current_day):
     
-    # Get task dictionary from JSON tree
-    task_dict = task_dict_from_projects(projects)
+    # Get item dictionary from JSON tree
+    item_dict = item_dict_from_projects(projects)
     
-    # Initialize queue of tasks for today
-    today_tasks = deque()
+    # Initialize queue of items for today
+    today_items = deque()
     
-    # Initialize queue of other tasks eligible to be scheduled today
-    remaining_tasks = deque()
+    # Initialize queue of other items eligible to be scheduled today
+    remaining_items = deque()
     
     # Get information on current weekday
     current_weekday = current_day.weekday()
 
-    for task in ordered_tasks:
+    for item in ordered_items:
         
-        task_id = task.get_id()
-        task_item = task_dict[task_id]
+        item_id = item.get_id()
+        item_item = item_dict[item_id]
         
-        task_item["est"] = task.get_time_est()
-        task_item["val"] = task.get_optimal_reward()
+        item_item["est"] = item.get_time_est()
+        item_item["val"] = item.get_optimal_reward()
 
-        # If the task is not completed and not indefinitely postponed (future)
-        if not task_item["completed"] and not task_item["future"]:
+        # If the item is not completed and not indefinitely postponed (future)
+        if not item_item["completed"] and not item_item["future"]:
             
-            # If task is marked to be scheduled today by the user
-            if task_item["scheduled_today"]:
-                today_tasks.append(task_item)
-                duration_remaining -= task_item["est"]
+            # If item is marked to be scheduled today by the user
+            if item_item["scheduled_today"]:
+                today_items.append(item_item)
+                duration_remaining -= item_item["est"]
 
-            # If task is should be repetitively scheduled on today's day
-            elif is_repetitive_task(task_item, weekday=current_weekday):
-                today_tasks.append(task_item)
-                duration_remaining -= task_item["est"]
+            # If item is should be repetitively scheduled on today's day
+            elif is_repetitive_item(item_item, weekday=current_weekday):
+                today_items.append(item_item)
+                duration_remaining -= item_item["est"]
 
-            # If the task is eligible to be scheduled today
-            elif check_additional_scheduling(task_item,
+            # If the item is eligible to be scheduled today
+            elif check_additional_scheduling(item_item,
                                              current_day, current_weekday):
-                remaining_tasks.append(task_item)
+                remaining_items.append(item_item)
                 
-    # Schedule other tasks if time left
-    while len(remaining_tasks) > 0 and duration_remaining > 0:
+    # Schedule other items if time left
+    while len(remaining_items) > 0 and duration_remaining > 0:
 
-        # Get next task in the list
-        task_item = remaining_tasks.popleft()
+        # Get next item in the list
+        item_item = remaining_items.popleft()
         
-        # If there is enough time to schedule task
-        if task_item["est"] <= duration_remaining:
-            today_tasks.append(task_item)
-            duration_remaining -= task_item["est"]
+        # If there is enough time to schedule item
+        if item_item["est"] <= duration_remaining:
+            today_items.append(item_item)
+            duration_remaining -= item_item["est"]
         
-    today_tasks = list(today_tasks)
-    today_tasks.sort(key=lambda task: -task["val"])
+    today_items = list(today_items)
+    today_items.sort(key=lambda item: -item["val"])
     
-    return today_tasks
+    return today_items
