@@ -8,7 +8,6 @@ from pymongo import MongoClient
 from src.apis import *
 from src.schedulers.schedulers import *
 from src.utils import *
-from todolistMDP.smdp_test_generator import *
 
 CONTACT = "If you continue to encounter this issue, please contact us at " \
           "reg.experiments@tuebingen.mpg.de."
@@ -376,7 +375,7 @@ class PostResource(RESTResource):
                 timer["Reading parameters"] = time.time() - tic
                 
                 # Start timer: parsing current intentions
-                tic = time.ti
+                tic = time.time()
                 
                 # Parse current intentions
                 try:
