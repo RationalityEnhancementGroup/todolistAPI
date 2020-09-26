@@ -516,12 +516,27 @@ def first_traversal(super_item, allowed_task_time, available_time,
             # Get the last part of the HEX ID code for the task in WorkFlowy
             item_id = item["id"].split("-")[-1]
             
-            # Check whether the task has already been scheduled or completed
-            if item_id in current_intentions.keys() or \
-                    ("cp" in item.keys() and item["cp"] >= item["lm"]):
+            # Initialize item as not completed
+            item["completed"] = False
+
+            # Check whether the task has already been completed
+            if "cp" in item.keys() and item["cp"] >= item["lm"]:
                 item["completed"] = True
-            else:
-                item["completed"] = False
+            
+            # Check whether the task has already been scheduled
+            if item_id in current_intentions.keys():
+                
+                for intention in current_intentions[item_id]:
+                    
+                    # Check whether the task has been scheduled and completed
+                    done = ("d" in intention.keys() and intention["d"])
+                    
+                    # Check whether the task has been neverminded
+                    nvm = ("nvm" in intention.keys() and intention["nvm"])
+                    
+                    # Mark task as completed if it is done and not neverminded
+                    if not nvm and done:
+                        item["completed"] = True
                 
         # Append goal's name to task's name
         item["nm"] = super_item["code"] + ") " + item["nm"]
