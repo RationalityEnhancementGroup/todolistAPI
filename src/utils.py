@@ -362,12 +362,13 @@ def generate_to_do_list(projects, allowed_task_time, available_time,
                             f"Please change your goal values.")
         
         # Subtract time estimate of current intentions from available time
-        # TODO: Check whether it works properly (!)
         for tasks in current_intentions.values():
             for task in tasks:
                 
                 # If the task is not marked as completed or "nevermind"
                 if not task["d"] and not task["nvm"]:
+                    
+                    # Subtract time from today's available time
                     available_time[0] -= task["est"]
         
         # Make 0 if the number of minutes is negative
