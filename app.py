@@ -147,6 +147,7 @@ class PostResource(RESTResource):
                         if smdp_params["slack_reward"] == 0:
                             smdp_params["slack_reward"] = np.NINF
         
+                        # Scaling parameters (not used in the report)
                         if len(parameters) > 7:
                             smdp_params['scale_type'] = parameters[7]
                             smdp_params['scale_min'] = float(parameters[8])
@@ -173,17 +174,39 @@ class PostResource(RESTResource):
                         else:
                             query = None
                             
+                        # Imposed bias value for f'(s, a) = m * f(s, a) + b
                         if "bias" in jsonData.keys():
                             smdp_params["bias"] = jsonData["bias"]
         
+                        # Imposed scaling value for f'(s, a) = m * f(s, a) + b
                         if "scale" in jsonData.keys():
                             smdp_params["scale"] = jsonData["scale"]
                             
-                        if "timeFrame" in jsonData.keys():
-                            smdp_params["sub_goal_max_time"] = float(jsonData["timeFrame"])
+                        # Lower bound on the sub-goal time estimate (in minutes)
+                        if "sub_goal_min_time" in jsonData.keys():
+                            smdp_params["sub_goal_min_time"] = \
+                                float(jsonData["sub_goal_min_time"])
+                        else:
+                            smdp_params["sub_goal_min_time"] = 0
+                            
+                        # Upper bound on the sub-goal time estimate (in minutes)
+                        if "sub_goal_max_time" in jsonData.keys():
+                            smdp_params["sub_goal_max_time"] = \
+                                float(jsonData["sub_goal_max_time"])
                         else:
                             smdp_params["sub_goal_max_time"] = 0
-        
+                            
+                        # Total amount of time estimate to be shown to the user
+                        # (in minutes)
+                        if "time_frame" in jsonData.keys():
+                            smdp_params["time_frame"] = \
+                                float(jsonData["time_frame"])
+                        else:
+                            smdp_params["time_frame"] = float('inf')
+                        
+                        assert smdp_params["sub_goal_min_time"] <= \
+                               smdp_params["sub_goal_max_time"]
+                        
                         timer["Reading SMDP parameters"] = time.time() - tic
                         
                     except:

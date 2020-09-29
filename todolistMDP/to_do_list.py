@@ -304,23 +304,20 @@ class Item:
     def is_today(self):
         return self.today
     
-    def parse_sub_goals(self, low_time_est=0, high_time_est=0):
+    def parse_sub_goals(self, min_time=0, max_time=0):
         # TODO: Add comments (!)
         
-        if high_time_est == float('inf'):
+        if max_time == float('inf'):
             return self.items
         
         # If no limit has been defined
-        if high_time_est == 0:
+        if max_time == 0:
             return self.tasks
-        
-        # TODO: Write exception
-        assert low_time_est <= high_time_est
         
         sub_goals = deque()
         
         # If the time estimate fits the time limit
-        if low_time_est <= self.time_est <= high_time_est:
+        if min_time <= self.time_est <= max_time:
             
             # If it is a goal node
             if self.parent_item is None:
@@ -336,9 +333,10 @@ class Item:
             sub_goals.append(self)
         
         else:
+    
             for item in self.items:
                 item_sub_goals = item.parse_sub_goals(
-                    low_time_est=low_time_est, high_time_est=high_time_est)
+                    min_time=min_time, max_time=max_time)
                 sub_goals.extend(item_sub_goals)
             
         return sub_goals

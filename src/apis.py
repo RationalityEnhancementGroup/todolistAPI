@@ -70,10 +70,13 @@ def assign_smdp_points(projects, all_json_items, current_day, day_duration,
                           slack_reward_rate=smdp_params["slack_reward"],
                           start_time=start_time)
     timer["Run SMDP - Creating ToDoList object"] = time.time() - tic
-    
+
     # If not task-level MDP, extend "day" duration
     if smdp_params["sub_goal_max_time"] != 0:
-        day_duration = smdp_params["sub_goal_max_time"]
+        if "time_frame" in smdp_params.keys():
+            day_duration = smdp_params["time_frame"]
+        else:
+            day_duration = smdp_params["sub_goal_max_time"]
 
     """ Parse sub-goals """
     tic = time.time()
@@ -81,7 +84,8 @@ def assign_smdp_points(projects, all_json_items, current_day, day_duration,
         
         # Parse sub-goals
         sub_goals = goal.parse_sub_goals(
-            high_time_est=smdp_params["sub_goal_max_time"]
+            min_time=smdp_params["sub_goal_min_time"],
+            max_time=smdp_params["sub_goal_max_time"]
         )
         
         # Set sub-goals
