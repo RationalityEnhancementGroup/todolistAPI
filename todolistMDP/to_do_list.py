@@ -143,6 +143,9 @@ class Item:
         # Convert start state from list to tuple
         self.start_state = tuple(self.start_state)
 
+        # Set number of items
+        self.num_items = len(self.start_state)
+
         # TODO: Check whether this works with in_depth (+)
         if prepare_solve:
     
@@ -166,9 +169,6 @@ class Item:
                 else:
                     self.next_item = item
                     break
-    
-            # Set number of items
-            self.num_items = len(self.start_state)
     
             for item in self.items:
     
