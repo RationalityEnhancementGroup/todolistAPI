@@ -60,7 +60,8 @@ def run(n_trials=1, save=True):
                     ])
                     
                     # Set time frame in the JSON dict
-                    file["timeFrame"] = TIME_FRAME
+                    file["sub_goal_min_time"] = SUB_GOAL_MIN_TIME
+                    file["sub_goal_max_time"] = SUB_GOAL_MAX_TIME
 
                     # Generate complete URL
                     API_ENDPOINT = f"{SERVER}/api/smdp/mdp/{params}"
@@ -98,8 +99,9 @@ def run(n_trials=1, save=True):
                             "n_bins":           nb,
                             "n_goals":          ng,
                             "n_tasks":          nt,
+                            "n_tasks_total":    ng * nt,
                             "status":           "",
-                            "time_frame":       TIME_FRAME,
+                            "time_frame":       SUB_GOAL_MAX_TIME,
                             "timeout":          False,
                             "trial":            trial
                         }
@@ -140,17 +142,18 @@ def run(n_trials=1, save=True):
                             })
                             
                             print(output)
-                        
+                            n_timeouts += 1
+
                         # Clean-up database
-                        # DB.request_log.delete_many({"user_id": USER_ID})
-                        # DB.trees.delete_many({"user_id": USER_ID})
+                        DB.request_log.delete_many({"api_method": "speedTest"})
+                        DB.trees.delete_many({"api_method": "speedTest"})
                         
                         main_df = main_df.append(log_info,
                                                  ignore_index=True)
                         
                         if save:
                             main_df.to_csv(f"{OUTPUT_PATH}/{timestamp}_"
-                                           f"{SERVER_ABBR}_{TIME_FRAME}.csv")
+                                           f"{SERVER_ABBR}_{SUB_GOAL_MAX_TIME}.csv")
                     
                     # Print results
                     print(
@@ -174,7 +177,7 @@ if __name__ == '__main__':
     
     MODE = LOCAL
     
-    ALGORITHM = "simple_smdp"
+    ALGORITHM = "multilevel_smdp"
     
     TEST_TYPE = "smdp"
     USER_ID = "__test__"
@@ -197,7 +200,8 @@ if __name__ == '__main__':
         DB = CONN["ai4productivity"]
     
     if MODE == HEROKU:
-        URI = os.environ['MONGODB_URI']
+        # URI = os.environ['MONGODB_URI']
+        URI = "mongodb://hC2P81mItQ16:a1R9ydF01dih@ds341557.mlab.com:41557/heroku_g6l4lr9d?retryWrites=false"
         CONN = MongoClient(URI)
         DB = CONN.heroku_g6l4lr9d
         
@@ -205,10 +209,10 @@ if __name__ == '__main__':
         SERVER_ABBR = "heroku"
     
     # Clean-up database
-    # DB.request_log.delete_many({"user_id": USER_ID})
-    # DB.trees.delete_many({"user_id": USER_ID})
-    
-    # Check number of entries in the DB
+    # DB.request_log.delete_many({"api_method": "speedTest"})
+    # DB.trees.delete_many({"api_method": "speedTest"})
+    #
+    # # Check number of entries in the DB
     # print("Request log collection count:",
     #       DB.request_log.find({"user_id": USER_ID}).count())
     # print("Trees collection count:",
@@ -216,7 +220,7 @@ if __name__ == '__main__':
 
     BIAS = None
     SCALE = None
-    
+
     N_BINS = [
         1,
         2
@@ -224,42 +228,45 @@ if __name__ == '__main__':
 
     # Branching factor
     BRANCHING_FACTORS = [
-        # 1,
-        # 2,
-        # 3,
+        1,
+        2,
+        3,
         4,
-        # 5,
+        5,
+        6
     ]
 
     # Tree depths
     DEPTHS = [
-        # 1,
-        # 2,
-        # 3,
+        1,
+        2,
+        3,
         4,
         5,
         6,
-        7
+        # 7
     ]
 
-    # N_GOALS = list(range(1, 11))
+    # Number of goals
     N_GOALS = [
         1,
         2,
         3,
         4,
         5,
-        # 6,
-        # 7,
-        # 8,
-        # 9,
-        # 10
+        6,
+        7,
+        8,
+        9,
+        10
     ]
-    
+
     PLANNING_FALLACY_CONST = '15'
     
-    TIME_FRAME = '0'    # All tasks
-    # TIME_FRAME = 'inf'  # First-level sub-goals
-    
+    SUB_GOAL_MIN_TIME = '0'  # No lower time restriction
+
+    # SUB_GOAL_MAX_TIME = '0'    # All tasks
+    SUB_GOAL_MAX_TIME = 'inf'  # All first-level sub-goals
+
     # Test SMDP for different number of goals and tasks
     run(n_trials=5, save=True)

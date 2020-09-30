@@ -10,19 +10,27 @@ BRANCHING_FACTORS = [
     # 1,
     # 2,
     # 3,
-    4,
+    # 4,
     # 5,
+    # 6,
+    7,
+    # 8,
+    # 9,
+    # 10,
 ]
 
 # Tree depths
 DEPTHS = [
-    # 1,
-    # 2,
-    # 3,
+    1,
+    2,
+    3,
     4,
     5,
     6,
-    7
+    # 7,
+    # 8,
+    # 9,
+    # 10
 ]
 
 # Number of goals
@@ -32,11 +40,11 @@ N_GOALS = [
     3,
     4,
     5,
-    # 6,
-    # 7,
-    # 8,
-    # 9,
-    # 10
+    6,
+    7,
+    8,
+    9,
+    10
 ]
 
 # Today and typical working hours
