@@ -8,3 +8,4 @@ requests==2.22.0
 seaborn==0.10.0
 stopit==1.1.2
 tqdm==4.42.1
+dnspython
