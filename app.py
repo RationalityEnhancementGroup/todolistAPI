@@ -893,7 +893,7 @@ class Root(object):
 
 
 if __name__ == '__main__':
-    conn = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
+    conn = MongoClient(os.environ['DB_URI'] + "?retryWrites=false")
     db = conn.heroku_g6l4lr9d
     
     conf = {
