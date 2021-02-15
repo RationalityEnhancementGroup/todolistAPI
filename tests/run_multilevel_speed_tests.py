@@ -175,7 +175,7 @@ if __name__ == '__main__':
     HEROKU = 2
     VERBOSE = False
     
-    MODE = LOCAL
+    MODE = HEROKU
     
     ALGORITHM = "multilevel_smdp"
     
@@ -229,36 +229,36 @@ if __name__ == '__main__':
     # Branching factor
     BRANCHING_FACTORS = [
         1,
-        2,
-        3,
-        4,
-        5,
-        6
+        2
+        # 3,
+        # 4,
+        # 5,
+        # 6
     ]
 
     # Tree depths
     DEPTHS = [
         1,
-        2,
-        3,
-        4,
-        5,
-        6,
+        2
+        # 3,
+        # 4,
+        # 5,
+        # 6,
         # 7
     ]
 
     # Number of goals
     N_GOALS = [
         1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10
+        2
+        # 3,
+        # 4,
+        # 5,
+        # 6,
+        # 7,
+        # 8,
+        # 9,
+        # 10
     ]
 
     PLANNING_FALLACY_CONST = '15'

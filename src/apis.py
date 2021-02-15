@@ -62,13 +62,20 @@ def assign_smdp_points(projects, all_json_items, current_day, day_duration,
 
     """ Add them together into a single list """
     tic = time.time()
-    to_do_list = ToDoList(goals,
-                          gamma=smdp_params["gamma"],
-                          loss_rate=smdp_params["loss_rate"],
-                          num_bins=smdp_params["num_bins"],
-                          penalty_rate=smdp_params["penalty_rate"],
-                          slack_reward_rate=smdp_params["slack_reward"],
-                          start_time=start_time)
+    # to_do_list = ToDoList(goals,
+    #                       gamma=smdp_params["gamma"],
+    #                       loss_rate=smdp_params["loss_rate"],
+    #                       num_bins=smdp_params["num_bins"],
+    #                       penalty_rate=smdp_params["penalty_rate"],
+    #                       slack_reward_rate=smdp_params["slack_reward"],
+    #                       start_time=start_time)
+    to_do_list = MainToDoList(goals,
+                              gamma=smdp_params["gamma"],
+                              loss_rate=smdp_params["loss_rate"],
+                              num_bins=smdp_params["num_bins"],
+                              penalty_rate=smdp_params["penalty_rate"],
+                              slack_reward_rate=smdp_params["slack_reward"],
+                              start_time=start_time)
     timer["Run SMDP - Creating ToDoList object"] = time.time() - tic
 
     # If not task-level MDP, extend "day" duration
@@ -96,45 +103,54 @@ def assign_smdp_points(projects, all_json_items, current_day, day_duration,
 
     """ Solve to-do list """
     tic = time.time()
-    to_do_list.solve(in_depth=False, verbose=verbose)
+    # to_do_list.solve(in_depth=False, verbose=verbose)
+    solved_dict = to_do_list.solve()
     timer["Run SMDP - Solving SMDP"] = time.time() - tic
     
-    """ Compute pseudo-rewards """
-    tic = time.time()
-    prs = compute_start_state_pseudo_rewards(to_do_list,
-                                             bias=smdp_params["bias"],
-                                             scale=smdp_params["scale"])
-    timer["Run SMDP - Compute pseudo-rewards"] = time.time() - tic
-    
-    # Update bias and scale parameters
-    smdp_params["bias"] = prs["bias"]
-    smdp_params["scale"] = prs["scale"]
-    
-    # Get incentivized tasks
-    incentivized_tasks = prs["incentivized_items"]
-    
-    """ Run SMDP - Scaling rewards
-        Scale task values according to the provided scaling function """
-    tic = time.time()
+    # """ Compute pseudo-rewards """
+    # tic = time.time()
+    # prs = compute_start_state_pseudo_rewards(to_do_list,
+    #                                          bias=smdp_params["bias"],
+    #                                          scale=smdp_params["scale"])
+    # timer["Run SMDP - Compute pseudo-rewards"] = time.time() - tic
+    #
+    # # Update bias and scale parameters
+    # smdp_params["bias"] = prs["bias"]
+    # smdp_params["scale"] = prs["scale"]
+    #
+    # # Get incentivized tasks
+    # incentivized_tasks = prs["incentivized_items"]
+    #
+    # """ Run SMDP - Scaling rewards
+    #     Scale task values according to the provided scaling function """
+    # tic = time.time()
+    #
+    # if smdp_params["scale_type"] is not None and len(incentivized_tasks) > 0:
+    #     scale_optimal_rewards(incentivized_tasks,
+    #                           scale_min=smdp_params["scale_min"],
+    #                           scale_max=smdp_params["scale_max"],
+    #                           scale_type=smdp_params["scale_type"])
+    #
+    # timer["Run SMDP - Scaling rewards"] = time.time() - tic
 
-    if smdp_params["scale_type"] is not None and len(incentivized_tasks) > 0:
-        scale_optimal_rewards(incentivized_tasks,
-                              scale_min=smdp_params["scale_min"],
-                              scale_max=smdp_params["scale_max"],
-                              scale_type=smdp_params["scale_type"])
+    # From dict get tasks
+    optimal_tasks_names = {}
+    optimal_tasks = {}
+    for i in range(to_do_list.num_tasks):
+        optimal_tasks_names[to_do_list.tasks[i].description] = solved_dict[to_do_list.tasks[i].description]
+        optimal_tasks[to_do_list.tasks[i].description] = to_do_list.tasks[i]
 
-    timer["Run SMDP - Scaling rewards"] = time.time() - tic
-
-    # Convert task queue to a list
-    optimal_tasks = list(incentivized_tasks)
-    
     # Sort task in decreasing order w.r.t. optimal reward
-    optimal_tasks.sort(key=lambda task: -task.get_optimal_reward())
+    sorted_optimal_tasks_names = dict(sorted(optimal_tasks_names.items(), key=lambda item: -item[1]))
+    optimal_tasks_list = []
+    for task in sorted_optimal_tasks_names:
+        optimal_tasks_list.append(optimal_tasks[task])
+
     
     """ Run SMDP - Scheduling items """
     tic = time.time()
 
-    today_tasks = schedule_items_for_today(all_json_items, optimal_tasks,
+    today_tasks = schedule_items_for_today(all_json_items, optimal_tasks_list,
                                            current_day=current_day,
                                            duration_remaining=day_duration)
 

@@ -4,19 +4,21 @@ import json_generator.nodes as nodes
 from datetime import datetime
 from json_generator.nodes import *
 from json_generator.utils import *
+import random
+import numpy as np
 
 # Branching factor
 BRANCHING_FACTORS = [
-    # 1,
-    # 2,
-    # 3,
-    # 4,
-    # 5,
-    # 6,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
     7,
-    # 8,
-    # 9,
-    # 10,
+    8,
+    9,
+    10,
 ]
 
 # Tree depths
@@ -24,9 +26,9 @@ DEPTHS = [
     1,
     2,
     3,
-    4,
-    5,
-    6,
+    # 4,
+    # 5,
+    # 6,
     # 7,
     # 8,
     # 9,
@@ -69,7 +71,7 @@ def generate_multilevel_tree(node, branching_factor, depth, max_depth):
         return
     
     # Generate next level
-    new_nodes = node.generate_nodes(num_nodes=branching_factor, time_est_val=1)
+    new_nodes = node.generate_nodes(num_nodes=branching_factor, time_est_val=1, importance_est=list(range(1, branching_factor + 1)), intrinsic_est= list(0.1 * np.array(range(1, branching_factor + 1))), essential_list=random.choices([True], k=branching_factor))
 
     # Map generated goals
     map_nodes(node_id_dict, new_nodes)
@@ -87,7 +89,6 @@ if __name__ == '__main__':
     for n_goals in N_GOALS:
         for branching_factor in BRANCHING_FACTORS:
             for max_depth in DEPTHS:
-                
                 n_tasks = branching_factor ** max_depth
     
                 # Create path
@@ -118,7 +119,7 @@ if __name__ == '__main__':
                 # Generate goals
                 new_nodes = node_id_dict[0].generate_nodes(
                     deadline_val=deadline_val, num_nodes=n_goals,
-                    point_val=n_tasks, time_est_val=0
+                    point_val=n_tasks, time_est_val=0, importance_val=0
                 )
                 
                 # Map generated goals

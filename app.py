@@ -2,7 +2,7 @@ import json
 import os
 import stopit
 import sys
-
+import cherrypy
 from pymongo import MongoClient
 
 from src.apis import *
@@ -21,7 +21,7 @@ class RESTResource(object):
     """
     Base class for providing a RESTful interface to a resource.
     From https://stackoverflow.com/a/2831479
-    
+
     To use this class, simply derive a class from it and implement the methods
     you want to support.  The list of possible methods are:
     handle_GET
@@ -29,7 +29,7 @@ class RESTResource(object):
     handle_POST
     handle_DELETE
     """
-    
+
     @cherrypy.expose
     @cherrypy.tools.accept(media='application/json')
     def default(self, *vpath, **params):
@@ -41,7 +41,7 @@ class RESTResource(object):
             cherrypy.response.status = 405
             status = "Method not implemented."
             return json.dumps(status)
-        
+
         # Can we load the request body (json)
         try:
             rawData = cherrypy.request.body.read()
@@ -55,10 +55,10 @@ class RESTResource(object):
 
 
 class PostResource(RESTResource):
-    
+
     @cherrypy.tools.json_out()
     def handle_POST(self, jsonData, *vpath, **params):
-        
+
         # Start timer
         main_tic = time.time()
 
@@ -69,12 +69,12 @@ class PostResource(RESTResource):
             log_dict = {
                 "start_time": datetime.now(),
             }
-            
+
             # Initialize dictionary that inspects time taken by each method
             timer = dict()
 
             try:
-                
+
                 # Load fixed time if provided
                 if "time" in jsonData.keys():
                     user_datetime = datetime.strptime(jsonData["time"],
@@ -84,7 +84,7 @@ class PostResource(RESTResource):
 
                 # Start timer: reading parameters
                 tic = time.time()
-                
+
                 # Compulsory parameters
                 method = vpath[0]
                 scheduler = vpath[1]
@@ -97,16 +97,16 @@ class PostResource(RESTResource):
                 max_goal_value_per_duration = vpath[8]
                 points_per_hour = vpath[9]
                 rounding = vpath[10]  # Number of decimals
-                
+
                 # tree = vpath[-3]  # Dummy parameter
                 user_key = vpath[-2]
                 api_method = vpath[-1]
-                
+
                 # Additional parameters (the order of URL input matters!)
                 # Casting to other data types is done within the functions that
                 # use these parameters
                 parameters = [item for item in vpath[11:-3]]
-
+                print(f'parameters: {parameters}')
                 # Is there a user key
                 try:
                     log_dict["user_id"] = jsonData["userkey"]
@@ -114,7 +114,7 @@ class PostResource(RESTResource):
                     status = "We encountered a problem with the inputs " \
                              "from Workflowy, please try again."
                     store_log(db.request_log, log_dict, status=status)
-    
+
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
 
@@ -122,13 +122,13 @@ class PostResource(RESTResource):
                 smdp_params = dict({
                     "planning_fallacy_const": 1
                 })
-                
+
                 """ Reading SMDP parameters """
                 if method == "smdp":
-                    
+
                     try:
                         tic = time.time()
-        
+
                         smdp_params.update({
                             "choice_mode":            parameters[0],
                             "gamma":                  float(parameters[1]),
@@ -138,21 +138,21 @@ class PostResource(RESTResource):
                             "slack_reward":           float(parameters[5]),
                             "penalty_rate":           float(parameters[6]),
                             # "sub_goal_max_time":      float(parameters[7]),
-            
+
                             'scale_type':             None,
                             'scale_min':              None,
                             'scale_max':              None
                         })
-                        
+
                         if smdp_params["slack_reward"] == 0:
                             smdp_params["slack_reward"] = np.NINF
-        
+
                         # Scaling parameters (not used in the report)
                         if len(parameters) > 7:
                             smdp_params['scale_type'] = parameters[7]
                             smdp_params['scale_min'] = float(parameters[8])
                             smdp_params['scale_max'] = float(parameters[9])
-            
+
                             if smdp_params["scale_min"] == float("inf"):
                                 smdp_params["scale_min"] = None
                             if smdp_params["scale_max"] == float("inf"):
@@ -173,29 +173,29 @@ class PostResource(RESTResource):
                             smdp_params["scale"] = query["scale"]
                         else:
                             query = None
-                            
+
                         # Imposed bias value for f'(s, a) = m * f(s, a) + b
                         if "bias" in jsonData.keys():
                             smdp_params["bias"] = jsonData["bias"]
-        
+
                         # Imposed scaling value for f'(s, a) = m * f(s, a) + b
                         if "scale" in jsonData.keys():
                             smdp_params["scale"] = jsonData["scale"]
-                            
+
                         # Lower bound on the sub-goal time estimate (in minutes)
                         if "sub_goal_min_time" in jsonData.keys():
                             smdp_params["sub_goal_min_time"] = \
                                 float(jsonData["sub_goal_min_time"])
                         else:
                             smdp_params["sub_goal_min_time"] = 0
-                            
+
                         # Upper bound on the sub-goal time estimate (in minutes)
                         if "sub_goal_max_time" in jsonData.keys():
                             smdp_params["sub_goal_max_time"] = \
                                 float(jsonData["sub_goal_max_time"])
                         else:
                             smdp_params["sub_goal_max_time"] = 0
-                            
+
                         # Total amount of time estimate to be shown to the user
                         # (in minutes)
                         if "time_frame" in jsonData.keys():
@@ -203,12 +203,12 @@ class PostResource(RESTResource):
                                 float(jsonData["time_frame"])
                         else:
                             smdp_params["time_frame"] = float('inf')
-                        
+
                         assert smdp_params["sub_goal_min_time"] <= \
                                smdp_params["sub_goal_max_time"]
-                        
+
                         timer["Reading SMDP parameters"] = time.time() - tic
-                        
+
                     except:
                         status = "There was an issue with the API input " \
                                  "(reading SMDP parameters) Please contact " \
@@ -226,7 +226,7 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
-                
+
                 # Last two input parameters
                 try:
                     round_param = int(rounding)
@@ -237,7 +237,7 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
-                
+
                 try:
                     points_per_hour = (
                         points_per_hour.lower() in ["true", "1", "t", "yes"]
@@ -249,7 +249,7 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
-                
+
                 # Update time with time zone
                 user_datetime += timedelta(minutes=time_zone)
                 log_dict["user_datetime"] = user_datetime
@@ -267,14 +267,14 @@ class PostResource(RESTResource):
                     "scheduler": scheduler,
                     "time_zone": time_zone,
                     "user_key": user_key,
-                    
+
                     "min_sum_of_goal_values": min_sum_of_goal_values,
                     "max_sum_of_goal_values": max_sum_of_goal_values,
                     "min_goal_value_per_duration":
                         min_goal_value_per_duration,
                     "max_goal_value_per_duration":
                         max_goal_value_per_duration,
-                    
+
                     # Must be provided on each store (if needed)
                     "lm": None,
                     "mixing_parameter": None,
@@ -282,7 +282,7 @@ class PostResource(RESTResource):
                     "timestamp": None,
                     "user_id": None,
                 })
-                
+
                 # Parse default time estimation (in minutes)
                 try:
                     default_time_est = int(default_time_est)
@@ -318,7 +318,7 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
-                
+
                 try:
                     min_sum_of_goal_values = float(min_sum_of_goal_values)
                     max_sum_of_goal_values = float(max_sum_of_goal_values)
@@ -326,7 +326,7 @@ class PostResource(RESTResource):
                         float(min_goal_value_per_duration)
                     max_goal_value_per_duration = \
                         float(max_goal_value_per_duration)
-                    
+
                     log_dict["min_sum_of_goal_values"] = min_sum_of_goal_values
                     log_dict["max_sum_of_goal_values"] = max_sum_of_goal_values
                     log_dict["min_goal_value_per_duration"] = \
@@ -349,7 +349,7 @@ class PostResource(RESTResource):
                     status = "Something is wrong with the hours in " \
                              "HOURS_TODAY. Please take a look and try again."
                     store_log(db.request_log, log_dict, status=status)
-    
+
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
 
@@ -362,7 +362,7 @@ class PostResource(RESTResource):
                     status = "Something is wrong with the hours in " \
                              "HOURS_TYPICAL. Please take a look and try again."
                     store_log(db.request_log, log_dict, status=status)
-    
+
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
 
@@ -370,7 +370,7 @@ class PostResource(RESTResource):
                 if not (0 < typical_hours <= 24):
                     store_log(db.request_log, log_dict,
                               status="Invalid typical hours value.")
-    
+
                     status = "Please edit the hours you typically work on Workflowy. " \
                              "The hours you work should be between 0 and 24."
                     cherrypy.response.status = 403
@@ -381,25 +381,25 @@ class PostResource(RESTResource):
                 if not (0 <= today_hours <= np.PINF):
                     store_log(db.request_log, log_dict,
                               status="Invalid today hours value.")
-    
+
                     status = "Please edit the hours you can work today on Workflowy. " \
                              "The hours you work should be between 0 and 24."
                     cherrypy.response.status = 403
                     return json.dumps(status)
-                
+
                 # Initialize vector of available time (0: today; 1-7: Mon-Sun)
                 available_time =\
                     [today_hours * 60] + [typical_hours * 60 for _ in range(7)]
 
                 # Update last modified
                 log_dict["lm"] = jsonData["updated"]
-                
+
                 # Store time: reading parameters
                 timer["Reading parameters"] = time.time() - tic
-                
+
                 # Start timer: parsing current intentions
                 tic = time.time()
-                
+
                 # Parse current intentions
                 try:
                     current_intentions = parse_current_intentions_list(
@@ -407,14 +407,14 @@ class PostResource(RESTResource):
                 except:
                     status = "An error related to the current " \
                              "intentions has occurred."
-                    
+
                     # Save the data if there was a change, removing nm fields so
                     # that we keep participant data anonymous
                     store_log(db.request_log, log_dict, status=status)
 
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
-                
+
                 # Store current intentions
                 log_dict["current_intentions"] = current_intentions
 
@@ -442,7 +442,7 @@ class PostResource(RESTResource):
                     )
 
                 except Exception as error:
-                    
+
                     status = str(error)
 
                     # Remove personal data
@@ -458,10 +458,10 @@ class PostResource(RESTResource):
 
                 today_minutes = available_time[0]
                 typical_minutes = available_time[1:]
-                
+
                 # Store anonymized to-do list in database
                 log_dict["tree"] = delete_sensitive_data(projects)
-                
+
                 # Store today & typical daily minutes in database
                 log_dict["today_minutes"] = today_minutes
                 log_dict["typical_daily_minutes"] = typical_minutes
@@ -477,98 +477,98 @@ class PostResource(RESTResource):
                     # Convert internal tree structure to items
                     flatten_projects = \
                         flatten_intentions(deepcopy(projects))
-                    
+
                     # Anonymize and save flattened tree
                     log_dict["flatten_tree"] = \
                         delete_sensitive_data(flatten_projects)
-                    
+
                     # Discard internal tree structure
                     leaf_projects = get_leaf_intentions(deepcopy(projects))
-                    
+
                     # Anonymize and save tree with leaves
                     log_dict["leaf_tree"] = \
                         delete_sensitive_data(projects)
-                    
+
                 except:
                     status = "Something is wrong with your inputted " \
                              "goals and tasks. Please take a look at your " \
                              "Workflowy inputs and then try again."
-                    
+
                     # Save the data if there was a change, removing nm fields so
                     # that we keep participant data anonymous
                     store_log(db.request_log, log_dict, status=status)
-                    
+
                     cherrypy.response.status = 403
                     return json.dumps(status + " " + CONTACT)
-                
+
                 # Store time: parsing hierarchical structure
                 timer["Parsing hierarchical structure"] = time.time() - tic
-                
+
                 # Start timer: storing parsed to-do list in database
                 tic = time.time()
 
                 # Save the data if there was a change, removing nm fields so
                 # that we keep participant data anonymous
                 store_log(db.request_log, log_dict, status="Save parsed tree")
-                
+
                 # Stop timer: storing parsed to-do list in database
                 timer["Storing parsed to-do list in database"] = time.time() - tic
-                
+
                 if method == "constant":
-                    
+
                     # Parse default task value
                     try:
                         default_task_value = float(parameters[0])
-                        
+
                     except:
                         status = "Error while parsing default task value. "
-                        
+
                         # Store error in DB
                         store_log(db.request_log, log_dict, status=status)
-    
+
                         cherrypy.response.status = 403
                         return json.dumps(status + CONTACT)
-                    
+
                     # Assign constant points
                     try:
                         projects = assign_constant_points(leaf_projects,
                                                           default_task_value)
                     except:
                         status = "Problem while assigning points. "
-                        
+
                         # Store error in DB
                         store_log(db.request_log, log_dict, status=status)
 
                         cherrypy.response.status = 403
                         return json.dumps(status + CONTACT)
-                    
+
                 elif method == "length":
-                    
+
                     # Assign random points
                     try:
                         projects = assign_length_points(leaf_projects)
-                        
+
                     except:
                         status = "Problem while assigning points. "
-        
+
                         # Store error in DB
                         store_log(db.request_log, log_dict, status=status)
-        
+
                         cherrypy.response.status = 403
                         return json.dumps(status + CONTACT)
 
                 elif method == "random":
-                    
+
                     # Parse distribution name
                     try:
                         distribution = parameters[0].lower()
-                        
+
                     except:
                         status = "Error while parsing distribution name. "
-    
+
                         # Store error in DB
                         store_log(db.request_log, log_dict, status=status)
-    
+
                         cherrypy.response.status = 403
                         return json.dumps(status + CONTACT)
 
@@ -576,13 +576,13 @@ class PostResource(RESTResource):
                     try:
                         distribution_params = [float(param)
                                                for param in parameters[1:]]
-                        
+
                     except:
                         status = "Error while parsing distribution parameters. "
-    
+
                         # Store error in DB
                         store_log(db.request_log, log_dict, status=status)
-    
+
                         cherrypy.response.status = 403
                         return json.dumps(status + CONTACT)
 
@@ -590,33 +590,33 @@ class PostResource(RESTResource):
                         distribution = np.random.uniform
                     if distribution == 'normal':
                         distribution = np.random.normal
-                        
+
                     # Assign random points
                     try:
                         projects = assign_random_points(
                             leaf_projects, distribution_fxn=distribution,
                             fxn_args=distribution_params)
-                        
+
                     except:
                         status = "Problem while assigning points. "
-    
+
                         # Store error in DB
                         store_log(db.request_log, log_dict, status=status)
 
                         cherrypy.response.status = 403
                         return json.dumps(status + CONTACT)
-                
+
                 elif method == "smdp":
-    
+
                     tic = time.time()
-                    
+
                     final_tasks = assign_smdp_points(
                         projects, current_day=user_datetime, timer=timer,
                         day_duration=today_minutes,
                         all_json_items=flatten_projects,
                         smdp_params=smdp_params
                     )
-                    
+
                     # Add database entry if one does not exist
                     if query is None:
                         db.pr_transform.insert_one({
@@ -626,7 +626,7 @@ class PostResource(RESTResource):
                         })
 
                     if api_method == "updateTransform":
-                        
+
                         # Update bias and scaling parameters
                         if query is not None:
                             db.pr_transform.update_one(
@@ -647,32 +647,42 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
-                
+
                 # Start timer: Anonymizing data
                 tic = time.time()
-                
+
                 # Update values in the tree
                 log_dict["tree"] = delete_sensitive_data(projects)
 
                 # Store time: Anonymizing date
                 timer["Anonymize data"] = time.time() - tic
 
+                print("aaa")
+
+                print(api_method, scheduler)
+
+                print(scheduler == "basic")
+
+
                 # Schedule tasks for today
                 if scheduler == "basic":
                     try:
                         # Get task list from the tree
                         task_list = task_list_from_projects(projects)
-    
+
+                        print("bbb")
+
                         final_tasks = \
                             basic_scheduler(task_list,
                                             current_day=user_datetime,
                                             duration_remaining=today_minutes)
                     except Exception as error:
+                        print("lol")
                         status = str(error) + ' '
-    
+
                         # Store error in DB
                         store_log(db.request_log, log_dict, status=status)
-    
+
                         cherrypy.response.status = 403
                         return json.dumps(status + CONTACT)
 
@@ -680,7 +690,7 @@ class PostResource(RESTResource):
                     try:
                         # Get task list from the tree
                         task_list = task_list_from_projects(projects)
-    
+
                         final_tasks = \
                             deadline_scheduler(task_list,
                                                current_day=user_datetime,
@@ -702,12 +712,12 @@ class PostResource(RESTResource):
                     store_log(db.request_log, log_dict, status=status)
                     cherrypy.response.status = 403
                     return json.dumps(status)
-                
+
                 # Start timer: Storing incentivized tree in database
                 tic = time.time()
-                
+
                 store_log(db.trees, log_dict, status="Save tree!")
-                
+
                 # Store time: Storing incentivized tree in database
                 timer["Storing incentivized tree in database"] = time.time() - tic
 
@@ -715,7 +725,7 @@ class PostResource(RESTResource):
                     cherrypy.response.status = 204
                     store_log(db.request_log, log_dict, status="Update tree")
                     return None
-                
+
                 elif api_method in \
                         {"getTasksForToday", "speedTest", "updateTransform"}:
                     if len(final_tasks) == 0:
@@ -729,23 +739,24 @@ class PostResource(RESTResource):
                         cherrypy.response.status = 403
                         return json.dumps(status + " " + CONTACT)
                     try:
-                        
+
                         # Start timer: Storing human-readable output
                         tic = time.time()
-                        
+
                         final_tasks = get_final_output(
                             final_tasks, round_param, points_per_hour,
                             user_datetime=user_datetime)
-                        
+
                         # Store time: Storing human-readable output
                         timer["Storing human-readable output"] = time.time() - tic
-                        
+
                     except NameError as error:
+
                         store_log(db.request_log, log_dict,
                                   status="Task has no name!")
                         cherrypy.response.status = 403
                         return json.dumps(str(error) + " " + CONTACT)
-                    
+
                     except:
                         status = "Error while preparing final output."
                         store_log(db.request_log, log_dict, status=status)
@@ -759,22 +770,22 @@ class PostResource(RESTResource):
 
                     # Store time: Storing successful pull in database
                     timer["Storing successful pull in database"] = time.time() - tic
-                    
+
                     # print("\n===== Optimal items =====")
                     # for task in final_tasks:
                     #     # print(f"{task['nm']} & {task['val']} \\\\")
                     #     print(f"{task['nm']:100s} | {task['val']}")
                     # print()
-                    
+
                     if api_method == "speedTest":
-                        
+
                         status = f"The procedure took " \
                                  f"{time.time() - main_tic:.3f} seconds!"
-    
+
                         # Stop timer: Complete SMDP procedure
                         timer["Complete SMDP procedure"] = \
                             time.time() - main_tic
-    
+
                         return json.dumps({
                             "status": status,
                             "timer":  timer
@@ -783,23 +794,23 @@ class PostResource(RESTResource):
                     else:
                         # Return scheduled tasks
                         return json.dumps(final_tasks)
-                
+
                 else:
                     status = "API Method not implemented. Please contact us " \
                              "at reg.experiments@tuebingen.mpg.de."
                     store_log(db.request_log, log_dict, status=status)
-                    
+
                     cherrypy.response.status = 405
                     return json.dumps(status)
 
             except stopit.utils.TimeoutException:
                 return json.dumps("Timeout!")
-                
+
             except Exception as error:
                 status = "The API has encountered an error, please try again."
-                
+
                 # status = str(error)
-                
+
                 # Store anonymous error info in DB collection
                 anonymous_error = parse_error_info(str(error))
                 try:
@@ -812,14 +823,14 @@ class PostResource(RESTResource):
                          "status":
                              status + " " +
                              "Exception while storing anonymous error info."})
-                
+
                 cherrypy.response.status = 403
                 return json.dumps(status + " " + CONTACT)
 
 
 class Root(object):
     api = PostResource()
-    
+
     @cherrypy.expose
     def index(self):
         return "Server is up!"
@@ -827,9 +838,13 @@ class Root(object):
 
 
 if __name__ == '__main__':
-    conn = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
-    db = conn.heroku_g6l4lr9d
-    
+    uri = "mongodb://ai4productivity:ai4productivity@127.0.0.1/ai4productivity"
+    client = MongoClient(uri)
+    db = client["ai4productivity"]
+    collection = db["ai4productivity"]
+    # conn = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
+    # db = conn.heroku_g6l4lr9d
+
     conf = {
         '/':       {
             # 'tools.sessions.on': True,
@@ -842,7 +857,7 @@ if __name__ == '__main__':
             'tools.staticdir.index': 'urlgenerator.html'
         }
     }
-    
+
     cherrypy.config.update({'server.socket_host': '0.0.0.0'})
     cherrypy.config.update(
         {'server.socket_port': int(os.environ.get('PORT', '6789'))})

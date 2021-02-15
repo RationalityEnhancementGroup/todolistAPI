@@ -1,4 +1,4 @@
-import cherrypy
+
 import numpy as np
 import re
 
@@ -20,7 +20,12 @@ MINUTES_REGEX = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:minute)s?\)?(?:|[^\da-z.]|$)"
 OUTPUT_GOAL_CODE_REGEX = fr"{GOAL_CODES}\)"
 TIME_EST_REGEX = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
 TOTAL_VALUE_REGEX = r"(?:^||>)\(?==\s*((-|)\d+)\)?(?:|\b|$)"
-
+IMP_REGEX = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
+IMPORTANCE_REGEX = fr"IMPORTANCE:\s*{IMP_REGEX}"
+ESS_REGEX = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
+ESSENTIAL_REGEX = fr"ESSENTIAL:\s*{ESS_REGEX}"
+INTRINSIC_REGEX = r"(?:^||>)\(?~~\s*\d+[\.\,]*\d*\s*(?:((h(?:our|r)?)|(m(?:in)?)))s?\)?(?:|[^\da-z.]|$)"
+INTRINSIC_REWARD_REGEX = fr"IMPORTANCE:\s*{INTRINSIC_REGEX}"
 DEADLINE_YEAR_LIMIT = 2100
 LARGE_NUMBER = 1000000
 WEEKDAYS = {
@@ -152,7 +157,14 @@ def get_final_output(item_list, round_param, points_per_hour, user_datetime):
         
         # Remove time estimation
         item_name = re.sub(TIME_EST_REGEX, "", item_name, re.IGNORECASE)
-        
+
+        # Remove importance
+        item_name = re.sub(IMPORTANCE_REGEX, "", item_name, re.IGNORECASE)
+
+        # Remove essential
+        item_name = re.sub(ESSENTIAL_REGEX, "", item_name, re.IGNORECASE)
+
+        print(f'item: {item}')
         # Remove tags
         for tag in TAGS:
             tag_regex = get_tag_regex(tag)
@@ -195,7 +207,7 @@ def get_final_output(item_list, round_param, points_per_hour, user_datetime):
         
         return item_name
     
-    keys_needed = ["id", "nm", "lm", "parentId", "pcp", "est", "val"]
+    keys_needed = ["id", "nm", "lm", "parentId", "pcp", "est", "val", "imp"]
     
     # for now only look at first dictionary
     current_keys = set(item_list[0].keys())
@@ -203,7 +215,7 @@ def get_final_output(item_list, round_param, points_per_hour, user_datetime):
     missing_keys = list(set(keys_needed) - current_keys)
     
     for item in item_list:
-        
+
         item["nm"] = get_human_readable_name(item)
         
         if points_per_hour:
@@ -265,7 +277,6 @@ def get_wf_item_id(item_name):
         return split[-1]  # Return the WorkFlowy ID
     else:
         return "__no_wf_id__"  # Return dummy WorkFlowy ID
-
 
 def generate_to_do_list(projects, allowed_task_time, available_time,
                         current_intentions, default_deadline, default_time_est,
@@ -387,7 +398,7 @@ def generate_to_do_list(projects, allowed_task_time, available_time,
         """
         # Extract goal deadline
         goal_deadline = re.search(DEADLINE_REGEX, goal["nm"], re.IGNORECASE)
-        
+        goal_time = re.search(TIME_EST_REGEX, goal["nm"], re.IGNORECASE)
         # Process goal deadline and check whether the value is valid
         try:
             goal["deadline"], goal["deadline_datetime"] = \
@@ -462,7 +473,8 @@ def first_traversal(super_item, allowed_task_time, available_time,
                 item["est"] = \
                     process_time_est(item["nm"],
                                      allowed_task_time, default_time_est)
-                
+
+
                 # Apply planning fallacy
                 item["est"] = int(ceil(item["est"] * planning_fallacy_const))
             
@@ -555,8 +567,10 @@ def second_traversal(super_item, today_minutes, typical_minutes, user_datetime):
     
     for item in super_item["ch"]:
     
-        # Assign points per hour
+        # Assign points per hour // Default
         item["pph"] = super_item["value"] / super_item["est"] * 60
+        # Assign points per hour // Default
+        item["pph"] = super_item["value"] * super_item["imp"] / super_item["est"] * 60
         
         """ Process deadline """
         # Get item deadline (if provided)
@@ -922,17 +936,18 @@ def tree_to_old_structure(projects, params):
     input: parsed tree
     output: structure that can be inputted to old project code
     """
+
     def generate_sub_tree(items, goal_item: Item, parent_item=None):
 
         # Initialize list of items
         item_list = deque()
-    
+
         for item_dict in items:
-            
+
             # Initialize item
             item = Item(
                 description=item_dict["nm"],
-                
+
                 completed=item_dict["completed"],
                 deadline=item_dict["deadline"],
                 deadline_datetime=item_dict["deadline_datetime"],
@@ -940,33 +955,36 @@ def tree_to_old_structure(projects, params):
                 parent_item=parent_item,
                 time_est=item_dict["est"],
                 today=item_dict["scheduled_today"],
-                value=item_dict["value"]
+                value=item_dict["value"],
+                importance=item_dict["importance"],
+                intrinsic_value = item_dict["intrinsic_reward"],
+                essential = item_dict["essential"]
             )
 
             # If it is an intermediate node
             if "ch" in item_dict.keys() and len(item_dict["ch"]) > 0:
-                
+
                 # Generate list of sub-items
                 sub_items = generate_sub_tree(
                     items=item_dict["ch"], goal_item=goal_item, parent_item=item
                 )
-                
+
                 # Add list of sub-items to the parent item
                 item.add_items(sub_items)
-                
+
             # If it is a leaf node (i.e. task)
             else:
-                
+
                 # Add reference from the goal node to the leaf/task node
                 goal_item.append_task(item)
-                
+
                 # If task has to be executed today
                 if item.is_today() and not item.is_completed():
                     goal_item.today_items.add(item)
 
             # Compute potential time estimates
             item.compute_binning(num_bins=params["num_bins"])
-            
+
             # Add reference to goal
             item.add_goal(goal_item)
 
@@ -974,16 +992,16 @@ def tree_to_old_structure(projects, params):
             item_list.append(item)
 
         return item_list
-    
+
     # Initialize list of goals
     goals = deque()
-    
+
     for goal in projects:
-    
+
         # Initialize goal
         goal_item = Item(
             description=goal["nm"],
-            
+
             completed=goal["completed"],
             deadline=goal["deadline"],
             deadline_datetime=goal["deadline_datetime"],
@@ -991,26 +1009,27 @@ def tree_to_old_structure(projects, params):
             time_est=goal["est"],
             value=goal["value"]
         )
-        
+
         # Initialize queue of tasks
         goal_item.init_task_list()
-        
+
         # Add list of sub-items
         if "ch" in goal.keys() and len(goal["ch"]) > 0:
             # Generate list of sub-items
             sub_items = generate_sub_tree(items=goal["ch"], goal_item=goal_item,
                                           parent_item=goal_item)
-            
+
             # Add list of sub-items to the parent item
             goal_item.add_items(sub_items)
 
         # Convert queue of tasks to list
         goal_item.convert_task_list()
-        
+
         # Sort task list
         goal_item.sort_task_list()
-            
+
         # Create new goal and add it to the goal list
         goals.append(goal_item)
-        
+
     return list(goals)
+
