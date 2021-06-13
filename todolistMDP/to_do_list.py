@@ -71,6 +71,7 @@ class Item:
 
         # Initialize expected reward
         self.expected_rewards = []
+        self.immediate_rewards = []
         self.optimal_reward = 0
 
         # Initialize dictionary of maximum future Q-values
@@ -83,7 +84,7 @@ class Item:
             self.add_children(children)
             self.time_est = sum([child.time_est for child in self.children])
 
-        print(f'Item: {self.description} Time Estimate: {self.time_est}')
+        # print(f'Item: {self.description} Time Estimate: {self.time_est}')
 
 
     def add_children(self, children):
@@ -118,7 +119,7 @@ class Item:
             # Set child as completed in the start state
             if child.is_completed():
                 self.start_state[idx] = 1
-                self.done_children.add(child)
+                self.done_children.append(child)
 
             # Add child
             self.children.append(child)
@@ -179,6 +180,10 @@ class Item:
         # print(f'In set_expected_reward {self.description}')
         self.expected_rewards.append(expected_reward)
 
+    def set_immediate_reward(self, immediate_reward):
+        # print(f'In set_expected_reward {self.description}')
+        self.immediate_rewards.append(immediate_reward)
+
     def get_future_q(self, t=None):
         if t is not None:
             return self.future_q[t]
@@ -193,6 +198,9 @@ class Item:
 
     def get_expected_reward(self):
         return np.mean(self.expected_rewards)
+
+    def get_immediate_reward(self):
+        return np.mean(self.immediate_rewards)
 
     def get_intrinsic_reward(self):
         return self.intrinsic_reward
@@ -449,10 +457,10 @@ class MDP:
         return value * (sum_importance / sum(importance_list))
 
     def solve(self, start_time=None, verbose=False):
-        print("Solving for following items")
-        for item in self.items:
-            print(f'{item.description}, Imp: {item.importance}, Int: {item.intrinsic_reward}, Ess: {item.essential}')
-        print(f'Value: {self.value}')
+        # print("Solving for following items")
+        # for item in self.items:
+        #     print(f'{item.description}, Imp: {item.importance}, Int: {item.intrinsic_reward}, Ess: {item.essential}')
+        # print(f'Value: {self.value}')
 
         def solve_next_item(curr_state, verbose=False):
             """
@@ -466,7 +474,7 @@ class MDP:
             """
             s = curr_state["s"]
             t = curr_state["t"]
-            print(f'Called solve_next_item: s: {s}, t: {t}')
+            # print(f'Called solve_next_item: s: {s}, t: {t}')
             if verbose:
                 print(
                     f"Current state: {s} | "
@@ -490,6 +498,8 @@ class MDP:
 
             for item_idx in range(self.num_items):
                 # If the goal with index goal_idx is not completed
+                print(f'In solve_next_item: s: {s}')
+                print(f'Item idx: {item_idx}')
                 if s[item_idx] == 0:
                     # print(f'MDP state: {s}, next item: {item_idx}')
                     # Increase total-computations counter
@@ -532,6 +542,7 @@ class MDP:
                         exp_task_reward = 0
                         exp_total_reward = 0
                         beta = 0
+                        # print(f'Time Transitions; {time_transitions}')
                         for time_est, prob_t_ in time_transitions:
 
                             # Increase total-computations counter
@@ -546,14 +557,14 @@ class MDP:
 
                             # Get cumulative discount w.r.t. item duration
                             cum_discount = self.get_cum_discount(time_est)
-                            print(f'State: {s}, s_: {s_}' )
-                            print(f'Time_est: {time_est}, Cum_discount: {cum_discount}, Loss_rate: {self.loss_rate}')
+                            # print(f'State: {s}, s_: {s_}' )
+                            # print(f'Time_est: {time_est}, Cum_discount: {cum_discount}, Loss_rate: {self.loss_rate}')
                             # print(f'Penalty Rate: {self.penalty_rate}"')
                             # Calculate total loss for next action (immediate "reward")
                             r = MDP.compute_total_loss(
                                 cum_discount=cum_discount, loss_rate=self.loss_rate
                             )
-                            print(f'Just Loss Term: {r}')
+                            # print(f'Just Loss Term: {r}')
                             # Add deadline to the missed deadlines if not attained
                             if next_item.is_deadline_missed(t_):
                                 # print(f'Item: {next_item.description} Deadline Missed')
@@ -566,8 +577,9 @@ class MDP:
                                 # print(f'Beta: {beta}')
                                 # print(prob_t_, total_penalty)
                             # # Original Code
+                            immediate_reward = self.get_reward(action= a, s_=s_, value=self.value, importance_list=self.importance_list, int_r_list=self.int_r_list,  beta=beta, discount=1)
                             r += self.get_reward(action= a, s_=s_, value=self.value, importance_list=self.importance_list, int_r_list=self.int_r_list,  beta=beta, discount=1)
-                            print(f'Adding reward: {self.get_reward(action= a, s_=s_, value=self.value, importance_list=self.importance_list, int_r_list=self.int_r_list,  beta=beta, discount=1)}, Net: {r}')
+                            # print(f'Adding reward: {self.get_reward(action= a, s_=s_, value=self.value, importance_list=self.importance_list, int_r_list=self.int_r_list,  beta=beta, discount=1)}, Net: {r}')
                             # #  DEBUG Mode
                             # if next_item.is_deadline_missed(t_):
                             #     print(f'State: {s} action: {a} Deadline Missed.')
@@ -577,7 +589,7 @@ class MDP:
 
                             # Update expected reward for (state, time, action)
                             exp_task_reward += prob_t_ * r
-                            print(f'Multiplying with prob_t: {prob_t_}: Exp_task_reward: {exp_task_reward}')
+                            # print(f'Multiplying with prob_t: {prob_t_}: Exp_task_reward: {exp_task_reward}')
 
                             # Generate next  state
                             state_dict = {
@@ -589,7 +601,7 @@ class MDP:
                             solve_next_item(state_dict, verbose=verbose)
 
                             # Get best action and its respective for (state', time')
-                            print(f'For s_: {s_}, t_: {t_}, Qs: {self.Q[s_][t_]}')
+                            # print(f'For s_: {s_}, t_: {t_}, Qs: {self.Q[s_][t_]}')
                             a_, r_ = MDP.max_from_dict(self.Q[s_][t_])
 
                             # Store policy for the next (state, time) pair
@@ -605,10 +617,10 @@ class MDP:
 
                             # - Multiple time-step discount (SMDP)
                             total_reward = r + self.get_discount(time_est) * r_
-                            print(f'r: {r} + r_: {r_} * {self.get_discount(time_est)} ')
-                            print(f'Total Reward: {total_reward}')
+                            # print(f'r: {r} + r_: {r_} * {self.get_discount(time_est)} ')
+                            # print(f'Total Reward: {total_reward}')
                             exp_total_reward += prob_t_ * total_reward
-                            print(f'Exp_total_reward: {exp_total_reward}')
+                            # print(f'Exp_total_reward: {exp_total_reward}')
 
                         # TODO: Probability of transition to next state
                         prob = 1
@@ -617,17 +629,18 @@ class MDP:
                         self.Q[s][t][a] += prob * exp_total_reward
                         self.R[s][t][a] += prob * exp_task_reward
 
-                        if s == tuple(0 for _ in range(self.num_items)):
+                        if s == self.initial_state:
                             # print(f'Setting Item: {next_item.description} expected reward; {exp_task_reward}')
                             # print(f'In solve_next_child: state: {s}')
                             # print(f'{next_child.description}: exp_reward: {exp_task_reward}')
                             next_item.set_expected_reward(exp_task_reward)
+                            next_item.set_immediate_reward(immediate_reward)
 
 
-                # Store initial-state Q-value (if initial time applies)
-                if t == self.start_time:
-                    print(f'Storing Q-value of {next_item.description}: {self.Q[s][t][a]}')
-                    self.Q_s0[next_item] = self.Q[s][t][a]
+                    # Store initial-state Q-value (if initial time applies)
+                    if t == self.start_time:
+                        # print(f'Storing Q-value of {next_item.description}: {self.Q[s][t][a]}')
+                        self.Q_s0[next_item] = self.Q[s][t][a]
 
             # ===== Terminal state ===== (All children visited)
             if next_item is None:
@@ -638,8 +651,18 @@ class MDP:
                 self.R[s][t].setdefault(None, 0)
 
         # Initialize start state & time
+        # print(f'self.start_time: {self.start_time}')
         t = self.start_time if start_time is None else start_time
-        s = tuple(0 for _ in range(self.num_items))
+        s = [] #tuple(0 for _ in range(self.num_items))
+        for check_item in self.items:
+            if check_item.check_completed():
+                s.append(1)
+            else:
+                s.append(0)
+        s = tuple(s)
+        print(f'Initial s: {s}')
+        self.initial_state = s
+
         curr_state = {
             "s": s,
             "t": t
@@ -653,7 +676,6 @@ class MDP:
 
         # Store policy for the next (state, time) pair
         self.P[s][t] = a
-
         return {
             "P": self.P,
             "Q": self.Q,
@@ -671,7 +693,7 @@ class MDP:
         :param flag: if True: then only apply scale and bias.
         :return:
         '''
-        print(f'****** In compute_start_state_pseudo_rewards ******')
+        # print(f'****** In compute_start_state_pseudo_rewards ******')
         # Get list of items
         items = self.items
 
@@ -758,12 +780,12 @@ class MDP:
 
             # Update sum of pseudo-rewards
             sum_pr += pr
-        print(f'sum_pr: {sum_pr}')
+        # print(f'sum_pr: {sum_pr}')
 
         # Compute sum of goal values
         # sum_item_values = self.value + sum([item.intrinsic_reward for item in items])  # Takes intrinsic value down
         sum_item_values = self.value
-        print(f'Sum Of all Values: {sum_item_values}')
+        # print(f'Sum Of all Values: {sum_item_values}')
 
         if flag:
             # Set value of scaling parameter
@@ -804,8 +826,8 @@ class MDP:
             # Get expected item reward
             item_reward = item.get_expected_reward()
 
-            print(f'{item.description}: r: {item_reward}, pr: {pr}, new_pr: {pr + item_reward}')
-            print(f'Scale: {scale} Optimal Reward: {item.get_optimal_reward()}, Bias: {bias}')
+            # print(f'{item.description}: r: {item_reward}, pr: {pr}, new_pr: {pr + item_reward}')
+            # print(f'Scale: {scale} Optimal Reward: {item.get_optimal_reward()}, Bias: {bias}')
             # Add immediate reward to the pseudo-reward
             pr += item_reward
 
@@ -834,7 +856,7 @@ class MDP:
 
 
 
-        print(f"\nTotal sum of pseudo-rewards: {sc_sum_pr:.2f}\n")
+        # print(f"\nTotal sum of pseudo-rewards: {sc_sum_pr:.2f}\n")
         return {
             "incentivized_items": incentivized_items,
             "expected": expected,
@@ -871,6 +893,14 @@ class MainToDoList:
         self.slack_reward_rate = slack_reward_rate
         self.start_time = start_time
 
+        self.Qexact = dict()
+        self.Pexact = dict()
+        self.Rexact = dict()
+        self.discounts = None
+        self.cum_discounts = None
+
+
+
         # Add root node
         self.root = Item(description="Root", completed=False, deadline=np.PINF, children=self.complete_to_do_list,
                          essential=True, value=0)
@@ -880,8 +910,13 @@ class MainToDoList:
 
         # Get tasks
         self.tasks = tuple(self.flatten(self.get_tasks(self.root)))
+        self.left_tasks = list(self.tasks)
+        for task in self.tasks:
+            if task.is_completed():
+                self.left_tasks.remove(task)
+        self.left_tasks = tuple(self.left_tasks)
         self.num_tasks = len(self.tasks)
-        self.sub_goals = tuple(self.get_sub_tasks(self.root))
+        self.sub_goals = tuple(self.get_sub_tasks())
         self.num_sub_goals = len(self.sub_goals)
         # TO DO:
         #   Check the to do list in node.py:
@@ -920,8 +955,17 @@ class MainToDoList:
 
         self.tree = dict()
         self.tree_recurse([self.root])
+        self.task_dict()
+        self.goal_dict()
 
         self.slack_reward = self.compute_slack_reward()
+        self.total_time_est = sum([task.time_est for task in self.tasks])
+        # "Cut" horizon in order to reduce the number of computations
+        self.end_time = min(self.end_time, self.total_time_est)
+
+        # Generate discounts | TODO: Add epsilon as input parameter (!)
+        self.generate_discounts(epsilon=0., gamma=self.gamma,
+                                horizon=self.end_time)
 
     @staticmethod
     def flatten(iterable):
@@ -941,17 +985,33 @@ class MainToDoList:
         rcg = [MainToDoList.recurse(child) for child in root.children]
         return rcg
 
-    @staticmethod
-    def recurse_sub(root):
-        sub_goal_children = MainToDoList.flatten([child.children for child in root.children])
-        sublist = []
-        for s in sub_goal_children:
-            sublist.extend(s)
-        if any([len(c.children) == 0 for c in sublist]):
-            return MainToDoList.flatten([child for child in root.children])
-        rcg = [MainToDoList.recurse_sub(child) for child in root.children]
-        return rcg
+    def task_dict(self):
+        ind_dict = dict()
+        for t in self.tree:
+            ind_dict[t] = []
+            if len(self.tree[t]) != 0:
+                for child in self.tree[t]:
+                    op = MainToDoList.recurse(child)
+                    if isinstance(op, list):
+                        op = MainToDoList.flatten(op)
+                        for o in op:
+                            ind_dict[t].append(o.description)
+                    else:
+                        ind_dict[t].append(op.description)
+            self.ind_dict = ind_dict
 
+    def goal_dict(self):
+        ind_dict = dict()
+        for child in self.tree['Root']:
+            ind_dict[child.description] = []
+            op = MainToDoList.recurse(child)
+            if isinstance(op, list):
+                op = MainToDoList.flatten(op)
+                for o in op:
+                    ind_dict[child.description].append(o.description)
+            else:
+                ind_dict[child.description].append(op.description)
+        self.goal_tasks = ind_dict
 
     def compute_slack_reward(self):
         if self.slack_reward_rate == 0:
@@ -962,20 +1022,58 @@ class MainToDoList:
 
         return np.PINF
 
+    def generate_discounts(self, epsilon=0., gamma=1., horizon=1):
+        self.discounts = deque([1.])
+        self.cum_discounts = deque([0., 1.])
+
+        for t in range(1, horizon + 1):
+            last_power_value = self.discounts[-1] * gamma
+            if last_power_value > epsilon:
+                self.discounts.append(last_power_value)
+                self.cum_discounts.append(
+                    self.cum_discounts[-1] + last_power_value)
+            else:
+                break
+
+        self.discounts = list(self.discounts)
+        self.cum_discounts = list(self.cum_discounts)
+
+        return self.discounts, self.cum_discounts
+
+    def get_cum_discount(self, t):
+        n = len(self.cum_discounts)
+        cum_discount = self.cum_discounts[min(t, n - 1)]
+
+        if t < 0:
+            raise Exception("Negative time value for cumulative discount is "
+                            "not allowed!")
+        return cum_discount
+
+    def get_discount(self, t):
+        n = len(self.discounts)
+        discount = self.discounts[min(t, n - 1)]
+
+        if t < 0:
+            raise Exception("Negative time value for discount is not allowed!")
+
+        return discount
+
     def get_tasks(self, root):
         all_tasks = []
         for goal in root.children:
             rcg = MainToDoList.recurse(goal)
-            rcg = list(itertools.chain(*rcg))
+            try:
+                rcg = list(itertools.chain(*rcg))
+            except:
+                rcg = list(itertools.chain(rcg))
             # for rr in rcg:
             all_tasks.extend(rcg)
         return all_tasks
 
-    def get_sub_tasks(self, root):
-        sub_tasks = []
-        for goal in root.children:
-            rcg = MainToDoList.recurse_sub(goal)
-            sub_tasks.extend(rcg)
+    def get_sub_tasks(self):
+        sub_tasks = set()
+        for task in self.left_tasks:
+            sub_tasks.add(task.parent_item.description)
         return sub_tasks
 
     def set_parent(self, node, parent):
@@ -1034,9 +1132,9 @@ class MainToDoList:
     def current_pass(self, task_list):  # Not used atm Useful template to see how to traverse tree from bottom up
         task_list = list(task_list)
         next_list = []
-        while len(task_list) is not 0:
+        while len(task_list) != 0:
             task = task_list[0]
-            print(f'Desc: {task.parent_item.description}, Rew: {task.parent_item.intrinsic_reward}')
+            # print(f'Desc: {task.parent_item.description}, Rew: {task.parent_item.intrinsic_reward}')
             next_list.append(task.parent_item)
             in_sum = 0
             for child in task.parent_item.children:
@@ -1044,12 +1142,12 @@ class MainToDoList:
                 in_sum += child.intrinsic_reward
                 task_list.remove(child)
             task.parent_item.intrinsic_reward = in_sum
-            print(f'Updated rew: {task.parent_item.intrinsic_reward}')
+            # print(f'Updated rew: {task.parent_item.intrinsic_reward}')
 
         self.current_pass(next_list)
 
     def solve(self, start_time=None, verbose=False, flag=False):
-        print(f'*********** In MainToDoList solve ***********')
+        # print(f'*********** In MainToDoList solve ***********')
         if start_time is None:
             start_time = self.start_time
 
@@ -1057,55 +1155,70 @@ class MainToDoList:
         # Solve the small MDPs and go down the tree
         mdps = dict()
         for node in self.tree:
-            print("*********** MDP ***********")
-            print(f'Solving goal as: {self.nodes[node].description}')
+            # print("*********** MDP ***********")
+            # print(f'Solving goal as: {self.nodes[node].description}')
             mdp = self.solve_MDP(self.nodes[node], self.tree[node], start_time, verbose, flag=flag)
-            if self.nodes[node] in self.sub_goals:
-                print(f'Saving Q: {self.nodes[node].description}')
-                mdps[self.nodes[node].description] = mdp
+            if node in self.sub_goals:
+                # print(f'Saving Q: {node}')
+                mdps[node] = mdp
 
-        for key in mdps:
-            print(f'Key: {key}')
-        prs = self.task_pseudo_reward(mdps)
-        tasks = np.array(self.tasks)
-        pr_val = np.array([-1 * prs['id2pr'][task.description] for task in self.tasks])
-        inds = pr_val.argsort()
-        optimal_tasks = tasks[inds]
-        print("Optimal Rewards")
-        sum_pr = 0
-        for task in optimal_tasks:
-            sum_pr += prs['id2pr'][task.description]
-            rr = np.round(prs['expected'][task.description], 3)
-            pr = np.round(prs['id2pr'][task.description], 3)
-            print(f'Task: {task.description}, PRS: {pr}')
-        print(f'Net PR Sum: {sum_pr}')
+        self.mdps = mdps
+        tasks = np.array(self.left_tasks)
+        task_set = set([task.description for task in tasks])
 
-        # if True:
-        #     print(f'*********** Scale at end ***********')
-        #     prs = self.scale_bias()
-        #     for task in self.tasks:
-        #         self.pr_dict[task.description] = prs["id2pr"][task.description]
+        for key in self.mdps:
+            mdp = self.mdps[key]
+            print(f'Start_state: {mdp.start_state}')
+            print(mdp.Q[mdp.start_state])
+            item_set = set([item.description for item in mdp.items])
+            if item_set & task_set:
+                for i, item in enumerate(mdp.items):
+                    print(f'{i}: {item.description}')
+                    if item.description in task_set:
+                        for t in mdp.Q[mdp.start_state]:
+                            print(mdp.Q[mdp.start_state][t])
+                        value = max([mdp.Q[mdp.start_state][t][i] for t in mdp.Q[mdp.start_state]])
+                        print(f'{item.description}: PR Value: {self.value_dict[item.description]}, New value: {value}')
+                        self.value_dict[item.description] = value
+        # sum_values_abs = sum([self.value_dict[task.description] for task in tasks])
+        # print(f'Root: {self.value_dict["Root"]}')
+        # n = len(tasks)
+        # bias = (-1 * sum_values_abs + 1)/n
+        # print(f'Final Bias: {bias}')
+        # value_list = []
+        # for task in tasks:
+        #     value_list.append(self.value_dict[task.description])
+        # soft_values = softmax(value_list)
+        # for i,task in enumerate(tasks):
+        #     # print(f'{task.description}: Original Value: {self.value_dict[item.description]}, New value: {(self.value_dict[task.description] + bias) * sum_values_abs}')
+        #     # self.value_dict[task.description] = (self.value_dict[task.description] + bias) * self.value_dict["Root"]
+        #     print(f'{task.description}: Original Value: {self.value_dict[item.description]}, New value: {soft_values[i]* self.value_dict["Root"]}')
+        #     self.value_dict[task.description] = soft_values[i] * self.value_dict["Root"]
+
+        # for key in mdps:
+        #     print(f'Key: {key}')
+        # prs = self.task_pseudo_reward(mdps)
         #
-        # # Convert task queue to a np array
-        # pr_val = [-1 * self.pr_dict[task.description] for task in self.tasks]
-        # # optimal_tasks = [x for _, x in sorted(zip(pr_val, self.tasks))]
-        # tasks = np.array(self.tasks)
-        # pr_val = np.array(pr_val)
+        # pr_val = np.array([-1 * prs['id2pr'][task.description] for task in self.tasks])
         # inds = pr_val.argsort()
         # optimal_tasks = tasks[inds]
-        # print("Optimal Rewards")
+        # # print("Optimal Rewards")
         # sum_pr = 0
         # for task in optimal_tasks:
-        #     sum_pr += self.pr_dict[task.description]
-        #     print(f'Task: {task.description}, Reward: {np.round(self.expected_dict[task.description],3)}, PRS: {np.round(self.pr_dict[task.description],3)}')
-        # print(f'Net PR Sum: {sum_pr}')
-        return mdps
-
+        #     sum_pr += prs['id2pr'][task.description]
+        #     rr = np.round(prs['expected'][task.description], 3)
+        #     pr = np.round(prs['id2pr'][task.description], 3)
+        # #     print(f'Task: {task.description}, PRS: {pr}')
+        # # print(f'Net PR Sum: {sum_pr}')
+        return  self.value_dict# prs
 
     def solve_MDP(self, parent, children_nodes, start_time, verbose,flag=False):
         if len(children_nodes) == 0:  # No children, reached leaf node
             return
-        # print(f'Solving treating goal as: {children_nodes[0].parent_item.description}')
+        print(f'Solving treating goal as: {children_nodes[0].parent_item.description}')
+        if parent.is_completed():
+            print(f'MDP for {parent.description} Need not solving. Already completed')
+            return
         tasks = deepcopy(children_nodes)
         root_val = sum([task.value for task in tasks])
         for task in tasks:
@@ -1117,7 +1230,7 @@ class MainToDoList:
             self.value_dict[parent.description] = root_val
 
             # task.value = self.value_dict[task.description]
-        print(f'{parent.description} Val: {self.value_dict[parent.description]}')
+        # print(f'{parent.description} Val: {self.value_dict[parent.description]}')
         #             print(f'{task.description}, {task.value}, {task.intrinsic_reward}')
 
         mdp = MDP(items=tasks, value=self.value_dict[parent.description], end_time=self.end_time, gamma=self.gamma, loss_rate=self.loss_rate,
@@ -1128,6 +1241,7 @@ class MainToDoList:
         s = mdp.start_state
         t_old = mdp.start_time
         slack_reward = mdp.get_slack_reward()
+        policy_tasks = []
         while True:
             pol = mdp.get_optimal_policy(s)
             a = next(iter(pol.values()))
@@ -1137,18 +1251,114 @@ class MainToDoList:
                 print(f'Slack Action Chosen. Action: {a}, q: {q_val} <= {slack_reward}')
                 break
             print(f'Action: {a}')
+            policy_tasks.append(mdp.items[a])
             s_ = mdp.exec_action(s, a)
             t_ = next(iter(pol.keys()))
-            print(f's, t: {s, t_old}, a: {a}, s_, t_: {s_, t}')
+            # print(f's, t: {s, t_old}, a: {a}, s_, t_: {s_, t}')
             # print(f'Options: {mdp.get_policy(s_)}')
             s = s_
             t_old = t
 
         print(f'Q value')
-        for task in mdp.Q_s0:
-            print(f'{task.description}, reward: {task.get_expected_reward()} Q: {mdp.Q_s0[task]}')
-            print(task.expected_rewards)
-            self.value_dict[task.description] = mdp.Q_s0[task]
+        best_q = np.NINF
+        print(f'Slack Reward of MDP: {slack_reward}')
+        print(f'mdp.Q_s0: {mdp.Q_s0}')
+        for keys in mdp.Q_s0:
+            print(f'{keys.description}')
+        print(f'mdp.Q_s0.values(): {mdp.Q_s0.values()}')
+        q = max(mdp.Q_s0.values())
+        if q > best_q:
+            best_q = q
+        if best_q <= slack_reward:
+            best_q = slack_reward
+        # print(mdp.Q)
+        # values = []
+        values_abs = []
+        left_tasks = []
+        for task in mdp.items:
+            if not task.is_completed():
+                left_tasks.append(task)
+        print(f'best_q: {best_q}')
+        for i, task in enumerate(left_tasks):
+            print(f'Computing value for: {task.description}')
+            t_ = task.get_time_est()
+            s_ = MDP.exec_action(mdp.start_state, i)
+
+            q_ = max([max(mdp.Q[s_][t].values())for t in mdp.Q[s_]])
+            tt = min(mdp.end_time, t_)
+            cum_discount = mdp.get_cum_discount(tt)
+            r = MDP.compute_total_loss(
+                cum_discount=cum_discount, loss_rate=self.loss_rate)
+            # print(f"R: {r}")
+            if flag:
+                print(f' q_: {q_} Discount: {mdp.get_discount(tt)} Imm Reward: {task.get_immediate_reward()}')
+            #     # print(f'{task.description} OLD: {(mdp.get_discount(tt) * q_ - best_q) } Immediate r: {task.get_immediate_reward()}')
+                value = (mdp.get_discount(tt) * q_ - best_q) + task.get_immediate_reward() # -r
+            #     # print(f'{task.description} gamma* V*(s_) - V*(s) + im: {(mdp.get_discount(tt) * q_ - best_q) + task.get_immediate_reward()}')
+            #     # print(f'V*(s_) - V*(s): {q_ - best_q}, IM: {task.get_immediate_reward()}')
+            #     # print(f'Gamma: {mdp.get_discount(tt)}, tt: {tt}')
+            #     # print(f'gamma * V*(s_) - V*(s): {(mdp.get_discount(tt) * q_ - best_q)}, IM: {task.get_immediate_reward()}')
+            else:
+                value = (mdp.get_discount(mdp.end_time) * q_ - best_q) - r
+            # value = max([mdp.Q[mdp.start_state][t][i] for t in mdp.Q[mdp.start_state]])
+            # print(f'Discount: {mdp.get_discount(mdp.end_time)}, q_: {q_}, q: {q}')
+            # print(f'{task.description}, reward: {task.get_expected_reward()} IM: {task.get_immediate_reward()} Q: {mdp.Q_s0[task]}')
+            print(f'Value: {value}')
+            # print(f'exp: {np.exp(value)}')
+            # print(task.expected_rewards)
+            # values.append(value)
+            values_abs.append(value)
+        # sum_values_abs = sum(values_abs)
+        # print(f'Sum_values_abs: {sum_values_abs}')
+        # n = len(mdp.items)
+        # print(f'N: {n}')
+        # bias = (-1 * sum_values_abs + 1)/n
+        # print(f'Bias: {bias}')
+        # print(f'Value_abs: {values_abs}')
+        # values_abs = [j + bias for j in values_abs]
+        # print(f'Value_abs: {values_abs}')
+        # print(f' MDP Value: {mdp.value}')
+        # print(f' SUM: {sum([values[i] + bias for i,_ in enumerate(mdp.items)])}')
+        # print(f' SCALED SUM: {sum([(values[i] + bias) * mdp.value for i,_ in enumerate(mdp.items)])}')
+        # max_val = max(values_abs)
+        # if len(values_abs) <= 1:
+        #     min_val = 0
+        # else:
+        #     min_val = min(values_abs)
+        # scale = abs(max_val - min_val)
+        # print(f'Max:{max_val}, Min: {min_val}')
+        # print(f'Vals: {values_abs}')
+        # print(f'Scale: {scale}')
+        soft_values = softmax(values_abs)
+        if len(policy_tasks) > 0:
+            # for item in policy_tasks:
+            #     print(f'{item.description}: Val: {item.value} Int: {item.get_intrinsic_reward()} Dict: {self.value_dict[item.description]}')
+            sum_imp =  sum([item.importance for item in policy_tasks]) / sum([item.importance for item in mdp.items])
+            print(f'Sum_imp: {sum_imp}')
+            value = sum([item.get_intrinsic_reward() for item in policy_tasks]) + mdp.value * sum_imp
+        else:
+            value = 0
+        intrinsic_sum = sum([task.get_intrinsic_reward() for task in mdp.items])
+        print(f'Scaling V: {value}')
+        for i, task in enumerate(left_tasks):
+            self.value_dict[task.description] = soft_values[i] * value
+            # self.value_dict[task.description] = (values_abs[i] + bias) * mdp.value
+        # print(f'MDP Val: {mdp.value}. Parent: {self.value_dict[parent.description]}')
+        # scaled_values = []
+        # item_list = []
+        # for i,task in enumerate(mdp.items):
+        #     scaled_values.append(values[i] * (mdp.value / sum_values))
+        #     item_list.append(task.description)
+        # sorted_items = [x for _,x in sorted(zip(values, item_list))]
+        # # for y,x in sorted(zip(values, scaled_values)):
+        # #     print(f'Sorted Val: {y}, Scale: {x}')
+        # print(f'Values: {values}')
+        # print(f'Unsorted scaled values: {scaled_values}')
+        # scaled_values.sort()
+        # print(f'Sorted Scaled Values: {scaled_values}')
+        # print(f'Sorted Items: {sorted_items}')
+        # for i, task_desc in enumerate(mdp.items):
+        #     self.value_dict[task_desc.description] = scaled_values[i]
 
         print('Transferrred Q_s0 value down')
         for task in mdp.Q_s0:
@@ -1174,35 +1384,38 @@ class MainToDoList:
         #     self.value_dict[task.description] = self.pr_dict[task.description]
         # return
 
-
     def task_pseudo_reward(self, mini_mdps, scale=None, bias=None):
         start_time = self.start_time
         slack_reward = self.slack_reward
         # print(f'slack rewards: {slack_reward}')
 
         exp_reward = dict()
+        scales = dict()
+        biases = dict()
+        sc_sum_prs = dict()
         next_q = dict()  # {Task Description: Q-value after item execution in s[0]}
         # Get V*(s)
         # Initialize best Q-value
-        best_q = np.NINF
 
-        total_reward = 0
+        # Initialize {Task Description: pseudo-reward} dictionary
+        id2pr = dict()
+
         for state in mini_mdps:
-            # For each mini MDP, find V*(u), where u is the state representation of the mini MDP
+            best_q = np.NINF
+            total_reward = 0
+            # For each mini MDP, find pseudo-reward separately
             mdp = mini_mdps[state]
             q = max(mdp.Q_s0.values())
-            print(state)
-            for tt in mdp.Q_s0:
-                print(tt.description, mdp.Q_s0[tt])
+            # print(state)
+            # for tt in mdp.Q_s0:
+            #     print(tt.description, mdp.Q_s0[tt])
             # print(mdp.Q_s0)
             #         print(f'{state}: V* = {q} \nQ in mini-mdp: {mdp.Q_s0.values()}')
             if q > best_q:
                 best_q = q
-            try:
-                other_mdps_max = max([max(mini_mdps[st].Q_s0.values()) for st in mini_mdps if st != state])
-            except:
-                other_mdps_max = 0
-            other_mdps_max = max(other_mdps_max, slack_reward)
+
+            if best_q <= slack_reward:
+                best_q = slack_reward
 
             # To compute next Q
             for i, task in enumerate(mdp.items):
@@ -1212,91 +1425,83 @@ class MainToDoList:
                 total_reward += task.get_expected_reward()
                 t_ = task.get_time_est()
                 s_ = MDP.exec_action(mdp.start_state, i)
-                q_ = max(mdp.Q[s_][start_time + t_].values())  # Still need to max against other mini MDPs
-                # print(f'q_: {q_}, other_max: {other_mdps_max}')
-                next_q[task.description] = max(q_, other_mdps_max)
-                # print(f'Task: Next: {next_q[task.description]}')
-            #         print(mini_mdps[state].Q)
+                q_ = max(mdp.Q[s_][mdp.start_time + t_].values())
+                next_q[task.description] = q_
+            # print(f'best_q: {best_q}')
 
-            if best_q <= slack_reward:
-                best_q = slack_reward
-        print(f'best_q: {best_q}')
+            # Initialize minimum pseudo-reward value (bias for linear transformation)
+            min_pr = 0
 
-        # Initialize minimum pseudo-reward value (bias for linear transformation)
-        min_pr = 0
+            # Initialize sum of pseudo-rewards
+            sum_pr = 0
 
-        # Initialize sum of pseudo-rewards
-        sum_pr = 0
+            # Compute untransformed pseudo-rewards
+            for task in mdp.items:
+                pr = next_q[task.description] - best_q
 
-        # Compute untransformed pseudo-rewards
-        for task in self.tasks:
-            pr = next_q[task.description] - best_q
+                if np.isclose(pr, 0, atol=1e-6):
+                    pr = 0
 
-            if np.isclose(pr, 0, atol=1e-6):
-                pr = 0
+                # print(f'Task: {task.description} pr: {pr}')
+                task.set_optimal_reward(pr)
+                # Update minimum pseudo-reward
+                min_pr = min(min_pr, pr)
 
-            # print(f'Task: {task.description} pr: {pr}')
-            task.set_optimal_reward(pr)
-            # Update minimum pseudo-reward
-            min_pr = min(min_pr, pr)
+                # Update sum of pseudo-rewards
+                sum_pr += pr
+            # print(f'sum_pr: {sum_pr}')
 
-            # Update sum of pseudo-rewards
-            sum_pr += pr
-        # print(f'sum_pr: {sum_pr}')
+            sum_values = mini_mdps[state].value
+            # print(f'Sum_Values: {sum_values}')
 
-        sum_values = sum([mini_mdps[state].value for state in mini_mdps])
-        print(sum_values)
+            if scale is None:
+                # As defined in the report
+                scale = 1.10
 
-        if scale is None:
-            # As defined in the report
-            scale = 1.10
+            # Set value of bias parameter
+            if bias is None:
+                # Total number of incentivized items
+                n = len(mdp.items)
+                # Derive value of the bias term
+                bias = (sum_values - scale * sum_pr) / n
 
-        # Set value of bias parameter
-        if bias is None:
-            # Total number of incentivized items
-            n = self.num_tasks
-            # Derive value of the bias term
-            bias = (sum_values - scale * sum_pr) / n
+                # Take total reward into account
+                bias -= (total_reward / n)
+            # print(f'Bias: {bias}')
 
-            # Take total reward into account
-            bias -= (total_reward / n)
-        print(f'Bias: {bias}')
+            # Sanity check for the sum of pseudo-rewards
+            sc_sum_pr = 0
 
-        # Initialize {Task Description: pseudo-reward} dictionary
-        id2pr = dict()
+            # Perform linear transformation on item pseudo-rewards
+            for task in mdp.items:
+                # Transform pseudo-reward
+                pr = f = scale * task.get_optimal_reward() + bias
+                # pr = 0  # To see policy without pseudo reward
+                # Get expected item reward
+                task_reward = exp_reward[task.description]
+                # print(f'{task.description}: r: {task_reward}, Next_Q: {next_q[task.description]}, f*: {task.get_optimal_reward()} , Final: {pr + task_reward}')
+                # Add immediate reward to the pseudo-reward
+                pr += task_reward
+                # Store new (zero) pseudo-reward
+                task.set_optimal_reward(pr)
+                # Store pseudo-reward {Task Description: pseudo-reward}
+                id2pr[task.description] = pr
+                # If item is not slack action
+                if task.get_idx() != -1:
+                    # Update sanity check for the sum of pseudo-rewards
+                    sc_sum_pr += task.get_optimal_reward()
 
-        # Sanity check for the sum of pseudo-rewards
-        sc_sum_pr = 0
-
-        # Perform linear transformation on item pseudo-rewards
-        for task in self.tasks:
-            # Transform pseudo-reward
-            pr = f = scale * task.get_optimal_reward() + bias
-            # pr = 0  # To see policy without pseudo reward
-            # Get expected item reward
-            task_reward = exp_reward[task.description]
-            print(f'{task.description}: r: {task_reward}, Next_Q: {next_q[task.description]}, f*: {task.get_optimal_reward()} , Final: {pr + task_reward}')
-            # Add immediate reward to the pseudo-reward
-            pr += task_reward
-            # Store new (zero) pseudo-reward
-            task.set_optimal_reward(pr)
-            # Store pseudo-reward {Task Description: pseudo-reward}
-            id2pr[task.description] = pr
-            # If item is not slack action
-            if task.get_idx() != -1:
-                # Update sanity check for the sum of pseudo-rewards
-                sc_sum_pr += task.get_optimal_reward()
-
-        # assert np.isclose(sc_sum_pr, sum_values, atol=1e-3)
-        #         print(sum_values)
-
-        print(f"\nTotal sum of pseudo-rewards: {sc_sum_pr:.2f}\n")
+            # assert np.isclose(sc_sum_pr, sum_values, atol=1e-3)
+            sc_sum_prs[state] = sc_sum_pr
+            scales[state] = scale
+            biases[state] = bias
+            # print(f"\nTotal sum of pseudo-rewards: {sc_sum_pr:.2f}\n")
         return {
             "expected": exp_reward,
             "id2pr": id2pr,
-            "sc_sum_pr": sc_sum_pr,
-            "scale": scale,
-            "bias": bias
+            "sc_sum_pr": sc_sum_prs,
+            "scale": scales,
+            "bias": biases
         }
 
     def scale_bias(self, bias=None, scale=None):
@@ -1306,11 +1511,11 @@ class MainToDoList:
         :param scale:
         :return:
         '''
-        print(f'****** In Scale Bias ******')
+        # print(f'****** In Scale Bias ******')
         sum_pr = sum([self.optimal_dict[task.description] for task in self.tasks])
         sum_item_values = sum([goal.value for goal in self.tree["Root"]]) + sum([task.intrinsic_reward for task in self.tasks])
         total_reward = sum([self.expected_dict[task.description] for task in self.tasks])
-        print(f'Sum Of all Values: {sum_item_values}')
+        # print(f'Sum Of all Values: {sum_item_values}')
         # Set value of scaling parameter
         if scale is None:
             # As defined in the report
@@ -1326,7 +1531,7 @@ class MainToDoList:
 
             # Take total reward into account
             bias -= (total_reward / n)
-        print(f'Bias: {bias}')
+        # print(f'Bias: {bias}')
         # Initialize {item ID: pseudo-reward} dictionary
         id2pr = dict()
 
@@ -1340,8 +1545,8 @@ class MainToDoList:
             # Get expected item reward
             item_reward = self.expected_dict[item.description]
 
-            print(f'{item.description}: r: {item_reward}, pr: {pr}, new_pr: {pr + item_reward}')
-            print(f'Scale: {scale} Pre Scale: {self.optimal_dict[item.description]}, Bias: {bias} Final: {pr + item_reward}')
+            # print(f'{item.description}: r: {item_reward}, pr: {pr}, new_pr: {pr + item_reward}')
+            # print(f'Scale: {scale} Pre Scale: {self.optimal_dict[item.description]}, Bias: {bias} Final: {pr + item_reward}')
             # Add immediate reward to the pseudo-reward
             pr += item_reward
 
@@ -1353,3 +1558,166 @@ class MainToDoList:
             "scale": scale,
             "bias": bias
         }
+
+    def get_actions(self, task_name_list):
+        action_list = []
+        for i, task in enumerate(self.tasks):
+            if task.description in task_name_list:
+                action_list.append(i)
+        return action_list
+
+    def solve_exact(self, start_time=None):
+        nA = self.num_tasks
+
+        def one_step_lookahead(curr_state):
+            # print(f'Looking ahead for state: {curr_state}')
+            s = curr_state["s"]
+            t = curr_state["t"]
+
+            # Initialize policy entries for state and (state, time))
+            self.Pexact.setdefault(s, dict())
+
+            # Initialize Q-function entry for the (state, time) pair
+            self.Qexact.setdefault(s, dict())
+            self.Qexact[s].setdefault(t, dict())
+
+            # Initialize reward entries for state and (state, time))
+            self.Rexact.setdefault(s, dict())
+            self.Rexact[s].setdefault(t, dict())
+
+            for action in range(nA):
+                if s[action] == 0: # task is not done
+                    # print(f'Evaluating for action: {action}')
+                    # check if with action, is its parent being completed. i.e. for a goal, all
+                    s_ = list(s)
+                    s_[action] = 1
+                    s_ = tuple(s_)
+                    # Probability of transition to next state
+                    prob = 1
+
+                    # The computation not already been done
+                    if action not in self.Qexact[s][t].keys():
+                        task = self.tasks[action]  # task which action will complete
+                        goals = tuple(self.goal_tasks.keys())
+                        goal_name = goals[[task.description in self.goal_tasks[goal_des] for goal_des in self.goal_tasks].index(True)]
+                        for goal in self.tree['Root']:
+                            if goal.description == goal_name:
+                                break
+                        # print(f'{task.description} in {goal_name}')
+
+                        # Initialize expected value for action
+                        self.Qexact[s][t].setdefault(action, 0)
+
+                        # Initialize entry for (state, time, action)
+                        self.Rexact[s][t].setdefault(action, 0)
+
+                        task_deadline = task.get_deadline()
+                        time_transitions = task.get_time_transitions().items()
+
+                        #  Check if new state is completed
+                        flag = True
+                        sum_imp_completed = 0
+                        action_list = self.get_actions(self.goal_tasks[goal_name])
+                        sum_imp = sum([self.tasks[a].importance for a in action_list])
+                        for a in action_list:
+                            if s_[a] == 0:
+                                if self.tasks[a].essential: # there is an uncompleted essential task for goal
+                                    flag = False
+                            else:  # only  used if essential
+                                sum_imp_completed += self.tasks[a].importance
+                        # print(f'In state: {s_}, Flag: {flag}, sum_imp_comp: {sum_imp_completed}, sum_imp: {sum_imp}')
+                        beta = 0
+                        exp_time_reward = 0
+                        exp_total_reward = 0
+                        for time_est, prob_t_ in time_transitions:
+                            # Make time transition
+                            t_ = t + time_est
+
+                            # Initialize Q-values for state' and time'
+                            self.Qexact.setdefault(s_, dict())
+                            self.Qexact[s_].setdefault(t_, dict())
+
+                            # Get cumulative discount w.r.t. item duration
+                            # Cognitive/time cost
+                            cum_discount = self.get_cum_discount(time_est)
+                            r = MDP.compute_total_loss(
+                                cum_discount=cum_discount, loss_rate=self.loss_rate
+                            )
+
+                            # Add deadline to the missed deadlines if not attained
+                            if task.is_deadline_missed(t_):
+                                # print(f'Task: {task.description} Deadline Missed')
+                                # Compute total penalty for missing item deadline
+                                total_penalty = \
+                                    self.penalty_rate * (t_ - task_deadline)
+
+                                # Update penalty
+                                beta += prob_t_ * total_penalty
+                                if flag:
+                                    r += (goal.value* (sum_imp_completed/ sum_imp))/ (1+beta)
+                            r += task.intrinsic_reward
+                            exp_time_reward += prob_t_ * r
+
+                            # Generate next state
+                            state_dict = {
+                                "s": s_,
+                                "t": t_
+                            }
+
+                            # Explore the next state
+                            one_step_lookahead(state_dict)
+                            # Get best action and its respective for (state', time')
+                            a_, r_ = MDP.max_from_dict(self.Qexact[s_][t_])
+                            self.Pexact[s_][t_] = a_
+
+                            # - Multiple time-step discount (SMDP)
+                            total_reward = r + self.get_discount(time_est) * r_
+                            exp_total_reward += prob_t_ * total_reward
+
+                        # Add more values to the expected value
+                        self.Qexact[s][t][action] += prob * exp_total_reward
+                        self.Rexact[s][t][action] += prob * exp_time_reward
+            # ===== Terminal state ===== (All children visited)
+            if sum(s) == len(s):
+                # Initialize dictionary for the terminal state Q-value
+                self.Qexact[s][t].setdefault(None, 0)
+
+                # Compute reward for reaching terminal state s in time t
+                self.Rexact[s][t].setdefault(None, 0)
+
+        # Initialize start state & time
+        t = self.start_time if start_time is None else start_time
+        s =  tuple(0 for _ in range(self.num_tasks))
+        curr_state = {
+            "s": s,
+            "t": t
+        }
+        # Start iterating
+        # print(f'self.gamma: {self.gamma}')
+        one_step_lookahead(curr_state)
+
+        policy = []
+        # Get best action in the start state and its corresponding reward
+        a, r = MDP.max_from_dict(self.Qexact[s][t])
+        # Store policy for the next (state, time) pair
+        self.Pexact[s][t] = a
+
+        return  {
+            "P": self.Pexact,
+            "Q": self.Qexact
+        }
+
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum()
+
+
+def num_to_binary(num):
+    bin_str = bin(num);
+    bin_seg = bin_str.split('b')[1]
+    return tuple(bin_seg)
+
+def binary_to_num(binary):
+    return int('0b'+binary, 2)
+
