@@ -11,7 +11,7 @@ from string import digits
 from todolistMDP.to_do_list import Item
 
 DATE_REGEX = r"([0-9][0-9][0-9][0-9][\-\.\\\/]+(0[1-9]|1[0-2]|[1-9])[\-\.\\\/]+([0-2][0-9]|3[0-1]|[1-9]))(\s+([0-1][0-9]|2[0-3]|[0-9])[\-\:\;\.\,]+([0-5][0-9]|[0-9])|)"
-DEADLINE_REGEX = fr"DUE:\s*{DATE_REGEX}"
+DEADLINE_REGEX = r"DUE:\s*{DATE_REGEX}"
 GOAL_CODES = r"(\d+|&|_|\^)"
 HOURS_REGEX = r"(?:^||>)\(?\s*\d+[\.\,]*\d*\s*(?:hour)s?\)?(?:|[^\da-z.]|$)"
 HTML_REGEX = r"<(\/|)(b|i|u)>"
@@ -39,7 +39,7 @@ WEEKDAYS = {
 }
 TAGS = ["future", "daily", "today", "weekdays", "weekends"] + \
        [weekday.lower() + r"(s)" for weekday in WEEKDAYS.values()] + \
-       [weekday.lower() for weekday in WEEKDAYS.values()]
+       [wimport rteekday.lower() for weekday in WEEKDAYS.values()]
 
 
 def compute_latest_start_time(goal):
