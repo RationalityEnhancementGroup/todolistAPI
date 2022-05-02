@@ -39,7 +39,7 @@ WEEKDAYS = {
 }
 TAGS = ["future", "daily", "today", "weekdays", "weekends"] + \
        [weekday.lower() + r"(s)" for weekday in WEEKDAYS.values()] + \
-       [wimport rteekday.lower() for weekday in WEEKDAYS.values()]
+       [weekday.lower() for weekday in WEEKDAYS.values()]
 
 
 def compute_latest_start_time(goal):
