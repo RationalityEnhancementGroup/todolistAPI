@@ -838,13 +838,21 @@ class Root(object):
 
 
 if __name__ == '__main__':
-    uri = "mongodb://todolistapi_yt48765:aVsYl2zzOvTQSTAj@cluster0.yzxcw.mongodb.net/todolistapi_yt48765?retryWrites=true&w=majority"
+    uri = "mongodb+srv://todolistapi_yt48765:aVsYl2zzOvTQSTAj@cluster0.yzxcw.mongodb.net/todolistapi_yt48765?retryWrites=true&w=majority"
     client = MongoClient(uri)
     db = client["todolistapi_yt48765"]
-    collection = db["todolistapi_yt48765"]
-    # conn = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
-    # db = conn.heroku_g6l4lr9d
+    # collection = db["todolistapi_yt48765"]
+    #conn = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
+    #db = conn.todolistapi_yt48765
+    info = client.server_info()
+    try:
+        assert info['ok'] == 1
+    except:
+        print('Mongo Database Not Connected')
 
+    db = client["todolist_data"]
+    print(client.list_database_names())
+    collection = db["todolist_data"]
     conf = {
         '/':       {
             # 'tools.sessions.on': True,
