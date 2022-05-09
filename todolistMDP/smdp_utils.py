@@ -2,11 +2,11 @@ import numpy as np
 
 from collections import deque
 from pprint import pprint
-from todolistMDP.to_do_list import ToDoList
+from todolistMDP.to_do_list import MainToDoList
 
 
 
-def compute_start_state_pseudo_rewards(to_do_list: ToDoList,
+def compute_start_state_pseudo_rewards(to_do_list: MainToDoList,
                                        bias=None, scale=None):
     # Get list of goals
     goals = to_do_list.get_goals()

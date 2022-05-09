@@ -838,10 +838,10 @@ class Root(object):
 
 
 if __name__ == '__main__':
-    uri = "mongodb://ai4productivity:ai4productivity@127.0.0.1/ai4productivity"
+    uri = "mongodb://todolistapi_yt48765:aVsYl2zzOvTQSTAj@cluster0.yzxcw.mongodb.net/todolistapi_yt48765?retryWrites=true&w=majority"
     client = MongoClient(uri)
-    db = client["ai4productivity"]
-    collection = db["ai4productivity"]
+    db = client["todolistapi_yt48765"]
+    collection = db["todolistapi_yt48765"]
     # conn = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
     # db = conn.heroku_g6l4lr9d
 

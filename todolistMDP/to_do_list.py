@@ -1,6 +1,6 @@
 import numpy as np
 import time
-from toolz import memoize, compose
+#from toolz import memoize, compose
 from collections import deque
 from copy import deepcopy
 from todolistMDP.zero_trunc_poisson import get_binned_dist
