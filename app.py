@@ -838,11 +838,11 @@ class Root(object):
 
 
 if __name__ == '__main__':
-    uri = "mongodb+srv://todolistapi_yt48765:aVsYl2zzOvTQSTAj@cluster0.yzxcw.mongodb.net/todolistapi_yt48765?retryWrites=true&w=majority"
-    client = MongoClient(uri)
+   # uri = "mongodb+srv://todolistapi_yt48765:aVsYl2zzOvTQSTAj@cluster0.yzxcw.mongodb.net/todolistapi_yt48765?retryWrites=true&w=majority"
+   # client = MongoClient(uri)
+    client = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
     db = client["todolistapi_yt48765"]
     # collection = db["todolistapi_yt48765"]
-    #conn = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
     #db = conn.todolistapi_yt48765
     info = client.server_info()
     try:
