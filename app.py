@@ -838,7 +838,7 @@ class Root(object):
 
 
 if __name__ == '__main__':
-   # uri = "mongodb+srv://todolistapi_yt48765:aVsYl2zzOvTQSTAj@cluster0.yzxcw.mongodb.net/todolistapi_yt48765?retryWrites=true&w=majority"
+   # uri = "mongodb+srv://abcde"
    # client = MongoClient(uri)
     client = MongoClient(os.environ['MONGODB_URI'] + "?retryWrites=false")
     db = client["todolistapi_yt48765"]
